@@ -225,6 +225,7 @@ ceilings, not targets: low poly is the style (owner: "this game doesn't need hig
 | Secondary views | Up to two at 512 x 256, at most 15 Hz | A turret feed, a fighter's camera on a console. |
 | MSAA | 4x where the probe finds it cheap | Tile-based GPUs resolve MSAA on chip. |
 | Average overdraw | 3x | Glass, particles and UI over the scene. |
+| The sky, a view | 4 draws, 15,982 triangles, about 305 KB of buffers, no texture; about 1 ms of GPU | `nebula-skies`: the mesh, the faint stars, the vector stars' lines and heads. Measured on a Pi 5 (8 GB) on 2026-10-16 at 1280 x 720 with MSAA 4x: 21.45 ms against the old sky's 20.45 ms a frame (`sc-probe` scene 10); the captain's film's median frame 14.83 ms against 14.25 ms (`docs/benchmarks/2026-10-16-nebula-skies-pi5/`). |
 | Client main thread, CPU | 8 ms | Culling and submission 3, UI 2, prediction and interpolation 1, the rest slack. |
 | Client resident memory | 384 MB | Allocated at startup by budget; refuses to load what does not fit. |
 | GPU allocations (CMA) | 192 MB | Textures, buffers, framebuffers. To set and verify on the Pi. |
@@ -568,7 +569,7 @@ everything drew through Mesa's llvmpipe over EGL, OpenGL ES 3.0, with SDL's offs
 | `sc-core` | `crates/sc-core/` | The fixed-step clock, generational arenas, seeded randomness, the replay hash, the data loader with `data/engine/render.json`, the deck vertex table and packer; 21 tests |
 | `sc-render` | `crates/sc-render/` | sokol_gfx set up with the pools from data, the deck pipelines built from `sc-core`'s table, the 3D target (MSAA when asked) and the blit to the output, readback for captures |
 | The platform | `crates/sc-client/src/platform.rs` | SDL 3.4.18 built from source (`sdl3-sys`), its main callbacks, an OpenGL ES 3.0 context (4.1 core on Windows and macOS), `SDL_KMSDRM_ATOMIC` set for the Pi 5 |
-| `sc-client` | `crates/sc-client/src/main.rs` | The whole Tern from `compiled/tern.deck` (`deck-pipeline` section 13), flown with the mouse and W A S D, in the three states blended by the state weights over 0.5 s (keys 1, 2, 3); first light's test room when no deck is compiled. Setup on a Pi: `docs/engine/pi-setup.md` |
+| `sc-client` | `crates/sc-client/src/main.rs` | The whole Tern from `compiled/tern.deck` (`deck-pipeline` section 13), flown with the mouse and W A S D, in the three states blended by the state weights over 0.5 s (the headless shots take each; in a game only the captain changes them, `bridge-stations` 7); first light's test room when no deck is compiled. Setup on a Pi: `docs/engine/pi-setup.md` |
 | `sc-probe` | `crates/sc-probe/` | Scenes 1, 2, 3, 4 and 8, the JSON and Markdown report |
 | Render tests | `crates/sc-client/tests/render.rs` | Known deck vertices drawn and read back, and a reference image |
 | `scripts/check.sh` | | Section 12's list, then the shader modules, the engine data and the lighting data |

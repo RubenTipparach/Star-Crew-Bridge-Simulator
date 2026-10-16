@@ -48,15 +48,20 @@ at space dock"; "we do start at the oneil cylinders"; "baked lighting in the int
 
 - [x] 5.1 The sky from the system file: the star's direction, size and light; the near planet's look (the banded
   look and three far-body slots still to do).
-- [x] 5.2 The starbase and its cradle in the system frame; the cradle sliding past as the Tern backs out.
+- [x] 5.2 The starbase and its cradle in the system frame; the cradle sliding past as the Tern backs out. (Replaced
+  2026-10-15 by 5.5.)
 - [ ] 5.3 Motes, the jump's streaks and flash, the belt's far rocks.
-- [ ] 5.4 `starbase.glb` replacing the placeholder when the `starbase` change lands.
+- [ ] 5.4 `starbase.glb` replacing the placeholder when the `starbase` change lands. (Superseded by 5.5: Tamsin Station is
+  spacedock's version E, generated.)
+- [x] 5.5 The stations' models (design 12b): Tamsin Station generated from the spacedock sizes, lit per vertex (spacedock
+  5b's fallback), its bay's floods baked at load, two sister ships at their berths; the other four stations as flagged
+  placeholders; the outside's depth slice widened; the girder cradle gone from the drill.
 
-## 7. The tour: scan, battle and civilian stops (phase 3, design 12b)
+## 7. The tour: scan, battle and civilian stops (phase 3, design 12c)
 
 - [x] 7.1 The write-up: six stops of three kinds (two scans, a rescue, three battles), the battles' hostiles, `clear`,
   `scan`, `refuel`, moving on undone, the ship kept between stops, the outcome, the bots' lines, the windows at Cinder
-  (design 1, 5, 6, 9, 11.1, 12b; spec).
+  (design 1, 5, 6, 9, 11.1, 12c; spec).
 - [ ] 7.2 The four new points in `data/space/systems/shoals.json` (Cinder orbit, Cinder's ore lanes, Orrin's rings,
   the Shoals' edge), with their arrival points and checks.
 - [ ] 7.3 The mission's `route` as stops with a kind and, for a battle, a group; `groups`; the `civilian` block; the

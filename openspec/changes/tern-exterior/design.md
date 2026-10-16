@@ -31,7 +31,7 @@ dock are what lie outside it).
 | Materials | `tern_hull` (2,647 triangles) and `tern_rim` (648) on the 1024 px hull atlas; `hazard` (713) on the 128 px graphite; `accent` (132) on the 128 px pearl; `light_panel` (156) and `screen` (144) untextured, their colour their glow | the glb's materials, `KHR_materials_unlit` |
 | Light | The sun baked into `COLOR_0` (16-bit, linear, 0.24-0.99 on the hull) | the README: fixed sun, unlit materials, no normal maps |
 | Frame | Metres, +x port, +y up, +z bow; origin the layout's; bounds x -22.5..22.5, y -8.02..10.02, z -44.2..37.27 | `props.json` `axes`, `bounds_m` |
-| Sampling | Nearest up close, trilinear mips, repeat | the glb's sampler (the deck's own sampler) |
+| Sampling | Trilinear mips, repeat. Up close: bilinear on the painted atlases (`tern_hull`, `tern_rim`, `tern_nacelle`), nearest on the 128 px tiles (`hazard`, `accent`) | the deck's sampler; `data/ships/exteriors.json` `smooth_magnify_materials` names the atlases (design 4a) |
 | Windows | 20 apertures, each with the room, centre, facing and size it was cut for | `props.json` `windows` |
 
 The pylons' roots are on the hull's flanks at about z 2-8 m, swept out to |x| 16-19 m; the nacelles run from z 13 m
@@ -85,6 +85,29 @@ into the same file rather than a second one. That keeps one loader and one downl
 - Not drawn into the bow camera's picture: the camera sits at z 43 m, 5.7 m ahead of the bow, looking forward.
 - The dock's girders stand 26 m out from the centre line; the nacelles reach 22.4 m, so the frame clears them by 2.9 m
   (`data/space/exterior.json`, `dock.width_m` 52).
+
+### 4a. The painted atlas up close (fixed 2026-10-15)
+
+Seen from the bridge's windows the bow showed its paint as big blocks (`docs/screenshots/engine/stations/`, the
+Tamsin undock captures). Measured on the glb's UVs, the hero atlas gives the surfaces under the bridge's windows 6-12
+px a metre (the dorsal deck 11.6, the bow's flanks 6-10), against the 32 px a metre the 128 px hull tiles carry and
+70-160 elsewhere on the atlas. One to three metres from the eye a texel there is 20-30 px wide at 1080p, and the
+deck's sampler, nearest on magnification for the tiles' texel look, drew each one as a square.
+
+Not the cause: the level of detail (the full model is the one compiled), the mips (a full chain, and up close the
+surface is magnified, so mip 0 is sampled), the bridge's 1280 x 720 target (it softens 1080p by 1.5x, it does not make
+blocks).
+
+The fix: an array carries its magnification filter (`sc_render::Magnify`), and the hull's arrays sampled by the
+materials `smooth_magnify_materials` names take bilinear magnification; trilinear minification is unchanged, and the
+128 px tiles keep nearest. `sc-core`'s `DeckHull::smooth_arrays` refuses a named material the hull lacks and an array a
+painted and a tiling material both sample. Cost on the Pi 5: no memory, one more sampler object, and still one
+texture fetch a hull fragment, now bilinear; only the hull's pixels through a window change. Its frame time is not
+measured on a Pi.
+
+What it does not do: add detail. The bow stays at 6-12 px a metre, now soft instead of blocky. More detail there means
+a hero atlas that gives the bow more of its 1024 px (an unwrap and paint in Blender), or a larger atlas: at 2048 px
+the hull's textures grow by 16.8 MiB, past the 96 MiB texture budget (design 7).
 
 ## 5. The windows in the decks
 
@@ -140,7 +163,9 @@ Pi measures it when the change is built.
   and an unknown accessor type are errors.
 - `sc-core::deck`: a version 6 file with a hull round-trips; a hull range past the blob, a part past the hull's
   indices, a mip offset past the texture blob are refused.
-- `deckc`: every packed hull vertex unpacks to within 2 mm of the glb's.
+- `deckc`: every packed hull vertex unpacks to within 2 mm of the glb's; the Tern's atlas arrays are the smooth ones
+  and its 128 px tile array is not (design 4a).
+- The render test: an array magnified bilinear blends its two texels a quarter of the way between them.
 - `tools/exterior_windows.py --check` (design 6).
 - Headless captures in `docs/screenshots/exterior/`: the quarters and the mess at a window, looking aft to the pylon
   and the nacelle; the medbay; life support on deck C; the bridge's port window; the ready room; outside in the dock

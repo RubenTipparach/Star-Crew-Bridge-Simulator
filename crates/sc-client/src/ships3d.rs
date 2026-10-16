@@ -7,7 +7,7 @@
 //! (CLAUDE.md 9: meshes are files built by committed generators; this is the generator, and a placeholder). The
 //! Hound's colours are albedo for the probe program (lit by an ambient cube from the sun); the bolt, missile and
 //! burst are emissive colours for the flat program. The placeholder stations of the patrol (openspec/changes/patrol-mission
-//! design 3: the relay at the Shoals, and Tamsin Station until its model arrives) are generated here the same way.
+//! design 3: the relay at the Shoals) is generated here the same way; the spacedocks are `stations`.
 
 use sc_core::vertex::{pack_deck_vertex, DeckVertexIn};
 
@@ -42,6 +42,18 @@ impl MeshBuilder {
     /// One triangle, counter-clockwise seen from outside, in colour `rgb` (display multipliers, 1 = as is).
     pub fn tri(&mut self, a: [f32; 3], b: [f32; 3], c: [f32; 3], rgb: [f32; 3]) {
         self.tri_sets(a, b, c, [rgb; 3]);
+    }
+
+    /// One triangle with everything the vertex holds: its corners (stored units), its normal, its texture coordinates
+    /// and layer, and each corner's colour (display multipliers), the same in all three lighting states.
+    pub fn tri_full(&mut self, p: [[f32; 3]; 3], n: [f32; 3], uv: [[f32; 2]; 3], layer: u8, rgb: [[f32; 3]; 3]) {
+        let base = (self.vertices.len() / 28) as u16;
+        for k in 0..3 {
+            let c = [byte(rgb[k][0]), byte(rgb[k][1]), byte(rgb[k][2]), 255];
+            let v = DeckVertexIn { position_m: p[k], mover: 0, layer, normal: n, colors: [c; 3], uv: uv[k] };
+            self.vertices.extend_from_slice(&pack_deck_vertex(&v).expect("a generated model fits the format"));
+        }
+        self.indices.extend_from_slice(&[base, base + 1, base + 2]);
     }
 
     /// One triangle with its three colour sets (the deck vertex's normal, red alert and emergency; an unlit mesh
@@ -119,6 +131,18 @@ pub fn bounds(m: &MeshBuilder) -> ([f32; 3], [f32; 3]) {
         }
     }
     (lo, hi)
+}
+
+/// How far a mesh's farthest vertex lies from its origin, in its stored units (metres at scale 1): read back from the
+/// packed vertices, as `bounds` is, so it is the reach of the model the engine draws (sky-behind-solids 2).
+pub fn reach(m: &MeshBuilder) -> f32 {
+    m.vertices
+        .chunks_exact(sc_core::vertex::DECK_VERTEX_BYTES)
+        .map(|v| {
+            let p = |i: usize| f32::from(i16::from_le_bytes([v[i * 2], v[i * 2 + 1]])) / sc_core::vertex::FIXED_SCALE;
+            (p(0) * p(0) + p(1) * p(1) + p(2) * p(2)).sqrt()
+        })
+        .fold(0.0, f32::max)
 }
 
 /// The hull box of a contact class (`corvette` the Hound, `fighter` the Jackal), measured once off its model.
@@ -424,11 +448,6 @@ pub const EXTINGUISHER_NOZZLE_M: [f32; 3] = [0.0, 0.48, 0.22];
 pub enum StationKind {
     /// The relay at the Shoals: a 120 m truss with three dishes, a solar wing and a beacon.
     Relay,
-    /// Tamsin Station until `assets/models/exteriors/starbase.glb` arrives: a spindle, a habitat ring of 600 m radius
-    /// on four spokes, two berth arms, lit window bands and beacons. Generated and checked now; drawn once the patrol
-    /// puts the Tern at the station (patrol-mission tasks 5.2).
-    #[allow(dead_code)]
-    Starbase,
 }
 
 /// A placeholder station: its albedo parts (lit by the sun's ambient cube), its glowing parts (flat) and its beacons
@@ -505,26 +524,6 @@ impl Shaper {
         }
     }
 
-    /// A frustum of `sides` sides along +X from `x0` (radius `r0`) to `x1` (radius `r1`), capped, about the axis.
-    #[allow(clippy::too_many_arguments)]
-    fn frustum(&self, m: &mut MeshBuilder, x0: f32, r0: f32, x1: f32, r1: f32, sides: usize, rgb: [f32; 3]) {
-        let p = |x: f32, r: f32, i: usize| {
-            let a = std::f32::consts::TAU * i as f32 / sides as f32;
-            glam::Vec3::new(x, r * a.cos(), r * a.sin())
-        };
-        let mid = glam::Vec3::new((x0 + x1) / 2.0, 0.0, 0.0);
-        for i in 0..sides {
-            let j = (i + 1) % sides;
-            self.face(m, [p(x0, r0, i), p(x0, r0, j), p(x1, r1, j), p(x1, r1, i)], mid, rgb);
-            for (x, r) in [(x0, r0), (x1, r1)] {
-                let tri = [glam::Vec3::new(x, 0.0, 0.0), p(x, r, i), p(x, r, j)];
-                let n = (tri[1] - tri[0]).cross(tri[2] - tri[0]);
-                let [a, b, c] = if n.dot(tri[0] - mid) >= 0.0 { tri } else { [tri[0], tri[2], tri[1]] };
-                m.tri(self.at(a), self.at(b), self.at(c), rgb);
-            }
-        }
-    }
-
     /// An octahedron of radius `r` at `c`: a beacon.
     fn beacon(&self, m: &mut MeshBuilder, c: glam::Vec3, r: f32, rgb: [f32; 3]) {
         let d = [glam::Vec3::X, glam::Vec3::Z, -glam::Vec3::X, -glam::Vec3::Z];
@@ -555,7 +554,7 @@ impl Shaper {
 pub fn station(kind: StationKind) -> StationMesh {
     use glam::{Quat, Vec3};
     let (hull, dark, pale) = ([0.62, 0.64, 0.68], [0.30, 0.32, 0.36], [0.78, 0.80, 0.83]);
-    let (window, red, green) = ([1.9, 1.6, 1.15], [2.0, 0.35, 0.25], [0.4, 2.0, 0.7]);
+    let (red, green) = ([2.0, 0.35, 0.25], [0.4, 2.0, 0.7]);
     let mut out =
         StationMesh { scale: 1.0, body: MeshBuilder::default(), lights: MeshBuilder::default(), beacons: Vec::new() };
     match kind {
@@ -584,56 +583,6 @@ pub fn station(kind: StationKind) -> StationMesh {
             out.beacons.push(Beacon { at_m: [0.0, 24.0, 0.0], radius_m: 3.0, rgb: red });
             out.beacons.push(Beacon { at_m: [62.0, 0.0, 0.0], radius_m: 2.0, rgb: green });
         }
-        StationKind::Starbase => {
-            out.scale = 32.0;
-            let sh = Shaper { k: 1.0 / out.scale };
-            let (r, n) = (600.0f32, 16usize);
-            // The spindle along the axis, its end caps.
-            sh.frustum(&mut out.body, -130.0, 30.0, 130.0, 30.0, 8, hull);
-            sh.frustum(&mut out.body, 130.0, 34.0, 152.0, 22.0, 8, dark);
-            sh.frustum(&mut out.body, -152.0, 22.0, -130.0, 34.0, 8, dark);
-            // The habitat ring: box segments about the axis, lit window bands on the faces toward the berths.
-            let seg = 2.0 * r * (std::f32::consts::PI / n as f32).sin() + 2.0;
-            for i in 0..n {
-                let a = (i as f32 + 0.5) * std::f32::consts::TAU / n as f32;
-                let rot = Quat::from_rotation_x(a);
-                let at = |rad: f32| Vec3::new(0.0, rad * a.cos(), rad * a.sin());
-                sh.block(&mut out.body, at(r), Vec3::new(12.0, 20.0, seg / 2.0), rot, hull);
-                for sx in [-1.0f32, 1.0] {
-                    for k in [-8.0f32, 8.0] {
-                        let c = at(r + k) + Vec3::X * sx * 12.05;
-                        let t = rot * Vec3::Z * (seg / 2.0 - 10.0);
-                        let u = rot * Vec3::Y * 1.2;
-                        sh.face(
-                            &mut out.lights,
-                            [c - t - u, c + t - u, c + t + u, c - t + u],
-                            c - Vec3::X * sx,
-                            window,
-                        );
-                    }
-                }
-            }
-            // Four spokes.
-            for i in 0..4 {
-                let a = (i as f32 + 0.5) * std::f32::consts::FRAC_PI_2;
-                let c = Vec3::new(0.0, 305.0 * a.cos(), 305.0 * a.sin());
-                sh.block(&mut out.body, c, Vec3::new(4.0, 275.0, 4.0), Quat::from_rotation_x(a), dark);
-            }
-            // Two berth arms along the axis to the cradles, 570 m from the centre (the cradle is the dock's frame).
-            for sx in [-1.0f32, 1.0] {
-                sh.block(
-                    &mut out.body,
-                    Vec3::new(sx * 337.0, 0.0, 0.0),
-                    Vec3::new(207.0, 5.0, 5.0),
-                    Quat::IDENTITY,
-                    dark,
-                );
-                let rgb = if sx > 0.0 { green } else { red };
-                out.beacons.push(Beacon { at_m: [sx * 548.0, 9.0, 0.0], radius_m: 4.0, rgb });
-            }
-            out.beacons.push(Beacon { at_m: [0.0, r + 24.0, 0.0], radius_m: 6.0, rgb: red });
-            out.beacons.push(Beacon { at_m: [0.0, -r - 24.0, 0.0], radius_m: 6.0, rgb: green });
-        }
     }
     out
 }
@@ -643,22 +592,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn the_placeholder_stations_fit_their_budgets_and_the_vertex_format() {
-        // patrol-mission design 3 and 13: the relay about 300 triangles, the starbase about 1,200; generating them packs
-        // every position, so a part outside the vertex's +/-32 m at its scale would panic here.
+    fn the_relay_fits_its_budget_and_the_vertex_format() {
+        // patrol-mission design 3 and 13: the relay about 300 triangles; generating it packs every position, so a part
+        // outside the vertex's +/-32 m at its scale would panic here.
         let relay = station(StationKind::Relay);
-        let base = station(StationKind::Starbase);
         assert!(relay.triangles() <= 300, "the relay: {} triangles", relay.triangles());
-        assert!(base.triangles() <= 1_200, "the starbase: {} triangles", base.triangles());
-        assert!(!relay.beacons.is_empty() && !base.lights.indices.is_empty() && !base.beacons.is_empty());
-    }
-
-    #[test]
-    fn the_starbase_winds_outward() {
-        let b = station(StationKind::Starbase);
-        // The ring's inner faces and the spokes look at the centre, so the floor is the share a ring allows.
-        let share = outward_share(&b.body);
-        assert!(share >= 0.6, "{share:.2} of the starbase's faces wind outward");
+        assert!(!relay.beacons.is_empty() && !relay.lights.indices.is_empty());
     }
 
     #[test]

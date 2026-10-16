@@ -17,6 +17,9 @@ use crate::data::{Checks, DataError, Validate};
 /// The file, relative to the repository's root.
 pub const SPACEDOCK_FILE: &str = "data/space/spacedock.json";
 
+/// The shipped file's text, compiled in: the core's reading and the client's station models read the same bytes.
+pub const SHIPPED: &str = include_str!("../../../data/space/spacedock.json");
+
 /// The traffic limits (design 6).
 #[derive(Debug, Clone, Copy, Deserialize, PartialEq)]
 pub struct Traffic {
@@ -245,7 +248,7 @@ impl Spacedock {
 
     /// The shipped file, compiled in.
     pub fn shipped() -> Self {
-        Self::parse(include_str!("../../../data/space/spacedock.json")).expect("the shipped spacedock file is valid")
+        Self::parse(SHIPPED).expect("the shipped spacedock file is valid")
     }
 
     /// A version's bay.

@@ -23,7 +23,7 @@ A panel 480 x 420 px in the middle of the screen over a 50 % dark veil, in the l
 | Resume | Closes the menu (the first row, focused when it opens) |
 | Options | Opens Options in the same panel (design 3) |
 | Return to menu | Asks `Leave the ship?` with Yes and No in the same row; Yes goes to the lobby |
-| Exit | Asks `Exit Star Crew?` with Yes and No; Yes closes the game |
+| Exit | Asks `Exit Star Crew?` with Yes and No; Yes closes the game. Not in the browser, where a page cannot close itself and Yes left a frozen frame (`browser-page-fit` 6) |
 
 Opening it lets go of the mouse; Resume takes it back in the walk. Up and Down (or a pad's d-pad) move the focus, Enter
 or A presses, Esc or B goes back. The mouse works on every row.

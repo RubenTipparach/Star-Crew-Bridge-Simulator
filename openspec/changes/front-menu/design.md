@@ -22,7 +22,7 @@ Under STAR CREW and SCS TERN, a panel 420 x 360 lp in the middle, four buttons a
 | SINGLE PLAYER | Opens the Single Player page (design 2). The first row, focused when the menu opens, and the only filled one: the main action |
 | MULTIPLAYER | Opens the Multiplayer page (design 3) |
 | OPTIONS | Opens Options (design 4) |
-| QUIT | Closes the game. In the browser it is off: a page cannot close itself |
+| QUIT | Closes the game. In the browser it is not shown: a page cannot close itself, and a button that does nothing is clutter (`browser-page-fit` 6) |
 
 Up and Down move the focus, Enter presses; the mouse works on every row. Esc on a page goes back to these four.
 

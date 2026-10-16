@@ -93,6 +93,12 @@ impl Options {
     /// The rows of Options (game-menu 3), a label and a control each; whether any changed. The front menu and the
     /// game menu both draw these, so they are one list.
     pub fn rows(&mut self, ui: &mut egui::Ui) -> bool {
+        self.rows_on(ui, cfg!(target_os = "emscripten"))
+    }
+
+    /// [`Options::rows`] in a browser (`web`) or not: a page decides its own full screen (the browser's, itch.io's
+    /// button), so there Display is not shown rather than a choice that does nothing (browser-page-fit design 6).
+    fn rows_on(&mut self, ui: &mut egui::Ui, web: bool) -> bool {
         use egui::{Color32, RichText, Vec2};
         let (pale, lilac, slate) =
             (Color32::from_rgb(200, 212, 230), Color32::from_rgb(190, 160, 230), Color32::from_rgb(38, 46, 66));
@@ -107,15 +113,17 @@ impl Options {
                 .fill(if on { lilac } else { slate });
             ui.add(b).clicked() && !on
         };
-        ui.horizontal(|ui| {
-            label(ui, "Display");
-            for (word, d) in [("Full screen", Display::Fullscreen), ("Window", Display::Window)] {
-                if pick(ui, word, self.display == d, 150.0) {
-                    self.display = d;
+        if !web {
+            ui.horizontal(|ui| {
+                label(ui, "Display");
+                for (word, d) in [("Full screen", Display::Fullscreen), ("Window", Display::Window)] {
+                    if pick(ui, word, self.display == d, 150.0) {
+                        self.display = d;
+                    }
                 }
-            }
-        });
-        ui.add_space(6.0);
+            });
+            ui.add_space(6.0);
+        }
         ui.horizontal(|ui| {
             label(ui, "Names");
             for (word, v) in [("On", true), ("Off", false)] {
@@ -191,5 +199,24 @@ mod tests {
         let (back, warning) = Options::parse(&serde_json::to_string(&o).unwrap());
         assert_eq!((back, warning), (o, None));
         assert_eq!(Options::parse("{}").0, Options::default(), "a missing field takes its default");
+    }
+
+    #[test]
+    fn the_browser_shows_no_display_choice_that_does_nothing() {
+        // Regression (browser-page-fit design 6): in the browser Display read "Full screen" in a window and did
+        // nothing when pressed; the page's own full screen is the way there.
+        let texts = |web: bool| {
+            let ctx = egui::Context::default();
+            let mut o = Options::default();
+            let out = ctx.run(egui::RawInput::default(), |ctx| {
+                egui::CentralPanel::default().show(ctx, |ui| {
+                    o.rows_on(ui, web);
+                });
+            });
+            crate::ui::texts(&out.shapes)
+        };
+        assert!(!texts(true).iter().any(|t| t == "Display"), "no Display row in the browser");
+        assert!(texts(true).iter().any(|t| t == "Look speed"), "the other rows stay");
+        assert!(texts(false).iter().any(|t| t == "Display"), "the desktop and the Pi keep it");
     }
 }

@@ -1,0 +1,126 @@
+{
+  "build": "release",
+  "date": "2026-10-16",
+  "frames_per_step": 240,
+  "gl_renderer": "V3D 7.1.10.2",
+  "gl_version": "OpenGL ES 3.1 Mesa 24.2.8-1~bpo12+rpt5",
+  "is_pi5": true,
+  "machine": "Raspberry Pi 5 Model B Rev 1.1",
+  "os": "Debian GNU/Linux 12 (bookworm)",
+  "output_px": [
+    1920,
+    1080
+  ],
+  "ram_mb": 8059,
+  "render_3d_px": [
+    1280,
+    720
+  ],
+  "repeats": 5,
+  "rss_bytes": {
+    "after_setup": 20942848,
+    "before_setup": 15802368,
+    "with_scenes": 21073920
+  },
+  "schema": "starcrew.probe-report/1",
+  "steps": [
+    {
+      "cpu_per_draw_us": 89.98299999999999,
+      "cpu_submit_ms": {
+        "p50": 0.179966,
+        "p95": 0.333672
+      },
+      "draws": 2,
+      "frame_ms": {
+        "p50": 19.988166000000003,
+        "p50_per_repeat": [
+          21.030518,
+          20.671778000000003,
+          19.898574000000004,
+          19.82863,
+          19.841926000000004
+        ],
+        "p50_spread_over_repeats": 1.2018880000000003,
+        "p95": 21.387278000000002,
+        "p99": 23.324112
+      },
+      "scene": 10,
+      "step": "sky-old",
+      "triangles": 8
+    },
+    {
+      "cpu_per_draw_us": 97.4645,
+      "cpu_submit_ms": {
+        "p50": 0.194929,
+        "p95": 0.327246
+      },
+      "draws": 2,
+      "frame_ms": {
+        "p50": 22.252112,
+        "p50_per_repeat": [
+          22.243481000000003,
+          22.471519,
+          22.180019,
+          22.296444,
+          21.970648
+        ],
+        "p50_spread_over_repeats": 0.5008710000000001,
+        "p95": 22.941556000000002,
+        "p99": 24.443778000000002
+      },
+      "scene": 10,
+      "step": "sky-nebula-no-stars",
+      "triangles": 15982
+    },
+    {
+      "cpu_per_draw_us": 60.427,
+      "cpu_submit_ms": {
+        "p50": 0.241708,
+        "p95": 0.396673
+      },
+      "draws": 4,
+      "frame_ms": {
+        "p50": 22.411185,
+        "p50_per_repeat": [
+          22.342407,
+          22.620444,
+          22.308981000000003,
+          22.464333000000003,
+          22.064055000000003
+        ],
+        "p50_spread_over_repeats": 0.5563889999999958,
+        "p95": 23.104037,
+        "p99": 25.322555
+      },
+      "scene": 10,
+      "step": "sky-nebula",
+      "triangles": 15982
+    },
+    {
+      "cpu_per_draw_us": 50.9915,
+      "cpu_submit_ms": {
+        "p50": 0.203966,
+        "p95": 0.369543
+      },
+      "draws": 4,
+      "frame_ms": {
+        "p50": 22.046074,
+        "p50_per_repeat": [
+          22.082963,
+          22.196371000000003,
+          21.951315,
+          21.82224,
+          22.2165
+        ],
+        "p50_spread_over_repeats": 0.39425999999999917,
+        "p95": 23.632334,
+        "p99": 24.739481
+      },
+      "scene": 10,
+      "step": "sky-nebula-turning",
+      "triangles": 15982
+    }
+  ],
+  "video_driver": "x11",
+  "warmup_frames": 30
+}

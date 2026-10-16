@@ -23,6 +23,7 @@ use sc_core::combat::bodies::Posture;
 use sc_core::combat::chat::{self, Said, Voice};
 use sc_core::combat::data::{DrillData, Profile};
 use sc_core::combat::patrol::{self, PatrolMemory};
+use sc_core::combat::seats::{claim_rule, ClaimRule, Occupant};
 use sc_core::combat::{Bridge, Command, Phase, Station};
 
 /// A bot playing one station.
@@ -282,9 +283,13 @@ impl Bot {
         if mine.is_none_or(|b| b.going.is_some() || !still(b.posture)) {
             return false;
         }
-        let held = |st: Station| s.crew.iter().any(|c| Some(c.slot) != me && c.station == Some(st));
-        let walked = |st: Station| snap.bodies.iter().any(|b| Some(b.slot) != me && b.going == Some(st));
-        let free = |st: Station| !held(st) && !walked(st);
+        // A seat is free to a bot by the one seat rule (relieve-bots 2): nobody holds it or walks to it.
+        let who = |slot: u8| Occupant { slot, bot: s.crew.iter().any(|c| c.slot == slot && c.bot) };
+        let holder =
+            |st: Station| s.crew.iter().find(|c| Some(c.slot) != me && c.station == Some(st)).map(|c| who(c.slot));
+        let walker =
+            |st: Station| snap.bodies.iter().find(|b| Some(b.slot) != me && b.going == Some(st)).map(|b| who(b.slot));
+        let free = |st: Station| claim_rule(true, holder(st), walker(st)) == ClaimRule::Sit;
         let phase = snap.phase;
         match s.station() {
             Some(cur) => {

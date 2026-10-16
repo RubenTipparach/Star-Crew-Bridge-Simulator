@@ -20,7 +20,8 @@ use egui::{Align2, Color32, CornerRadius, Pos2, Rect, RichText, Stroke, Vec2};
 use glam::{DQuat, DVec3, Mat4, Quat, Vec3};
 use sc_client::platform::{keys, App, Event, Flow, Frame, TouchPhase};
 use sc_core::combat::data::{DrillData, DRILL_FILES};
-use sc_core::combat::{Command, Outcome, Phase, Station, ENEMY_ID, FEEDS, TERN_ID};
+use sc_core::combat::seats::{claim_rule, ClaimRule, Occupant};
+use sc_core::combat::{Command, Outcome, Phase, Station, ENEMY_ID, TERN_ID};
 use sc_core::exterior::{normalized, ExteriorData};
 use sc_net::bot::Bot;
 use sc_net::msg::{ShipSnap, Snapshot};
@@ -35,8 +36,6 @@ use crate::ui::Ui;
 
 /// The viewscreen's feed, pixels: twice its 614 x 194 layout points, so it stays sharp up to 1440p.
 const FEED: (u32, u32) = (1228, 388);
-/// The console canvas, logical points (bridge-stations 8.0).
-const CANVAS: (f32, f32) = (1280.0, 720.0);
 
 const PANEL: Color32 = Color32::from_rgba_premultiplied(10, 16, 26, 232);
 const EDGE: Color32 = Color32::from_rgb(44, 62, 82);
@@ -77,6 +76,9 @@ pub struct DrillArgs {
     /// Single player with `--shots`: write every frame of a scripted run through the viewscreen's cameras, FWD,
     /// TARGET, CHASE round the ship and the bridge's main viewscreen, for a video (`--film`, chase-camera 3).
     pub film: bool,
+    /// With `film`: the chase camera following the ship's turn and ORBIT round it instead (`--film-orbit`,
+    /// chase-orbit).
+    pub film_orbit: bool,
     /// Single player: All hands, no damage-control teams aboard; the crew put the ship right (`--all-hands`,
     /// all-hands 1).
     pub all_hands: bool,
@@ -97,8 +99,27 @@ struct Meshes {
     held: Mesh,
     /// The relay at the Shoals, where the helm's COURSE flies (patrol-mission design 3): a placeholder.
     relay: crate::outside::StationView,
-    /// Tamsin Station until its model arrives (patrol-mission design 3): a placeholder.
-    starbase: crate::outside::StationView,
+    /// The system's stations in a patrol (patrol-mission design 12b): Tamsin Station and the four placeholders.
+    stations: Option<crate::stations::StationsView>,
+}
+
+/// A scripted shot's eye: where it stands in the ship's frame (metres), its yaw and its pitch (radians).
+type ShotEye = ([f64; 3], f32, f32);
+
+/// A thing outside drawn as a station: the relay, or a system file's station by its index there.
+#[derive(Clone, Copy, Debug)]
+enum Shown {
+    Relay,
+    Station(usize),
+}
+
+/// The stations of `data`'s patrol on the GPU, or none for a drill.
+fn station_views(r: &Renderer, data: &DrillData) -> Result<Option<crate::stations::StationsView>, String> {
+    let Some(p) = data.patrol.as_ref() else { return Ok(None) };
+    let look = crate::stations::StationLook::load()?;
+    let v = crate::stations::StationsView::new(r, &p.system, look, std::path::Path::new("."))?;
+    println!("sc-client: the system's stations are {} triangles", v.triangles);
+    Ok(Some(v))
 }
 
 struct VisBolt {
@@ -188,8 +209,18 @@ pub struct DrillApp {
     /// The film's frames written so far, and whether it is looking at the bridge's main viewscreen (chase-camera 3).
     film_frame: u32,
     film_screen: bool,
+    /// The patrol's scripted shots (patrol-mission design 12b): the eye they stand at (ship frame, yaw, pitch), and the
+    /// shot it is for, taken the frame after the eye is set.
+    shot_eye: Option<ShotEye>,
+    shot_pending: Option<String>,
+    /// `--playtest` in a patrol: the scripted player's memory of what it last sent at its console (`patrol::decide`).
+    playtest_patrol: sc_core::combat::patrol::PatrolMemory,
     /// The cue written last, for the video's captions (chase-camera 3).
     film_cue: String,
+    /// The orbit reel's starting heading, degrees (`--film-orbit`).
+    film_orbit0: Option<f64>,
+    /// The bridge's main viewscreen's camera rig (chase-orbit design 7).
+    main_rig: console::rig::FeedRig,
     /// The bridge, when the compiled deck is there (design 9).
     bridge: Option<crate::drill_bridge::BridgeView>,
     /// The overview of the bridge is up (V).
@@ -209,12 +240,17 @@ pub struct DrillApp {
     captured: bool,
     /// When the walk was last sent, local seconds.
     walk_sent: f64,
-    /// How long Stand has been held while seated, seconds.
-    stand_hold: f64,
+    /// The stand key's hold while seated (leave-station 2).
+    stand: crate::stand::StandHold,
+    /// The keys that are data (`data/input/bindings.json`).
+    bindings: crate::bindings::Bindings,
     /// Each station's seat (layout.json), for the seat in reach.
     seat_points: Vec<(Station, [f32; 3], f32)>,
     /// `--playtest`: the scripted player.
     playtest: Option<crate::playtest::Playtest>,
+    /// The script holds the stand key, and a console control it presses next frame, where a player's pointer would.
+    playtest_stand: bool,
+    playtest_press: Option<crate::playtest::Control>,
     /// When the body last sat down at a console, local seconds: the console rises from the desk from then.
     seated_at: Option<f64>,
     /// The eye the player last saw the ship from on their feet (where, facing, tilt), and the one the sit started from:
@@ -282,6 +318,11 @@ impl DrillApp {
             sc_core::data::parse("data/space/exterior.json", &text).map_err(|e| e.to_string())?;
         console::set_chase(&exterior.viewscreen.chase);
         let mut data = load_data(&args.mission)?;
+        // The nebula behind every view: the patrol's system's, or the home system's (openspec/changes/nebula-skies).
+        match data.patrol.as_ref() {
+            Some(p) => crate::outside::set_system_sky(&mut r, &p.system)?,
+            None => crate::outside::set_home_sky(&mut r)?,
+        }
         if args.all_hands && args.solo {
             data.mission.damage_control = "crew".into();
         }
@@ -300,7 +341,7 @@ impl DrillApp {
             beam: mesh(&r, &ships3d::bolt([2.0, 0.6, 1.3])),
             held: mesh(&r, &ships3d::extinguisher()),
             relay,
-            starbase: crate::outside::StationView::new(&r, ships3d::StationKind::Starbase),
+            stations: station_views(&r, &data)?,
         };
         let mut args = args;
         if args.any {
@@ -329,6 +370,7 @@ impl DrillApp {
         let bot = args.bot.then(|| Bot::new(&data, args.station));
         let args_watch = args.watch;
         let touch = crate::touch::load()?;
+        let bindings = crate::bindings::load()?;
         let mut app = Self {
             r,
             blank,
@@ -364,7 +406,12 @@ impl DrillApp {
             done: false,
             film_frame: 0,
             film_screen: false,
+            shot_eye: None,
+            shot_pending: None,
+            playtest_patrol: Default::default(),
             film_cue: String::new(),
+            film_orbit0: None,
+            main_rig: console::rig::FeedRig::default(),
             bridge: None,
             overview: args_watch,
             walk_seen: (None, None),
@@ -375,9 +422,12 @@ impl DrillApp {
             look: (0.0, 0.0),
             captured: false,
             walk_sent: 0.0,
-            stand_hold: 0.0,
+            stand: crate::stand::StandHold::default(),
+            bindings,
             seat_points: Vec::new(),
             playtest: None,
+            playtest_stand: false,
+            playtest_press: None,
             seated_at: None,
             last_view: None,
             rise_from: None,
@@ -505,6 +555,8 @@ impl DrillApp {
         empty: &[usize],
     ) -> Option<String> {
         let seats = &self.data.stations.seats;
+        // The use key sits (the same key stands, leave-station 2), takes and repairs.
+        let use_key = self.bindings.use_key;
         let (reach, reach_dy) = (seats.reach_m as f32, seats.reach_dy_m as f32);
         // Where the server put the body as it became the player's: the newest snapshot's, not the interpolated one (which
         // trails it, and would stand the body in the chair it just got up from).
@@ -523,8 +575,8 @@ impl DrillApp {
         let (held, mut pressed) =
             if menu { (HashSet::new(), HashSet::new()) } else { (self.held.clone(), self.pressed.clone()) };
         let mut sit = None;
-        if let (Some(st), true) = (seat, pressed.contains(&keys::E)) {
-            pressed.remove(&keys::E);
+        if let (Some(st), true) = (seat, pressed.contains(&use_key)) {
+            pressed.remove(&use_key);
             sit = Some(st);
         }
         // The damage-control locker or a full bracket in reach: E takes an extinguisher (all-hands 4, safety-points
@@ -541,8 +593,8 @@ impl DrillApp {
         let at_locker = layout.lockers.iter().any(near) || bracket_near(true);
         let emptied = !at_locker && bracket_near(false);
         let mut take = false;
-        if at_locker && seat.is_none() && pressed.contains(&keys::E) {
-            pressed.remove(&keys::E);
+        if at_locker && seat.is_none() && pressed.contains(&use_key) {
+            pressed.remove(&use_key);
             take = true;
         }
         // A damaged machine in reach (all-hands 5): E docks at it and its repair game opens.
@@ -564,8 +616,8 @@ impl DrillApp {
                 })
         });
         let mut dock = None;
-        if let (Some((k, _)), true, None) = (&reach_job, pressed.contains(&keys::E), seat) {
-            pressed.remove(&keys::E);
+        if let (Some((k, _)), true, None) = (&reach_job, pressed.contains(&use_key), seat) {
+            pressed.remove(&use_key);
             dock = Some(*k as u8);
         }
         let repairing = self.deck.is_some();
@@ -670,41 +722,74 @@ impl DrillApp {
         }
     }
 
-    /// Seated, hold Stand to get up: E or Backspace, held `stand_hold_s` (a tap does nothing); at Helm, whose console
-    /// rolls on E, Backspace.
+    /// Seated, hold the use key (E) to get up, at every station (leave-station 2): `stand_hold_s`, counted from a
+    /// press made in the seat (a tap does nothing).
     fn stand_up(&mut self, dt: f64, station: Option<Station>, posture: Option<sc_core::combat::bodies::Posture>) {
-        let seated = posture == Some(sc_core::combat::bodies::Posture::Seated);
-        let keys_held =
-            self.held.contains(&keys::BACKSPACE) || (station != Some(Station::Helm) && self.held.contains(&keys::E));
-        if !(seated && station.is_some() && self.bot.is_none() && !self.menu.open() && keys_held) {
-            self.stand_hold = 0.0;
-            return;
-        }
-        self.stand_hold += dt;
-        if self.stand_hold >= self.data.stations.seats.stand_hold_s {
-            if let Some(s) = self.session.as_ref() {
-                s.stand();
-            }
-            self.stand_hold = f64::NEG_INFINITY;
+        let down = self.held.contains(&self.bindings.use_key);
+        if self.stand.step(self.can_stand(station, posture), down, dt, self.data.stations.seats.stand_hold_s) {
+            self.stand_now();
         }
     }
 
-    /// `--playtest`, seated: the script works the console (Engineering's schematic), marks READY in the briefing, and
-    /// gets up when its beat says.
+    /// Seated in a station of this player's own, the menu shut: LEAVE STATION and the stand key work.
+    fn can_stand(&self, station: Option<Station>, posture: Option<sc_core::combat::bodies::Posture>) -> bool {
+        posture == Some(sc_core::combat::bodies::Posture::Seated)
+            && station.is_some()
+            && self.bot.is_none()
+            && !self.menu.open()
+    }
+
+    /// Up from the seat now: the server stands the body behind it and the station passes to automation.
+    fn stand_now(&mut self) {
+        if let Some(s) = self.session.as_ref() {
+            s.stand();
+        }
+    }
+
+    /// `--playtest`, seated: the script works the console (Engineering's schematic, the controls its beats press),
+    /// marks READY in the briefing, and gets up when its beat says, holding the stand key as a player does.
     fn playtest_seated(
         &mut self,
         dt: f64,
         station: Option<Station>,
         posture: Option<sc_core::combat::bodies::Posture>,
     ) {
+        if self.playtest_stand {
+            self.held.remove(&self.bindings.use_key);
+            self.playtest_stand = false;
+        }
         let (Some(st), Some(sc_core::combat::bodies::Posture::Seated)) = (station, posture) else { return };
-        let fire = self.session.as_ref().and_then(|s| s.latest()).is_some_and(|s| !s.damage.fires.is_empty());
+        let latest = self.session.as_ref().and_then(|s| s.latest());
+        let fire = latest.is_some_and(|s| !s.damage.fires.is_empty());
+        let engaged = latest.is_some_and(|s| s.phase == Phase::Engage);
         let Some(p) = self.playtest.as_mut() else { return };
-        let at = p.at_console(st, fire, dt);
+        let at = p.at_console(st, fire, engaged, dt);
+        if at.press.is_some() {
+            self.playtest_press = at.press;
+        }
         if st == Station::Engineering {
             match at.schematic {
                 Some((three_d, turn)) => self.seats[st as usize].show_schematic(true, three_d, turn),
                 None => self.seats[st as usize].show_schematic(false, false, 0.0),
+            }
+        }
+        // In a patrol the script works its console's patrol controls as a bot reads them (`patrol::decide`, at the bot
+        // profile's reaction): at the helm, UNDOCK once the drive is green, then the jumps. The controls' mockup awaits
+        // approval (patrol-consoles.html), so the script sends the commands those controls will send.
+        if let (Some(sess), Some(pd)) = (self.session.as_mut(), self.data.patrol.as_ref()) {
+            let captain_manned = sess.crew.iter().any(|c| c.station == Some(Station::Captain));
+            let fight = sess.latest().is_some_and(|snap| snap.phase == Phase::Engage);
+            let picture =
+                sess.latest().and_then(|snap| snap.patrol.as_ref()?.picture(&self.data, &snap.ships, captain_manned));
+            if let Some(pic) = picture {
+                let react = self.data.profile("bot").reaction_s(st);
+                let mem = &mut self.playtest_patrol;
+                for c in sc_core::combat::patrol::decide(st, &pic, &pd.block, mem, self.time_s, react) {
+                    // In a fight the helm flies the fight (as a bot does); the patrol's decisions are the jump's.
+                    if !(fight && matches!(c, Command::Helm(_) | Command::Stick { .. })) {
+                        sess.command(c);
+                    }
+                }
             }
         }
         let muster = self.session.as_ref().and_then(|s| s.latest()).is_some_and(|s| s.phase == Phase::Muster);
@@ -715,9 +800,8 @@ impl DrillApp {
             if st == Station::Engineering {
                 self.seats[st as usize].show_schematic(false, false, 0.0);
             }
-            if let Some(s) = self.session.as_ref() {
-                s.stand();
-            }
+            self.held.insert(self.bindings.use_key);
+            self.playtest_stand = true;
         }
     }
 
@@ -807,7 +891,9 @@ impl DrillApp {
     /// machine the repair game's pointer, seated in Engage the console's, and otherwise the UI's (the menus, the
     /// briefing, the debrief).
     fn touch_event(&mut self, id: u64, phase: TouchPhase, x: f32, y: f32, e: &Event) {
-        if self.touch.touch(id, phase, x, y) {
+        // The finger in layout points, by the one mapping the drawing used (browser-page-fit design 5).
+        let at = self.ui.fit().to_points(x, y);
+        if self.touch.touch(id, phase, at.x, at.y) {
             return;
         }
         match self.touch_mode {
@@ -819,8 +905,7 @@ impl DrillApp {
                 }
             }
             crate::touch::Mode::Seated if self.console_touch => {
-                let pt = self.ui.win_to_pt();
-                self.console_finger.take(id, phase, Pos2::new(x * pt, y * pt), self.time_s);
+                self.console_finger.take(id, phase, at, self.time_s);
             }
             _ => self.ui.event(e),
         }
@@ -838,7 +923,7 @@ impl DrillApp {
             _ if seated => Mode::Seated,
             _ => Mode::Off,
         };
-        self.touch.set([f.window_w, f.window_h], mode);
+        self.touch.set(&crate::ui::Fit::of(f), mode);
         self.touch_mode = mode;
         let hands = self.touch.frame(dt);
         for k in self.touch_keys.drain(..) {
@@ -1060,47 +1145,42 @@ impl DrillApp {
         self.booms.retain(|b| render_t - b.t0 < b.dur);
     }
 
-    /// The camera on the Tern's bow: its eye in the system frame and its attitude.
-    fn bow_eye(ships: Option<&(ShipSnap, ShipSnap, Snapshot)>, time_s: f64) -> (DVec3, DQuat) {
-        match ships {
-            Some((t, _, _)) => (t.pos + t.rot * console::BOW_EYE, t.rot),
-            None => (DVec3::ZERO, DQuat::from_rotation_y(time_s * 0.02)),
-        }
-    }
-
-    /// The viewscreen's feed: from the bow, looking where the console's feed points (the mockup's feed camera:
-    /// 70 degrees across at zoom 1), into its own target, which the console draws in the viewscreen's frame; with chase
-    /// on it stands behind the ship and draws the Tern too (chase-camera 1). With no console (on foot, the overview)
-    /// it is the bridge's main viewscreen's picture: the captain's camera while he holds the viewscreen, his console's
-    /// otherwise (chase-camera 2).
+    /// The viewscreen's feed: through the console's camera (its rig's, the one its bracket is projected through:
+    /// chase-orbit design 7), into its own target, which the console draws in the viewscreen's frame; off the bow it
+    /// draws the Tern too (chase-camera 1). With no console (on foot, the overview) it is the bridge's main
+    /// viewscreen's picture through its own rig: the captain's camera while he holds the viewscreen, his console's
+    /// otherwise (chase-camera 2, chase-orbit 6).
     fn render_feed(&mut self, ships: Option<&(ShipSnap, ShipSnap, Snapshot)>, view: Option<&console::ConsoleView>) {
-        let (bow, rot) = Self::bow_eye(ships, self.time_s);
+        let rot = ships.map_or(DQuat::from_rotation_y(self.time_s * 0.02), |(t, _, _)| t.rot);
         let chase_cfg = &self.exterior.viewscreen.chase;
-        let (stand, fwd, up, vfov) = match view {
-            Some(v) => self.seats[self.console_station() as usize].feed_camera(v, rot, chase_cfg),
+        let shot = match view {
+            Some(v) => console::feed_shot(v),
             None => {
-                let feed = ships
-                    .and_then(|(_, _, s)| s.bridge.view.or(Some(s.bridge.main_view)))
-                    .and_then(|i| FEEDS.get(usize::from(i)))
-                    .copied()
-                    .unwrap_or("FWD");
-                let chase = ships.is_some_and(|(_, _, s)| s.bridge.main_chase);
+                // The captain's camera, CHASE, zoom and orbit, by the rule every console's panel uses.
+                let br = ships.map(|(_, _, s)| &s.bridge);
+                let main = br.map_or(console::ScreenSet::main(1, false, 0, None), |b| {
+                    console::ScreenSet::main(b.main_view, b.main_chase, b.main_zoom, b.main_orbit)
+                });
+                let set = console::on_screen(
+                    br.and_then(|b| b.view),
+                    br.map_or((false, 0, None), |b| (b.main_chase, b.main_zoom, b.main_orbit)),
+                    main,
+                );
                 let target =
                     ships.filter(|(_, h, _)| h.active && h.alive).map(|(t, h, _)| t.rot.inverse() * (h.pos - t.pos));
-                let zoom = ships
-                    .and_then(|(_, _, s)| sc_core::combat::ZOOMS.get(usize::from(s.bridge.main_zoom)))
-                    .copied()
-                    .unwrap_or(1.0);
-                let (e, b, vfov) = console::feed_view(feed, chase, target, chase_cfg, zoom);
-                (e.map(|e| rot * e), rot * b.f, rot * b.u, vfov)
+                let want =
+                    console::rig::Want { feed: set.feed, chase: set.chase, zoom: set.zoom, target, orbit: set.orbit };
+                self.main_rig.step(self.time_s, rot, &want, chase_cfg)
             }
         };
         let centre = ships.map_or(DVec3::ZERO, |(t, _, _)| t.pos);
-        let eye = stand.map_or(bow, |s| centre + s);
-        let proj =
-            glam::camera::rh::proj::opengl::perspective(vfov as f32, FEED.0 as f32 / FEED.1 as f32, 1.0, 80_000.0);
+        let eye = centre + rot * shot.eye;
+        let b = shot.basis();
+        let (fwd, up, vfov) = (rot * b.f, rot * b.u, shot.vfov);
+        let proj = sc_render::depth::outside_lens(vfov as f32, FEED.0 as f32 / FEED.1 as f32);
         let view_m = glam::camera::rh::view::look_to_mat4(Vec3::ZERO, fwd.as_vec3(), up.as_vec3());
-        let (ext_now, stations) = self.outside_now(ships.map(|x| &x.2));
+        let (ext_now, stations, roof) = self.outside_now(ships.map(|x| &x.2));
+        let hull_light = self.hull_light(roof);
         let world = World {
             meshes: &self.meshes,
             exterior: &ext_now,
@@ -1110,15 +1190,18 @@ impl DrillApp {
             debris: &self.debris,
             time_s: self.time_s,
             stations,
+            hull: self.bridge.as_ref().and_then(|b| b.hull()),
         };
         self.r.begin_3d(&self.feed, [0.0, 0.0, 0.0, 1.0]);
         world.draw(&mut self.r, &self.feed, proj, view_m, vfov as f32 / FEED.1 as f32, eye, ships);
         // CHASE sees the Tern from outside: its hull, drawn in the ship's frame from where the camera stands in it.
-        if let (Some(s), Some(h)) = (stand, self.bridge.as_ref().and_then(|b| b.hull())) {
+        if let (true, Some(h)) = (shot.hull, self.bridge.as_ref().and_then(|b| b.hull())) {
             let q = rot.as_quat();
-            let in_ship = rot.inverse() * s;
-            let sun = crate::outside::sun_in_ship(&self.exterior, q);
-            h.draw(&mut self.r, &self.feed, proj * view_m * Mat4::from_quat(q), in_ship.to_array(), sun);
+            let in_ship = shot.eye;
+            // The sky's sun from where the Tern is (one sun outside, design 11.3), or the bay's floods under a roof.
+            let (light, k) = hull_light.unwrap_or((crate::outside::sun_in_ship(&ext_now, q), 1.0));
+            let sky = hull_light.is_none().then_some(q);
+            h.draw_lit(&mut self.r, &self.feed, proj * view_m * Mat4::from_quat(q), in_ship.to_array(), light, k, sky);
         }
         self.r.end_pass();
         self.r.begin_3d(&self.blank, [0.0, 0.0, 0.0, 1.0]);
@@ -1128,48 +1211,45 @@ impl DrillApp {
 
 impl DrillApp {
     /// The outside of this frame (patrol-mission design 11): in a patrol the sky from the system file as seen from
-    /// the Tern, and the stations within reach (`STATION_DRAW_M`); in the drill the exterior's sky and the relay at
-    /// the mission's waypoint.
-    fn outside_now(&self, snap: Option<&Snapshot>) -> (ExteriorData, Vec<(ships3d::StationKind, DVec3, Quat)>) {
+    /// the Tern, and the stations within reach (`StationsView::draw_m`); in the drill the exterior's sky and the relay
+    /// at the mission's waypoint. Also whether the Tern is under a station's roof (in Tamsin Station's bay or throat),
+    /// where its hull is lit by the floods instead of the star (design 12b).
+    fn outside_now(&self, snap: Option<&Snapshot>) -> (ExteriorData, Vec<(Shown, DVec3, Quat)>, bool) {
         let (Some(p), Some(d)) = (snap.and_then(|s| s.patrol.as_ref()), self.data.patrol.as_ref()) else {
-            let relay = (ships3d::StationKind::Relay, DVec3::from_array(self.data.mission.waypoint_m), Quat::IDENTITY);
-            return (self.exterior.clone(), vec![relay]);
+            let relay = (Shown::Relay, DVec3::from_array(self.data.mission.waypoint_m), Quat::IDENTITY);
+            return (self.exterior.clone(), vec![relay], false);
         };
         let tern = snap.and_then(|s| s.ships.first()).map_or(DVec3::ZERO, |t| t.pos);
         let ext = crate::outside::exterior_at(&self.exterior, &d.system, p.origin + tern);
         let mut stations = Vec::new();
-        for st in &d.system.stations {
-            let at = d.system.station_pos(st) - p.origin;
-            if (at - tern).length() <= STATION_DRAW_M {
-                let rot = d.system.station_rot(st).as_quat();
-                stations.push((ships3d::StationKind::Starbase, at, rot));
+        let mut roof = false;
+        if let Some(v) = self.meshes.stations.as_ref() {
+            for (i, st) in d.system.stations.iter().enumerate() {
+                let at = d.system.station_pos(st) - p.origin;
+                if (at - tern).length() <= v.draw_m() {
+                    let rot = d.system.station_rot(st);
+                    roof |= v.under_roof(i, rot.inverse() * (tern - at));
+                    stations.push((Shown::Station(i), at, rot.as_quat()));
+                }
             }
         }
         let relay = d.places[d.encounter].pos - p.origin;
-        if (relay - tern).length() <= STATION_DRAW_M {
-            stations.push((ships3d::StationKind::Relay, relay, Quat::IDENTITY));
+        if (relay - tern).length() <= RELAY_DRAW_M {
+            stations.push((Shown::Relay, relay, Quat::IDENTITY));
         }
-        (ext, stations)
+        (ext, stations, roof)
     }
 
-    /// The berth's cradle in the Tern's frame (patrol-mission design 3), while it is near: the transform from the
-    /// docked Tern's frame (where the deck file's `outside` rooms are) to the Tern's frame now.
-    fn cradle_now(&self, ships: Option<&(ShipSnap, ShipSnap, Snapshot)>) -> Option<glam::DMat4> {
-        let (t, _, snap) = ships?;
-        let (p, d) = (snap.patrol.as_ref()?, self.data.patrol.as_ref()?);
-        let berth = d.berth_pos - p.origin;
-        if (berth - t.pos).length() > CRADLE_DRAW_M {
-            return None;
-        }
-        let tern = glam::DMat4::from_rotation_translation(t.rot, t.pos);
-        Some(tern.inverse() * glam::DMat4::from_rotation_translation(d.berth_rot, berth))
+    /// The light on the Tern's hull from outside: under a station's roof the floods from its own up (design 12b),
+    /// otherwise none (the sky's sun).
+    fn hull_light(&self, roof: bool) -> Option<(Vec3, f32)> {
+        roof.then(|| self.meshes.stations.as_ref().map(crate::stations::StationsView::ship_light)).flatten()
     }
 }
 
-/// Stations are drawn within this of the Tern, metres (patrol-mission design 11.2: beyond, a point; later).
-const STATION_DRAW_M: f64 = 200_000.0;
-/// The berth's cradle is drawn within this of the Tern, metres: inside the bridge's pass's far plane.
-const CRADLE_DRAW_M: f64 = 300.0;
+/// The relay is drawn within this of the Tern, metres (design 11.2: beyond, a point; later): well inside
+/// `sc_render::depth::SOLID_REACH_M`, so it never meets the far plane.
+const RELAY_DRAW_M: f64 = 80_000.0;
 
 /// What the 3D views draw, borrowed from the app so the renderer can be borrowed beside it.
 struct World<'a> {
@@ -1180,8 +1260,10 @@ struct World<'a> {
     booms: &'a [Boom],
     debris: &'a [Debris],
     time_s: f64,
-    /// The stations outside: which placeholder, where in the drill's frame, and their attitude.
-    stations: Vec<(ships3d::StationKind, DVec3, Quat)>,
+    /// The stations outside: which, where in the drill's frame, and their attitude.
+    stations: Vec<(Shown, DVec3, Quat)>,
+    /// The Tern's hull model, for the ships docked at a station.
+    hull: Option<&'a crate::hull::HullView>,
 }
 
 impl World<'_> {
@@ -1197,7 +1279,7 @@ impl World<'_> {
         eye: DVec3,
         ships: Option<&(ShipSnap, ShipSnap, Snapshot)>,
     ) {
-        let sky = crate::sky_params(self.exterior, proj, view, px_rad);
+        let sky = crate::sky_params(self.exterior, proj, view, px_rad, self.time_s);
         r.draw_sky(t, &sky);
         self.draw_objects(r, t, proj * view, eye, ships);
     }
@@ -1216,14 +1298,16 @@ impl World<'_> {
         let flat = crate::drill_bridge::flat_params;
         // One sun lights everything outside (patrol-mission design 11.3).
         let sun = Vec3::from_array(normalized(self.exterior.sun.dir));
-        let cube = crate::outside::sun_cube(sun);
-        // The stations: the relay where the helm's COURSE flies, a starbase, their beacons blinking (patrol-mission 3).
-        for (kind, at, rot) in &self.stations {
-            let v = match kind {
-                ships3d::StationKind::Relay => &self.meshes.relay,
-                ships3d::StationKind::Starbase => &self.meshes.starbase,
-            };
-            v.draw(r, t, vp, rel(*at), *rot, sun, &self.exterior.beacons, self.time_s);
+        let cube = crate::outside::sun_cube(sun, &crate::outside::sky_tint(r, Quat::IDENTITY));
+        // The stations: the relay where the helm's COURSE flies, the system's spacedocks (design 12b), their beacons
+        // blinking.
+        for (shown, at, rot) in &self.stations {
+            let b = &self.exterior.beacons;
+            match (shown, self.meshes.stations.as_ref()) {
+                (Shown::Relay, _) => self.meshes.relay.draw(r, t, vp, rel(*at), *rot, sun, b, self.time_s),
+                (Shown::Station(i), Some(v)) => v.draw(r, t, vp, *i, rel(*at), *rot, b, self.time_s, self.hull),
+                (Shown::Station(_), None) => {}
+            }
         }
         if let Some((_, hound, snap)) = ships {
             if hound.active && hound.alive {
@@ -1357,6 +1441,10 @@ impl DrillApp {
             self.film(f, &snap);
             return;
         }
+        if snap.patrol.is_some() {
+            self.patrol_shots(f, &snap);
+            return;
+        }
         let plan: &[(Phase, f64, &str)] = &[
             (Phase::Muster, 1.5, "1-briefing"),
             (Phase::Countdown, 2.0, "2-countdown"),
@@ -1421,6 +1509,74 @@ impl DrillApp {
 }
 
 impl DrillApp {
+    /// The patrol's scripted shots (patrol-mission design 12b, spacedock tasks 2.9): berthed in Tamsin Station's bay,
+    /// out of the bridge's port and starboard windows and ahead to the throat; in the throat on the way out; then
+    /// Tamsin Station seen from 14 km off once the Tern is clear, and along the same line from 76 km, near the edge of
+    /// its draw distance, where the whole station must still stand in front of the sky (sky-behind-solids 2). Each
+    /// stands its eye one frame, then is taken.
+    fn patrol_shots(&mut self, f: &Frame, snap: &Snapshot) {
+        if let Some(name) = self.shot_pending.take() {
+            self.capture(f, &name);
+            self.shot_eye = None;
+            if name.starts_with("p6-") {
+                self.done = true;
+            }
+            return;
+        }
+        let (Some(p), Some(d), Some(t)) = (snap.patrol.as_ref(), self.data.patrol.as_ref(), snap.ships.first()) else {
+            return;
+        };
+        let Some(st) = d.system.stations.iter().find(|s| s.berths.iter().any(|b| b.departure.len() > 1)) else {
+            return;
+        };
+        let (at, rot) = (d.system.station_pos(st), d.system.station_rot(st));
+        let here = rot.inverse() * (p.origin + t.pos - at);
+        let window = |w: crate::playtest::Window, pitch: f32| {
+            let (feet, yaw) = w.stand();
+            ([f64::from(feet[0]), f64::from(feet[1]) + 1.6, f64::from(feet[2])], yaw, pitch)
+        };
+        use crate::playtest::Window;
+        let berthed = snap.phase == Phase::Patrol && snap.phase_s >= 4.0 && here.z < 100.0;
+        let ahead = |mut e: ShotEye| {
+            e.1 = 0.25;
+            e
+        };
+        let want: Option<(&str, ShotEye)> = if berthed {
+            [
+                ("p1-berth-port", window(Window::BridgePort, 0.12)),
+                ("p2-berth-starboard", window(Window::BridgeStbd, 0.12)),
+                ("p3-berth-ahead", ahead(window(Window::BridgePort, 0.12))),
+            ]
+            .into_iter()
+            .find(|(n, _)| !self.shots_taken.contains(&format!("{n}.png")))
+        } else if here.z > 480.0 && here.z < 600.0 && here.x.hypot(here.y) < 60.0 {
+            Some(("p4-throat", window(Window::BridgePort, 0.3)))
+        } else if here.z > 2_900.0 {
+            // From the star's side, below and to port of the pair, about 14 km out, looking at its middle.
+            let near_st = DVec3::new(-5_000.0, -4_500.0, 6_000.0);
+            let look_st = DVec3::new(4_300.0, 1_500.0, -2_000.0);
+            let (name, eye_st) = if self.shots_taken.contains("p5-pair.png") {
+                ("p6-pair-far", look_st + (near_st - look_st).normalize() * 76_000.0)
+            } else {
+                ("p5-pair", near_st)
+            };
+            let to_ship = |v: DVec3| t.rot.inverse() * (rot * v);
+            let eye = to_ship(eye_st - here);
+            let dir = to_ship(look_st - eye_st).normalize();
+            let (yaw, pitch) = (dir.x.atan2(dir.z) as f32, dir.y.asin() as f32);
+            Some((name, (eye.to_array(), yaw, pitch)))
+        } else {
+            None
+        };
+        if let Some((name, eye)) = want {
+            let name = format!("{name}.png");
+            if !self.shots_taken.contains(&name) {
+                self.shot_eye = Some(eye);
+                self.shot_pending = Some(name);
+            }
+        }
+    }
+
     /// The film of the viewscreen's cameras (chase-camera 3). It follows the body: the walk to the captain's chair,
     /// sitting down and the countdown, then, once the round is engaged, the console's FWD with chase off and on,
     /// TARGET, PORT, AFT and STBD with chase on, TARGET at 1x, 4x and 20x, TARGET with chase on at 4x, and the
@@ -1436,6 +1592,15 @@ impl DrillApp {
             "Walking to the captain's chair, on foot"
         } else if !engaged || t < 2.0 {
             "Seated at Captain: the console comes up, the round counts down"
+        } else if self.args.film_orbit {
+            match self.orbit_reel(t, snap) {
+                Some(cue) => cue,
+                None => {
+                    self.film_screen = false;
+                    self.done = true;
+                    return;
+                }
+            }
         } else {
             let seat = &mut self.seats[st];
             // Each shot: the camera, chase on or off, the zoom, and its caption.
@@ -1480,7 +1645,12 @@ impl DrillApp {
                     if !self.film_screen {
                         // The captain's camera on the main viewscreen, as his console sends it when he presses.
                         if let Some(s) = self.session.as_mut() {
-                            s.command(sc_core::combat::Command::MainView { feed: 0, chase: true, zoom: 0 });
+                            s.command(sc_core::combat::Command::MainView {
+                                feed: 0,
+                                chase: true,
+                                zoom: 0,
+                                orbit: None,
+                            });
                         }
                         self.film_screen = true;
                     }
@@ -1502,6 +1672,62 @@ impl DrillApp {
         }
         let name = format!("film-{:05}.png", self.film_frame);
         self.capture(f, &name);
+    }
+}
+
+impl DrillApp {
+    /// The orbit reel (`--film-orbit`, chase-orbit): from 2 s into Engage, the captain's viewscreen from the bow, then
+    /// CHASE easing out behind the Tern and following its turns, TARGET easing round, ORBIT circling the ship and moving
+    /// in and out as a drag and the wheel would, ORBIT off easing back, and the bridge's main viewscreen showing his
+    /// orbit. None when it is over.
+    fn orbit_reel(&mut self, t: f64, snap: &Snapshot) -> Option<&'static str> {
+        let st = self.console_station() as usize;
+        let target = match (snap.ships.first(), snap.ships.get(1)) {
+            (Some(tn), Some(h)) if h.active && h.alive => Some(tn.rot.inverse() * (h.pos - tn.pos)),
+            _ => None,
+        };
+        // Each orbit starts afresh where the chase camera is.
+        if (23.0..26.0).contains(&t) {
+            self.film_orbit0 = None;
+        }
+        let cfg = &self.exterior.viewscreen.chase;
+        // A circle round the ship from where ORBIT starts, `turns` of it, its elevation and distance swinging.
+        let mut orbit = |from: f64, secs: f64, turns: f64| {
+            let k = ((t - from) / secs).clamp(0.0, 1.0);
+            let yaw0 = *self.film_orbit0.get_or_insert_with(|| console::rig::orbit_start("TARGET", target, cfg)[0]);
+            let tau = std::f64::consts::TAU;
+            [yaw0 - 360.0 * turns * k, -30.0 * (tau * k).sin() - 10.0, 160.0 + 120.0 * (tau * k * 1.5).sin().max(-0.5)]
+        };
+        let (feed, chase, goal, cue): (&str, bool, Option<[f64; 3]>, &'static str) = match t {
+            t if t < 3.0 => ("FWD", false, None, "FWD, chase off: the captain's viewscreen from the bow"),
+            t if t < 9.0 => {
+                ("FWD", true, None, "CHASE on: the camera eases out behind the Tern and follows its turns with a lag")
+            }
+            t if t < 13.0 => {
+                ("TARGET", true, None, "TARGET, chase on: the camera eases round to look past the Tern at the Hound")
+            }
+            t if t < 23.0 => (
+                "TARGET",
+                true,
+                Some(orbit(13.0, 10.0, 1.0)),
+                "ORBIT on: dragging turns the camera round the ship, the wheel moves it in and out",
+            ),
+            t if t < 26.0 => ("TARGET", true, None, "ORBIT off: the camera eases back to the chase position"),
+            t if t < 34.0 => {
+                let g = orbit(26.0, 8.0, 0.75);
+                if !self.film_screen {
+                    self.film_screen = true;
+                }
+                ("TARGET", true, Some(g), "The bridge's main viewscreen shows the captain's orbit")
+            }
+            _ => return None,
+        };
+        let seat = &mut self.seats[st];
+        seat.set_feed(feed);
+        seat.set_chase(chase);
+        seat.set_zoom(1.0);
+        seat.set_orbit(goal);
+        Some(cue)
     }
 }
 
@@ -1595,10 +1821,15 @@ impl App for DrillApp {
         }
         if let Some(s) = self.session.as_mut() {
             s.update();
+            // The ships are drawn on the server's clock, at this frame's own step (chase-orbit design 2).
+            s.advance(dt);
             // The server's mission is the one played: a client started with another loads it (patrol-mission).
             if !s.mission.is_empty() && s.mission != self.data.mission.id {
-                match load_data(&s.mission) {
-                    Ok(d) => self.data = d,
+                match load_data(&s.mission).and_then(|d| Ok((station_views(&self.r, &d)?, d))) {
+                    Ok((v, d)) => {
+                        self.data = d;
+                        self.meshes.stations = v;
+                    }
                     Err(e) => self.error = Some(e),
                 }
             }
@@ -1627,6 +1858,14 @@ impl App for DrillApp {
             }
         }
         let station = self.session.as_ref().and_then(|s| s.station());
+        // Single player: the player's own chip follows the seat they sit at (relieve-bots 5), and a crewed console shown
+        // that has become theirs is simply theirs.
+        if let Some(h) = self.solo.as_mut() {
+            h.follow(station);
+            if self.shown == Some(h.seat) {
+                self.shown = None;
+            }
+        }
         let aspect = f.width as f32 / f.height.max(1) as f32;
         // On foot (design 9): while this player's body is up and walking, or with the overview (V), the bridge.
         let bodies = self.bodies_now();
@@ -1694,7 +1933,8 @@ impl App for DrillApp {
         // Seated: hold Stand to get up (E, or Backspace; at Helm, where E rolls the ship, Backspace).
         self.stand_up(dt, station, mine.map(|b| b.posture));
         self.playtest_seated(dt, station, mine.map(|b| b.posture));
-        let shot_overview = self.args.shots.is_some() && (self.shot_overview() || self.film_screen);
+        let shot_overview =
+            self.args.shots.is_some() && (self.shot_overview() || self.film_screen || self.shot_eye.is_some());
         let on_bridge = self.bridge.is_some() && !bodies.is_empty() && (walking || self.overview || shot_overview);
         // Sat down: the console rises from the desk, the bridge seen from the chair behind it until it is up.
         let seated = !walking && station.is_some() && mine.is_some();
@@ -1729,6 +1969,8 @@ impl App for DrillApp {
                 // The film's look at the bridge's main viewscreen: from behind the captain's chair, over his head,
                 // square to the screen so its picture reads as the console's does.
                 _ if self.film_screen => ([0.0, 6.0, 23.4], 0.0, -0.06),
+                // The patrol's shots: out of a window, or the station seen from afar (design 12b).
+                _ if self.shot_eye.is_some() => self.shot_eye.unwrap_or_else(crate::drill_bridge::overview),
                 _ => crate::drill_bridge::overview(),
             };
             if own && !rising {
@@ -1741,8 +1983,8 @@ impl App for DrillApp {
                 let red = ships.as_ref().is_some_and(|(_, _, s)| s.bridge.red_alert);
                 // The bridge's eye in the system's frame, where the Hound, bolts and bursts are.
                 let eye_out = ships.as_ref().map(|(t, _, _)| t.pos + t.rot * DVec3::from_array(eye));
-                let (ext_now, stations) = self.outside_now(ships.as_ref().map(|x| &x.2));
-                let cradle = self.cradle_now(ships.as_ref());
+                let (ext_now, stations, roof) = self.outside_now(ships.as_ref().map(|x| &x.2));
+                let hull_light = self.hull_light(roof);
                 let world = World {
                     meshes: &self.meshes,
                     exterior: &ext_now,
@@ -1752,13 +1994,14 @@ impl App for DrillApp {
                     debris: &self.debris,
                     time_s: self.time_s,
                     stations,
+                    hull: bv.hull(),
                 };
                 let seen = ships.as_ref();
                 let out = crate::drill_bridge::Outside {
                     attitude,
                     lighting: if red { [0.0, 1.0, 0.0] } else { [1.0, 0.0, 0.0] },
                     screen: Some((&self.feed, self.exterior.viewscreen.scanlines as f32)),
-                    cradle,
+                    hull_light,
                     objects: Box::new(move |r, t, vp| {
                         if let Some(e) = eye_out {
                             world.draw_objects(r, t, vp, e, seen);
@@ -1849,7 +2092,13 @@ impl App for DrillApp {
                 .iter()
                 .filter_map(|c| Some((c.station?, if c.bot && !solo { "Bot".to_owned() } else { c.name.clone() })))
                 .collect();
-            self.seats[st as usize].view(st, t, h, snap, &self.data, &ops, self.time_s)
+            let mut v = self.seats[st as usize].view(st, t, h, snap, &self.data, &ops, self.time_s);
+            // LEAVE STATION while this player sits (leave-station 4): the stand key on its keycap, the hold's ring.
+            v.leave = seated_body.then(|| console::LeaveView {
+                key: self.bindings.use_label.clone(),
+                share: self.stand.share(self.data.stations.seats.stand_hold_s),
+            });
+            v
         });
         if let (Some(v), Some(host)) = (console_view.as_mut(), self.solo.as_ref()) {
             v.open.clear();
@@ -1882,9 +2131,9 @@ impl App for DrillApp {
         let mut menu_ask = None;
         let (menu, options) = (&mut self.menu, &mut self.options);
         let deck = self.deck.as_ref();
-        let (touch, pt) = (&self.touch, self.ui.win_to_pt());
+        let touch = &self.touch;
         let finger_hover = self.console_finger.hover();
-        let stand_share = (self.stand_hold / self.data.stations.seats.stand_hold_s).clamp(0.0, 1.0);
+        let stand_share = self.stand.share(self.data.stations.seats.stand_hold_s);
         let frame = self.ui.run(&mut self.r, f, self.time_s, |ctx| {
             if let Some(v) = console_view.as_ref() {
                 // A long press's finger is the hover on a touch screen (touch-controls 4): the tip shows there.
@@ -1914,8 +2163,8 @@ impl App for DrillApp {
                 d.draw(&painter, ctx.content_rect().size());
             }
             let layer = ctx.layer_painter(egui::LayerId::new(egui::Order::Foreground, egui::Id::new("touch")));
-            touch.paint(&layer, pt, use_word.as_deref());
-            touch.paint_stand(&layer, pt, stand_share);
+            touch.paint(&layer, use_word.as_deref());
+            touch.paint_stand(&layer, stand_share);
             menu_ask = menu.show(ctx, &place, options);
         });
         self.pointer = pointer;
@@ -1925,10 +2174,38 @@ impl App for DrillApp {
             self.touch_mode == crate::touch::Mode::Seated && engage_now && !self.menu.open() && painted.is_some();
         match painted.as_ref().filter(|_| self.console_touch) {
             Some((hits, _)) => {
-                let evs = self.console_finger.resolve(hits, self.ui.win_to_pt(), self.time_s);
+                let evs = self.console_finger.resolve(hits, self.touch.k(), self.time_s);
                 self.pointer.extend(evs);
             }
             None => self.console_finger.clear(),
+        }
+        // LEAVE STATION pressed, by the mouse or a finger (leave-station 4): up at once, in any phase. The press is the
+        // button's, so it is not a touch that takes a crewed station MANUAL.
+        if let Some((hits, _)) = painted.as_ref() {
+            if crate::seat::leave_pressed(hits, &self.pointer) {
+                self.pointer.clear();
+                if self.can_stand(station, mine.map(|b| b.posture)) {
+                    println!("sc-client: LEAVE STATION");
+                    self.stand_now();
+                }
+            }
+        }
+        // The script's press: the middle of the control as drawn, pressed and let go, as a player's pointer would.
+        if let (Some(c), Some((hits, _))) = (self.playtest_press.take(), painted.as_ref()) {
+            use crate::console::kit::{Act, Hit};
+            let want = Hit::Act(match c {
+                crate::playtest::Control::Screen => Act::ViewTake,
+                crate::playtest::Control::Target => Act::Feed("TARGET".into()),
+                crate::playtest::Control::Chase => Act::Feed("CHASE".into()),
+            });
+            match hits.regions.iter().rev().find(|r| r.hit.as_ref() == Some(&want)) {
+                Some(r) => {
+                    let p = r.rect.center();
+                    println!("sc-client: playtest: pressed {c:?}");
+                    self.pointer.extend([PointerEv::Press(p), PointerEv::Release(p)]);
+                }
+                None => println!("sc-client: playtest: no {c:?} on the console"),
+            }
         }
         if let Some(b) = self.bridge.as_mut() {
             b.fov_deg = self.options.fov_deg as f32;
@@ -1948,7 +2225,12 @@ impl App for DrillApp {
             (engage, station, self.bot.as_ref(), painted.as_ref(), console_view.as_ref(), ships.as_ref())
         {
             self.solo_keys(&pressed);
-            let input = Input { events: std::mem::take(&mut self.pointer), held: self.held.clone(), pressed };
+            let input = Input {
+                events: std::mem::take(&mut self.pointer),
+                held: self.held.clone(),
+                pressed,
+                keys: self.bindings.clone(),
+            };
             let seat = &mut self.seats[st as usize];
             let asks = seat.input(&input, hits, *scale, v, t, h, &self.data, st, self.time_s);
             // A crewed station's console in single player: on AUTO its NPC plays it, and a touch takes it MANUAL
@@ -2010,7 +2292,7 @@ impl App for DrillApp {
             }
         }
         // The viewscreen's feed in its window under the console, or black when there is no console yet.
-        let ppp = f.height as f32 / frame.points[1].max(1.0);
+        let ppp = frame.ppp;
         match console_view {
             None if on_bridge => {
                 self.r.present_with_ui(&self.bridge_target, f.width, f.height, true, &frame.meshes(), frame.points)
@@ -2068,18 +2350,34 @@ impl App for DrillApp {
     }
 }
 
-/// What E offers at seat `st` for the body in `slot`, by the server's claim rule (sc-core's `claim_on_foot`): a seat
-/// another body walks to is theirs, so it is not offered; an NPC's is taken from it; a player's is held; a free one is
-/// sat in. The prompt never promises a seat the server would refuse (CLAUDE.md 6.1: the preview is the outcome).
+/// Who is in the way of seat `st` for the body in `slot`, and what the one seat rule makes of it (relieve-bots 2,
+/// `sc-core`'s `seats::claim_rule`, which the server's claim also runs): its holder and the body walking to it.
+fn seat_rule(
+    st: Station,
+    slot: Option<u8>,
+    crew: &[sc_net::msg::CrewEntry],
+    bodies: &[sc_net::msg::BodySnap],
+) -> (ClaimRule, Option<Occupant>, Option<Occupant>) {
+    let who = |s: u8| Occupant { slot: s, bot: crew.iter().any(|c| c.slot == s && c.bot) };
+    let holder = crew.iter().find(|c| Some(c.slot) != slot && c.station == Some(st)).map(|c| who(c.slot));
+    let walker = bodies.iter().find(|b| Some(b.slot) != slot && b.going == Some(st)).map(|b| who(b.slot));
+    (claim_rule(false, holder, walker), holder, walker)
+}
+
+/// What E offers at seat `st` for the body in `slot`, by the server's rule: a free seat is sat in, a bot's (in it or
+/// walking to it) is taken from it, a person's is theirs. The prompt never promises a seat the server would refuse
+/// (CLAUDE.md 6.1: the preview is the outcome).
 fn seat_prompt(st: Station, slot: u8, crew: &[sc_net::msg::CrewEntry], bodies: &[sc_net::msg::BodySnap]) -> String {
-    if let Some(b) = bodies.iter().find(|b| b.slot != slot && b.going == Some(st)) {
-        let name = crew.iter().find(|c| c.slot == b.slot).map_or("Someone", |c| c.name.as_str());
-        return format!("{name} is on the way to {}", st.name());
-    }
-    match crew.iter().find(|c| c.station == Some(st)) {
-        Some(c) if c.bot => format!("E  Take {} from {}", st.name(), c.name),
-        Some(c) => format!("{} holds {}", c.name, st.name()),
-        None => format!("E  Sit at {}", st.name()),
+    let name = |s: u8| crew.iter().find(|c| c.slot == s).map_or("Someone", |c| c.name.as_str());
+    match seat_rule(st, Some(slot), crew, bodies) {
+        (ClaimRule::Sit, _, _) => format!("E  Sit at {}", st.name()),
+        (ClaimRule::Relieve, holder, walker) => {
+            format!("E  Take {} from {}", st.name(), holder.or(walker).map_or("Someone", |o| name(o.slot)))
+        }
+        (ClaimRule::Taken(s), holder, _) if holder.is_some_and(|h| h.slot == s) => {
+            format!("{} holds {}", name(s), st.name())
+        }
+        (ClaimRule::Taken(s), _, _) => format!("{} is on the way to {}", name(s), st.name()),
     }
 }
 
@@ -2099,6 +2397,8 @@ struct UiView {
     stage: Option<Stage>,
     server: String,
     station: Option<Station>,
+    /// This player's slot.
+    slot: Option<u8>,
     want: Station,
     bot: bool,
     ready: bool,
@@ -2145,6 +2445,7 @@ impl UiView {
             stage: s.map(|s| s.stage),
             server: app.args.server.clone(),
             station: s.and_then(|s| s.station()),
+            slot: s.and_then(|s| s.slot),
             want: app.args.station,
             bot: app.bot.is_some(),
             ready: s.is_some_and(|s| s.ready()),
@@ -2163,17 +2464,18 @@ impl UiView {
     }
 }
 
+/// Where the reference frame (the 1280 x 720 canvas of bridge-stations 8.0) starts on the screen: the one mapping,
+/// `ui::frame_in` (browser-page-fit design 5). On a screen laid out by `ui::Fit` its scale is 1.
 fn canvas_origin(ctx: &egui::Context) -> Pos2 {
-    let w = ctx.content_rect().width();
-    Pos2::new(((w - CANVAS.0) / 2.0).max(0.0), 0.0)
+    crate::ui::frame_in(ctx.content_rect()).0
 }
 
 fn label(ui: &mut egui::Ui, text: &str, size: f32, colour: Color32) {
     ui.label(RichText::new(text).size(size).color(colour));
 }
 
-fn big_button(text: &str, size: Vec2, fill: Color32) -> egui::Button<'static> {
-    egui::Button::new(RichText::new(text.to_owned()).size(20.0).strong().color(Color32::WHITE))
+fn big_button(text: &str, size: Vec2, text_pt: f32, fill: Color32) -> egui::Button<'static> {
+    egui::Button::new(RichText::new(text.to_owned()).size(text_pt).strong().color(Color32::WHITE))
         .min_size(size)
         .corner_radius(CornerRadius::same(6))
         .fill(fill)
@@ -2219,11 +2521,11 @@ fn draw_ui(ctx: &egui::Context, v: &UiView, ask: &mut Vec<UiAsk>, show_net: bool
         return;
     };
     if let Some(b) = &v.bridge {
-        bridge_overlay(ctx, v, snap, b, ask);
+        bridge_overlay(ctx, v, snap.phase, snap.phase_s, b);
         return;
     }
     match snap.phase {
-        Phase::Muster | Phase::Countdown => briefing(ctx, v, snap, ask),
+        Phase::Muster | Phase::Countdown => briefing(ctx, v, snap.phase, snap.phase_s, ask),
         Phase::Engage | Phase::Patrol => {
             // A refused command says why, over the status strip, for a few seconds.
             if let Some((why, age)) = v.refused.as_ref().filter(|r| r.1 < 3.0) {
@@ -2246,16 +2548,24 @@ fn draw_ui(ctx: &egui::Context, v: &UiView, ask: &mut Vec<UiAsk>, show_net: bool
     }
 }
 
+/// The bridge's top band, points: two rows, the drill and its clock at the left and who holds each station in a grid
+/// to its right, so neither is ever drawn over the other (CLAUDE.md 10: a band for each text, verified apart).
+const BAND_H: f32 = 48.0;
+/// The crew grid's rows in the band.
+const BAND_ROWS: usize = 2;
+/// The band's margin at each side and the gap between the head and the grid and between the grid's columns, points.
+const BAND_PAD: f32 = 16.0;
+const BAND_GAP: f32 = 22.0;
+
 /// The bridge on screen (design 9): a band along the top with the drill, its phase and clock and who holds each
 /// station, a name over every body with where it is walking, and this player's own walk said once in the middle.
-fn bridge_overlay(ctx: &egui::Context, v: &UiView, snap: &Snapshot, b: &BridgeUi, _ask: &mut Vec<UiAsk>) {
+fn bridge_overlay(ctx: &egui::Context, v: &UiView, phase: Phase, phase_s: f64, b: &BridgeUi) {
     use egui::FontId;
     let w = ctx.content_rect().width();
+    // The band spans the screen's top edge; what is placed on the picture is placed on the reference frame.
+    let o = canvas_origin(ctx);
     let painter = ctx.layer_painter(egui::LayerId::new(egui::Order::Middle, egui::Id::new("bridge-names")));
-    painter.rect_filled(Rect::from_min_size(Pos2::ZERO, Vec2::new(w, 34.0)), CornerRadius::ZERO, PANEL);
-    let phase = format!("{:?}", snap.phase).to_uppercase();
-    let head = format!("{}   {}   {}", v.mission.title, phase, mmss(snap.phase_s));
-    painter.text(Pos2::new(16.0, 17.0), Align2::LEFT_CENTER, head, FontId::proportional(17.0), TEXT);
+    let head = format!("{}   {}   {}", v.mission.title, format!("{phase:?}").to_uppercase(), mmss(phase_s));
     let held: Vec<String> = Station::ALL
         .iter()
         .map(|s| {
@@ -2263,85 +2573,179 @@ fn bridge_overlay(ctx: &egui::Context, v: &UiView, snap: &Snapshot, b: &BridgeUi
             format!("{} {}", s.name(), who)
         })
         .collect();
-    painter.text(Pos2::new(w - 16.0, 17.0), Align2::RIGHT_CENTER, held.join("   "), FontId::proportional(14.0), DIM);
+    top_band(&painter, w, head, &held);
     for l in &b.labels {
         crate::nameplate::draw(&painter, l.at, &l.name, l.npc, l.going.as_deref(), l.k);
     }
     if let Some(t) = &b.banner {
-        painter.text(Pos2::new(w / 2.0, 560.0), Align2::CENTER_CENTER, t, FontId::proportional(30.0), AMBER);
+        painter.text(Pos2::new(w / 2.0, o.y + 560.0), Align2::CENTER_CENTER, t, FontId::proportional(30.0), AMBER);
     }
     if b.overview {
-        painter.text(Pos2::new(w / 2.0, 700.0), Align2::CENTER_CENTER, "BRIDGE (V)", FontId::proportional(14.0), DIM);
+        painter.text(
+            Pos2::new(w / 2.0, o.y + 700.0),
+            Align2::CENTER_CENTER,
+            "BRIDGE (V)",
+            FontId::proportional(14.0),
+            DIM,
+        );
     }
 }
 
-fn briefing(ctx: &egui::Context, v: &UiView, snap: &Snapshot, ask: &mut Vec<UiAsk>) {
-    let rect = Rect::from_min_size(Pos2::new(190.0, 70.0), Vec2::new(900.0, 580.0));
-    panel(ctx, "briefing", rect, "BRIEFING", |ui| {
-        label(ui, &v.mission.title, 30.0, AMBER);
-        ui.add_space(6.0);
-        ui.label(RichText::new(&v.mission.situation).size(17.0).color(TEXT));
-        ui.add_space(8.0);
-        for o in &v.mission.objectives {
-            label(ui, &format!("- {}", o.words), 17.0, TEXT);
+/// The top band `w` points wide: `head` (the drill, its phase and clock) at the left, and `held` (who holds each
+/// station) in a grid of [`BAND_ROWS`] rows to its right, ending at the right margin. A column takes its widest entry;
+/// when the grid does not fit beside the head every column gives up the same share and its entries are cut with an
+/// ellipsis, so the grid never reaches back over the head.
+fn top_band(painter: &egui::Painter, w: f32, head: String, held: &[String]) {
+    use egui::text::{LayoutJob, TextWrapping};
+    use egui::FontId;
+    painter.rect_filled(Rect::from_min_size(Pos2::ZERO, Vec2::new(w, BAND_H)), CornerRadius::ZERO, PANEL);
+    let head = painter.layout_no_wrap(head, FontId::proportional(17.0), TEXT);
+    let head_w = head.size().x;
+    painter.galley(Pos2::new(BAND_PAD, (BAND_H - head.size().y) / 2.0), head, TEXT);
+    let font = FontId::proportional(14.0);
+    let cols = held.len().div_ceil(BAND_ROWS);
+    if cols == 0 {
+        return;
+    }
+    let natural: Vec<f32> =
+        held.iter().map(|t| painter.layout_no_wrap(t.clone(), font.clone(), DIM).size().x.ceil()).collect();
+    let widest: Vec<f32> = (0..cols)
+        .map(|c| (0..BAND_ROWS).filter_map(|r| natural.get(r * cols + c)).copied().fold(0.0, f32::max))
+        .collect();
+    let room = (w - BAND_PAD - (BAND_PAD + head_w + BAND_GAP) - BAND_GAP * (cols - 1) as f32).max(0.0);
+    let sum: f32 = widest.iter().sum();
+    let widths: Vec<f32> = if sum <= room { widest } else { widest.iter().map(|c| (c * room / sum).floor()).collect() };
+    let mut x = w - BAND_PAD - widths.iter().sum::<f32>() - BAND_GAP * (cols - 1) as f32;
+    let row_h = BAND_H / BAND_ROWS as f32;
+    for (c, cw) in widths.iter().enumerate() {
+        for r in 0..BAND_ROWS {
+            let Some(t) = held.get(r * cols + c) else { continue };
+            let mut job = LayoutJob::simple_singleline(t.clone(), font.clone(), DIM);
+            job.wrap = TextWrapping::truncate_at_width(*cw);
+            let g = painter.layout_job(job);
+            let y = row_h * (r as f32 + 0.5) - g.size().y / 2.0;
+            painter.galley(Pos2::new(x, y), g, DIM);
         }
-        ui.add_space(10.0);
-        let mine = v.station.unwrap_or(v.want);
-        let orders = v.mission.orders.of(mine);
-        label(ui, &format!("{} ORDERS", mine.name().to_uppercase()), 13.0, DIM);
-        ui.label(RichText::new(orders).size(18.0).color(CYAN));
-        ui.add_space(12.0);
-        label(ui, "CREW", 13.0, DIM);
-        for s in Station::ALL {
-            let who = v.crew.iter().find(|c| c.station == Some(s));
-            let (name, ready) = who.map_or(("automation".to_owned(), true), |c| {
-                (format!("{}{}", c.name, if c.bot { " (bot)" } else { "" }), c.ready)
-            });
-            ui.horizontal(|ui| {
-                label(ui, &format!("{:<9}", s.name()), 18.0, DIM);
-                label(ui, &name, 18.0, TEXT);
-                if who.is_some() {
-                    label(ui, if ready { "READY" } else { "reading" }, 16.0, if ready { GREEN } else { AMBER });
+        x += cw + BAND_GAP;
+    }
+}
+
+/// The briefing's panel on the canvas, points: wide enough for all eight stations' claim buttons in one row, the
+/// mission on the left and the crew on the right, so the crew list never runs into the buttons below it.
+const BRIEF_MIN: (f32, f32) = (40.0, 36.0);
+const BRIEF_SIZE: (f32, f32) = (1200.0, 648.0);
+/// The mission's column, points; the crew take the rest of the panel's width.
+const BRIEF_LEFT_W: f32 = 660.0;
+/// The crew rows' cells, points: the station, then the name (cut with an ellipsis), then READY or reading.
+const CREW_STATION_W: f32 = 112.0;
+const CREW_MARK_W: f32 = 76.0;
+
+/// One cell `width` points wide holding `text`, cut with an ellipsis when it does not fit.
+fn cell(ui: &mut egui::Ui, width: f32, text: &str, size: f32, colour: Color32) {
+    let layout = egui::Layout::left_to_right(egui::Align::Center);
+    ui.allocate_ui_with_layout(Vec2::new(width, size + 8.0), layout, |ui| {
+        ui.set_min_width(width);
+        ui.add(egui::Label::new(RichText::new(text).size(size).color(colour)).truncate());
+    });
+}
+
+fn briefing(ctx: &egui::Context, v: &UiView, phase: Phase, phase_s: f64, ask: &mut Vec<UiAsk>) {
+    let rect = Rect::from_min_size(Pos2::new(BRIEF_MIN.0, BRIEF_MIN.1), Vec2::new(BRIEF_SIZE.0, BRIEF_SIZE.1));
+    panel(ctx, "briefing", rect, "BRIEFING", |ui| {
+        let inner = ui.available_size();
+        let gap = 24.0;
+        let right_w = inner.x - BRIEF_LEFT_W - gap;
+        let claim_h = 44.0;
+        // What the two columns may take: the panel less its title and the row of claim buttons.
+        let column_h = inner.y - claim_h - 2.0 * ui.spacing().item_spacing.y;
+        ui.horizontal_top(|ui| {
+            ui.allocate_ui_with_layout(
+                Vec2::new(BRIEF_LEFT_W, column_h),
+                egui::Layout::top_down(egui::Align::Min),
+                |ui| {
+                    ui.set_width(BRIEF_LEFT_W);
+                    // The mission's words are the data's: a longer one scrolls in its column, never under the crew.
+                    egui::ScrollArea::vertical().id_salt("briefing-mission").max_height(column_h).show(ui, |ui| {
+                        ui.spacing_mut().item_spacing.y = 6.0;
+                        label(ui, &v.mission.title, 30.0, AMBER);
+                        ui.label(RichText::new(&v.mission.situation).size(17.0).color(TEXT));
+                        ui.add_space(4.0);
+                        for o in &v.mission.objectives {
+                            label(ui, &format!("- {}", o.words), 17.0, TEXT);
+                        }
+                        ui.add_space(8.0);
+                        let mine = v.station.unwrap_or(v.want);
+                        label(ui, &format!("{} ORDERS", mine.name().to_uppercase()), 13.0, DIM);
+                        ui.label(RichText::new(v.mission.orders.of(mine)).size(18.0).color(CYAN));
+                    });
+                },
+            );
+            ui.add_space(gap - ui.spacing().item_spacing.x);
+            ui.allocate_ui_with_layout(Vec2::new(right_w, column_h), egui::Layout::top_down(egui::Align::Min), |ui| {
+                ui.set_width(right_w);
+                ui.spacing_mut().item_spacing.y = 4.0;
+                label(ui, "CREW", 13.0, DIM);
+                let name_w = right_w - CREW_STATION_W - CREW_MARK_W - 2.0 * ui.spacing().item_spacing.x;
+                for s in Station::ALL {
+                    let who = v.crew.iter().find(|c| c.station == Some(s));
+                    let (name, ready) = who.map_or(("automation".to_owned(), true), |c| {
+                        (format!("{}{}", c.name, if c.bot { " (bot)" } else { "" }), c.ready)
+                    });
+                    ui.horizontal(|ui| {
+                        cell(ui, CREW_STATION_W, s.name(), 17.0, DIM);
+                        cell(ui, name_w, &name, 17.0, TEXT);
+                        if who.is_some() {
+                            let (mark, colour) = if ready { ("READY", GREEN) } else { ("reading", AMBER) };
+                            cell(ui, CREW_MARK_W, mark, 15.0, colour);
+                        }
+                    });
+                }
+                ui.add_space(14.0);
+                if phase == Phase::Countdown {
+                    let left = (v.mission.countdown_s - phase_s).ceil().max(0.0);
+                    label(ui, &format!("ENGAGING IN {left:.0}"), 30.0, AMBER);
+                } else {
+                    let text = if v.ready {
+                        "READY"
+                    } else if v.ready_held {
+                        "CREW SITTING"
+                    } else {
+                        "MARK READY"
+                    };
+                    let fill = if v.ready { Color32::from_rgb(40, 120, 60) } else { Color32::from_rgb(170, 100, 30) };
+                    if ui
+                        .add_enabled(
+                            v.station.is_some() && !v.bot,
+                            big_button(text, Vec2::new(220.0, 52.0), 20.0, fill),
+                        )
+                        .clicked()
+                    {
+                        ask.push(UiAsk::Ready(!v.ready));
+                    }
+                }
+                if v.bot {
+                    label(ui, "A bot plays this station", 14.0, DIM);
                 }
             });
-        }
-        ui.add_space(14.0);
+        });
+        // Every station's claim button in one row along the bottom, each an eighth of the panel.
+        let n = Station::ALL.len() as f32;
+        let claim_w = ((inner.x - (n - 1.0) * ui.spacing().item_spacing.x) / n).floor();
         ui.horizontal(|ui| {
             for s in Station::ALL {
-                let held_by_other = v.crew.iter().any(|c| c.station == Some(s)) && v.station != Some(s);
+                // Off for a person's seat only: a bot's is taken from it (relieve-bots 6).
+                let bodies = v.snap.as_ref().map_or(&[][..], |x| x.bodies.as_slice());
+                let held_by_other =
+                    v.station != Some(s) && matches!(seat_rule(s, v.slot, &v.crew, bodies).0, ClaimRule::Taken(_));
                 let fill =
                     if v.station == Some(s) { Color32::from_rgb(30, 90, 120) } else { Color32::from_rgb(34, 44, 58) };
-                if ui
-                    .add_enabled(!held_by_other && !v.bot, big_button(s.name(), Vec2::new(150.0, 44.0), fill))
-                    .clicked()
-                {
+                let button = big_button(s.name(), Vec2::new(claim_w, claim_h), 17.0, fill);
+                let r = ui.add_enabled(!held_by_other && !v.bot, button);
+                if crate::ui::mark(&format!("claim {}", s.name()), r).clicked() {
                     ask.push(UiAsk::Claim(s));
                 }
             }
-            ui.add_space(40.0);
-            if snap.phase == Phase::Countdown {
-                let left = (v.mission.countdown_s - snap.phase_s).ceil().max(0.0);
-                label(ui, &format!("ENGAGING IN {left:.0}"), 30.0, AMBER);
-            } else {
-                let text = if v.ready {
-                    "READY"
-                } else if v.ready_held {
-                    "CREW SITTING"
-                } else {
-                    "MARK READY"
-                };
-                let fill = if v.ready { Color32::from_rgb(40, 120, 60) } else { Color32::from_rgb(170, 100, 30) };
-                if ui
-                    .add_enabled(v.station.is_some() && !v.bot, big_button(text, Vec2::new(220.0, 52.0), fill))
-                    .clicked()
-                {
-                    ask.push(UiAsk::Ready(!v.ready));
-                }
-            }
         });
-        if v.bot {
-            label(ui, "A bot plays this station", 14.0, DIM);
-        }
     });
 }
 
@@ -2414,9 +2818,11 @@ fn debrief(ctx: &egui::Context, v: &UiView, snap: &Snapshot) {
 
 #[cfg(test)]
 mod tests {
-    use super::seat_prompt;
+    use super::{bridge_overlay, briefing, seat_prompt, BridgeUi, UiView, BAND_H, BRIEF_MIN, BRIEF_SIZE};
+    use egui::{Pos2, Rect};
     use sc_core::combat::bodies::Posture;
-    use sc_core::combat::Station;
+    use sc_core::combat::data::{DrillData, DRILL_FILES, DRILL_FILE_COUNT};
+    use sc_core::combat::{Phase, Station};
     use sc_net::msg::{BodySnap, CrewEntry};
 
     fn crew(slot: u8, name: &str, station: Option<Station>, bot: bool) -> CrewEntry {
@@ -2428,12 +2834,14 @@ mod tests {
     }
 
     #[test]
-    fn a_seat_someone_walks_to_is_not_offered() {
-        // The server refuses a claim on a seat another body walks to (Station taken): the prompt must not promise it.
-        let crew = [crew(1, "Me", None, false), crew(2, "Lt. Vor", None, true)];
-        let bodies = [body(1, None), body(2, Some(Station::Captain))];
-        let p = seat_prompt(Station::Captain, 1, &crew, &bodies);
-        assert_eq!(p, "Lt. Vor is on the way to Captain");
+    fn a_seat_a_person_walks_to_is_not_offered_and_one_a_bot_walks_to_is() {
+        // The server refuses a claim on a seat a person walks to (Station taken): the prompt must not promise it. A bot
+        // on its way loses the seat to a person (relieve-bots 2), so the prompt offers it.
+        let crew = [crew(1, "Me", None, false), crew(2, "Lt. Vor", None, true), crew(3, "Ana", None, false)];
+        let bodies = [body(1, None), body(2, Some(Station::Captain)), body(3, Some(Station::Helm))];
+        assert_eq!(seat_prompt(Station::Captain, 1, &crew, &bodies), "E  Take Captain from Lt. Vor");
+        let p = seat_prompt(Station::Helm, 1, &crew, &bodies);
+        assert_eq!(p, "Ana is on the way to Helm");
         assert!(!p.starts_with("E  "), "nothing for E to do, so USE stays dark");
     }
 
@@ -2451,5 +2859,193 @@ mod tests {
         let bodies = [body(1, Some(Station::Captain))];
         assert_eq!(seat_prompt(Station::Tactical, 1, &crew, &bodies), "Ana holds Tactical");
         assert_eq!(seat_prompt(Station::Captain, 1, &crew, &bodies), "E  Sit at Captain");
+    }
+
+    /// The mission `id` as the client loads it, from the repository's data.
+    fn mission(id: &str) -> sc_core::combat::data::MissionFile {
+        let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let read = |rel: &str| std::fs::read_to_string(root.join(rel)).expect("the repository's data reads");
+        let t: Vec<String> = DRILL_FILES.iter().map(|f| read(f)).collect();
+        let arr: [&str; DRILL_FILE_COUNT] = std::array::from_fn(|i| t[i].as_str());
+        let m = format!("data/missions/{id}.json");
+        DrillData::parse(arr, &m, &read(&m)).expect("the mission parses").mission
+    }
+
+    /// All eight stations crewed, by the names in the Tamsin undock captures: the player at Helm, NPCs elsewhere.
+    fn eight_crew() -> Vec<CrewEntry> {
+        let names = [
+            "Lt. Player",
+            "Lt. Sil Saren",
+            "Lt. Jaya Strandraari",
+            "Lt. Elaya Corregan",
+            "Lt. Xa'lensha",
+            "Lt. Kiya Ashberg",
+            "Lt. Ni'lenru",
+            "Lt. Haro Lundivan",
+        ];
+        Station::ALL
+            .iter()
+            .zip(names)
+            .enumerate()
+            .map(|(i, (s, n))| CrewEntry {
+                slot: i as u8 + 1,
+                name: n.into(),
+                station: Some(*s),
+                ready: i % 2 == 1,
+                bot: i > 0,
+            })
+            .collect()
+    }
+
+    fn view(id: &str, me: Station) -> UiView {
+        UiView {
+            error: None,
+            stage: None,
+            server: String::new(),
+            station: Some(me),
+            slot: Some(0),
+            want: me,
+            bot: false,
+            ready: false,
+            crew: eight_crew(),
+            snap: None,
+            tern: None,
+            rtt_ms: None,
+            loss: 0.0,
+            refused: None,
+            mission: mission(id),
+            tern_hull: 0.0,
+            nominal_pct: 0.0,
+            bridge: None,
+            ready_held: false,
+        }
+    }
+
+    /// One drawn text: its words, where it is drawn and the clip it is drawn in, points.
+    struct Drawn {
+        text: String,
+        rect: Rect,
+        clip: Rect,
+    }
+
+    /// Every text `draw` puts on an output of `px` pixels, with the game's fonts and style, after the frames egui
+    /// takes to size its areas; and the output's size in points.
+    fn texts_drawn(px: (u32, u32), mut draw: impl FnMut(&egui::Context)) -> (Vec<Drawn>, egui::Vec2) {
+        fn collect(shape: &egui::Shape, clip: Rect, out: &mut Vec<Drawn>) {
+            match shape {
+                egui::Shape::Text(t) if !t.galley.is_empty() => out.push(Drawn {
+                    text: t.galley.text().to_owned(),
+                    rect: t.galley.rect.translate(t.pos.to_vec2()),
+                    clip,
+                }),
+                egui::Shape::Vec(v) => v.iter().for_each(|s| collect(s, clip, out)),
+                _ => {}
+            }
+        }
+        let ui = crate::ui::Ui::new();
+        let fit = crate::ui::Fit::new(px.0, px.1, px.0 as f32);
+        let (ppp, points) = (fit.ppp, fit.points);
+        let mut out = Vec::new();
+        for _ in 0..4 {
+            let mut raw =
+                egui::RawInput { screen_rect: Some(Rect::from_min_size(Pos2::ZERO, points)), ..Default::default() };
+            if let Some(vp) = raw.viewports.get_mut(&raw.viewport_id) {
+                vp.native_pixels_per_point = Some(ppp);
+            }
+            out = ui.ctx.run(raw, &mut draw).shapes;
+        }
+        let mut drawn = Vec::new();
+        for c in &out {
+            collect(&c.shape, c.clip_rect, &mut drawn);
+        }
+        (drawn, points)
+    }
+
+    /// Each pair of texts drawn over one another (by more than a point each way), named.
+    fn overlapping(drawn: &[Drawn]) -> Vec<String> {
+        let mut bad = Vec::new();
+        for (i, a) in drawn.iter().enumerate() {
+            for b in &drawn[i + 1..] {
+                let o = a.rect.intersect(b.rect);
+                if o.width() > 1.0 && o.height() > 1.0 {
+                    bad.push(format!("{:?} over {:?}", a.text, b.text));
+                }
+            }
+        }
+        bad
+    }
+
+    /// The output sizes the screens must fit (browser-page-fit design 5): 1080p, the Pi's 720p, a laptop, 1440p, 4:3,
+    /// an ultrawide, itch's embed, a phone held sideways, and the undock video's 1280 x 678 window.
+    const OUTPUTS: [(u32, u32); 9] = [
+        (1920, 1080),
+        (1280, 720),
+        (1366, 768),
+        (2560, 1440),
+        (1024, 768),
+        (2560, 1080),
+        (985, 455),
+        (844, 390),
+        (1280, 678),
+    ];
+
+    #[test]
+    fn the_bridge_band_keeps_the_clock_clear_of_eight_crew() {
+        // The Tamsin undock captures drew "Patrol: the Shoals   PATROL   00:03" over the start of the crew list.
+        let v = view("patrol-shoals", Station::Helm);
+        let b = BridgeUi { labels: Vec::new(), banner: None, overview: false };
+        for px in OUTPUTS {
+            let (drawn, points) = texts_drawn(px, |ctx| bridge_overlay(ctx, &v, Phase::Patrol, 3.0, &b));
+            let bad = overlapping(&drawn);
+            assert!(bad.is_empty(), "texts in the band overlap at {px:?}: {bad:?}");
+            assert_eq!(drawn.len(), 9, "the head and eight stations at {px:?}");
+            assert!(drawn.iter().any(|d| d.text.starts_with("Patrol: the Shoals")), "the head is drawn at {px:?}");
+            for d in &drawn {
+                assert!(
+                    d.rect.min.x >= 0.0 && d.rect.max.x <= points.x && d.rect.min.y >= 0.0 && d.rect.max.y <= BAND_H,
+                    "{:?} at {:?} leaves the band (0-{} x 0-{BAND_H}) at {px:?}",
+                    d.text,
+                    d.rect,
+                    points.x
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn the_briefing_fits_eight_crew_and_every_stations_orders() {
+        // The undock video's briefing drew Laser port, Laser stbd and Gunner over one another, the claim buttons below.
+        for id in ["patrol-shoals", "drill-hound"] {
+            for me in Station::ALL {
+                let v = view(id, me);
+                for px in OUTPUTS {
+                    let (drawn, points) = texts_drawn(px, |ctx| briefing(ctx, &v, Phase::Muster, 1.0, &mut Vec::new()));
+                    let (origin, scale) = crate::ui::frame_in(Rect::from_min_size(Pos2::ZERO, points));
+                    assert!((scale - 1.0).abs() < 1e-4, "a fitted screen holds the frame at one point a point");
+                    let panel = Rect::from_min_size(
+                        Pos2::new(BRIEF_MIN.0 + origin.x, BRIEF_MIN.1 + origin.y),
+                        egui::vec2(BRIEF_SIZE.0, BRIEF_SIZE.1),
+                    );
+                    let screen = Rect::from_min_size(Pos2::ZERO, points);
+                    assert!(
+                        screen.contains_rect(panel),
+                        "the briefing {panel:?} leaves the screen {screen:?} at {px:?}"
+                    );
+                    let bad = overlapping(&drawn);
+                    assert!(bad.is_empty(), "briefing texts overlap ({id}, {me:?}, {px:?}): {bad:?}");
+                    for d in &drawn {
+                        assert!(
+                            panel.contains_rect(d.rect) && d.clip.contains_rect(d.rect),
+                            "{:?} at {:?} is not whole inside the panel {panel:?} ({id}, {me:?}, {px:?})",
+                            d.text,
+                            d.rect
+                        );
+                    }
+                    for name in ["Lt. Kiya Ashberg (bot)", "Lt. Haro Lundivan (bot)", "Gunner", "MARK READY"] {
+                        assert!(drawn.iter().any(|d| d.text == name), "{name:?} is drawn ({id}, {me:?}, {px:?})");
+                    }
+                }
+            }
+        }
     }
 }

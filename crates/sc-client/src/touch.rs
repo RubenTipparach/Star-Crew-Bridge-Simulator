@@ -11,8 +11,9 @@
 //! at least 44 px, what is drawn unchanged); held still, the control's tip shows and nothing is pressed. A drag or a
 //! hold control takes the finger at once, as it takes the mouse.
 //!
-//! The numbers are `data/input/touch.json`, sizes in CSS px of a 390 px screen. Fingers arrive in window coordinates
-//! (the platform's); the layer works in them and draws in the UI's points.
+//! The numbers are `data/input/touch.json`, sizes in px of a reference frame 390 px high, scaled with the frame as every
+//! screen is (openspec/changes/browser-page-fit design 5). The layer works and draws in the UI's layout points: the
+//! drill turns fingers into points through `ui::Fit`, so the layer never knows the window's size.
 
 use egui::{Align2, Color32, FontFamily, FontId, Pos2, Rect, Stroke, Vec2};
 use sc_client::platform::{keys, TouchPhase};
@@ -30,7 +31,7 @@ pub struct TouchData {
     pub schema: String,
     /// Proposal and provenance.
     pub status: String,
-    /// The screen the sizes are for: its shorter side, CSS px. A screen scales them by its own shorter side over this.
+    /// The reference frame's height in the data's px: the sizes scale with the frame (`ui::Fit`), as every screen's do.
     pub screen_ref_px: f64,
     /// The move stick.
     pub stick: StickData,
@@ -236,7 +237,7 @@ impl Hands {
             Btn::Use => Some(keys::E),
             Btn::Down => Some(keys::Q),
             Btn::Jump => Some(keys::SPACE),
-            Btn::Stand => Some(keys::BACKSPACE),
+            Btn::Stand => Some(keys::E),
             Btn::Map | Btn::Menu => None,
         };
         let pressed = self.taps.iter().filter_map(key).collect();
@@ -262,8 +263,10 @@ pub struct Layer {
     look: (f32, f32),
     /// Touch is the last input used: the layer shows.
     active: bool,
-    /// The window, window coordinates.
+    /// The whole screen, layout points.
     win: [f32; 2],
+    /// The reference frame on it, layout points.
+    frame: Rect,
     mode: Mode,
 }
 
@@ -277,7 +280,8 @@ impl Layer {
             taps: Vec::new(),
             look: (0.0, 0.0),
             active: false,
-            win: [844.0, 390.0],
+            win: crate::ui::Fit::default().points.into(),
+            frame: crate::ui::Fit::default().frame(),
             mode: Mode::Off,
         }
     }
@@ -292,10 +296,11 @@ impl Layer {
         self.active = false;
     }
 
-    /// Set the window's size (window coordinates) and what the screen is doing. A change of mode lets go of every
-    /// finger the layer held, so a USE that sat the body down is not also a STAND held.
-    pub fn set(&mut self, win: [f32; 2], mode: Mode) {
-        self.win = win;
+    /// Set the screen (`fit`, the output on the reference frame) and what it is doing. A change of mode lets go of
+    /// every finger the layer held, so a USE that sat the body down is not also a STAND held.
+    pub fn set(&mut self, fit: &crate::ui::Fit, mode: Mode) {
+        self.win = [fit.points.x, fit.points.y];
+        self.frame = fit.frame();
         if mode != self.mode {
             self.fingers.clear();
             self.stick = None;
@@ -303,12 +308,12 @@ impl Layer {
         }
     }
 
-    /// The screen's scale for the data's px.
-    fn k(&self) -> f32 {
-        (self.win[0].min(self.win[1]) / self.d.screen_ref_px as f32).max(0.1)
+    /// Layout points a px of the data: the reference frame's height over the data's (design 5's one scale).
+    pub fn k(&self) -> f32 {
+        (self.frame.height() / self.d.screen_ref_px as f32).max(0.01)
     }
 
-    /// Where button `b` is (its centre, window coordinates) and its radius (half its side for a square).
+    /// Where button `b` is (its centre, layout points) and its radius (half its side for a square).
     pub fn place(&self, b: Btn) -> (Pos2, f32) {
         let (w, h, k, d) = (self.win[0], self.win[1], self.k(), &self.d.buttons);
         let px = |v: f64| v as f32 * k;
@@ -321,13 +326,13 @@ impl Layer {
             Btn::Map => (Pos2::new(px(d.corner_edge_px) + cr, px(d.corner_edge_px) + cr), cr),
             Btn::Menu => (Pos2::new(w - px(d.corner_edge_px) - cr, px(d.corner_edge_px) + cr), cr),
             Btn::Stand => {
-                // In the black bar beside the 16:9 console where the screen leaves one wide enough, else over the
-                // console's left end below its title band (design 4).
-                let bar = (w - h * 16.0 / 9.0) / 2.0;
+                // In the black bar beside the 16:9 console (the reference frame) where the screen leaves one wide enough,
+                // else over the console's left end below its title band (design 4).
+                let (bar, f) = (self.frame.min.x, self.frame);
                 if bar >= px(d.stand_bar_min_px) {
                     (Pos2::new(bar / 2.0, px(d.corner_edge_px) + cr), cr)
                 } else {
-                    (Pos2::new(bar.max(0.0) + px(d.corner_edge_px) + cr, h * 0.12 + cr), cr)
+                    (Pos2::new(bar.max(0.0) + px(d.corner_edge_px) + cr, f.min.y + f.height() * 0.12 + cr), cr)
                 }
             }
         }
@@ -437,22 +442,21 @@ impl Layer {
         hands
     }
 
-    /// Paint the layer on `painter` (UI points; `pt` UI points a window unit): the stick under the thumb, the
-    /// buttons this mode shows, USE lit with `use_word` when something is in reach.
-    pub fn paint(&self, painter: &egui::Painter, pt: f32, use_word: Option<&str>) {
+    /// Paint the layer on `painter` (layout points, as the layer works): the stick under the thumb, the buttons this
+    /// mode shows, USE lit with `use_word` when something is in reach.
+    pub fn paint(&self, painter: &egui::Painter, use_word: Option<&str>) {
         if !self.active || self.mode == Mode::Off {
             return;
         }
-        let p = |v: Pos2| Pos2::new(v.x * pt, v.y * pt);
         let glass = Color32::from_rgba_unmultiplied(10, 16, 24, 115);
         let rim = Color32::from_rgba_unmultiplied(230, 240, 250, 128);
         let amber = Color32::from_rgb(240, 163, 71);
         let ink = Color32::from_rgb(11, 15, 20);
         let text = Color32::from_rgb(230, 238, 246);
         let font = |size: f32| FontId::new(size, FontFamily::Name(crate::vg::BOLD.into()));
-        let k = self.k() * pt;
+        let k = self.k();
         if let (Some(s), Mode::Foot { .. }) = (self.stick, self.mode) {
-            let (o, r) = (p(Pos2::new(s.o[0], s.o[1])), self.d.stick.ring_px as f32 * k);
+            let (o, r) = (Pos2::new(s.o[0], s.o[1]), self.d.stick.ring_px as f32 * k);
             let ring = if s.run { amber } else { rim };
             painter.circle(
                 o,
@@ -460,7 +464,7 @@ impl Layer {
                 Color32::from_rgba_unmultiplied(10, 16, 24, 77),
                 Stroke::new(if s.run { 4.0_f32 } else { 2.0 }, ring),
             );
-            let knob = Pos2::new(o.x + s.d[0] * pt, o.y + s.d[1] * pt);
+            let knob = Pos2::new(o.x + s.d[0], o.y + s.d[1]);
             let fill = if s.run {
                 Color32::from_rgba_unmultiplied(240, 163, 71, 224)
             } else {
@@ -472,7 +476,6 @@ impl Layer {
             self.fingers.iter().filter_map(|f| if let Role::Button(b) = f.role { Some(b) } else { None }).collect();
         for b in BUTTONS.iter().copied().filter(|b| self.mode.shows(*b)) {
             let (c, r) = self.place(b);
-            let (c, r) = (p(c), r * pt);
             let down = held.contains(&b);
             let fill = if down { Color32::from_rgba_unmultiplied(230, 240, 250, 77) } else { glass };
             match b {
@@ -504,7 +507,7 @@ impl Layer {
                     let rect = Rect::from_center_size(c, Vec2::splat(r * 2.0));
                     painter.rect(
                         rect,
-                        8.0 * pt,
+                        8.0 * k,
                         Color32::from_rgba_unmultiplied(10, 16, 24, 224),
                         Stroke::new(2.0_f32, rim),
                         egui::StrokeKind::Inside,
@@ -526,12 +529,12 @@ impl Layer {
     }
 
     /// The stand ring: how much of STAND's hold has passed, 0..1, drawn round STAND.
-    pub fn paint_stand(&self, painter: &egui::Painter, pt: f32, share: f64) {
+    pub fn paint_stand(&self, painter: &egui::Painter, share: f64) {
         if !self.active || self.mode != Mode::Seated || share <= 0.0 {
             return;
         }
         let (c, r) = self.place(Btn::Stand);
-        let (c, r) = (Pos2::new(c.x * pt, c.y * pt), r * pt + 6.0);
+        let r = r + 6.0;
         let n = 32;
         let end = (share.min(1.0) * f64::from(n)).round() as i32;
         let pts: Vec<Pos2> = (0..=end)
@@ -602,6 +605,8 @@ pub struct ConsoleFinger {
     /// Fingers since the last frame, UI points, and the time.
     queue: Vec<(u64, TouchPhase, Pos2, f64)>,
     press: Option<Press>,
+    /// A second finger down beside a dragging one: its id and where it is (a pinch, chase-orbit design 5).
+    second: Option<(u64, Pos2)>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -617,7 +622,7 @@ struct Press {
 impl ConsoleFinger {
     /// A console's finger from the data.
     pub fn new(d: ConsoleData) -> Self {
-        Self { d, queue: Vec::new(), press: None }
+        Self { d, queue: Vec::new(), press: None, second: None }
     }
 
     /// A finger on the console, UI points, at `now` seconds; it acts at the next [`ConsoleFinger::resolve`].
@@ -629,6 +634,7 @@ impl ConsoleFinger {
     pub fn clear(&mut self) {
         self.queue.clear();
         self.press = None;
+        self.second = None;
     }
 
     /// Where the console's tip shows: the finger of a long press.
@@ -636,13 +642,45 @@ impl ConsoleFinger {
         self.press.filter(|p| p.long).map(|p| p.at)
     }
 
-    /// The fingers since the last frame as the pointer's events, against this frame's controls; `pt` is UI points a
-    /// window unit (the data's px are window units), `now` seconds.
+    /// The fingers since the last frame as the pointer's events, against this frame's controls; `pt` is layout points
+    /// a px of the data ([`Layer::k`]), `now` seconds.
     pub fn resolve(&mut self, hits: &Hits, pt: f32, now: f64) -> Vec<PointerEv> {
         let (reach, still) = (self.d.reach_px as f32 * pt, self.d.still_px as f32 * pt);
         let mut out = Vec::new();
         for (id, phase, at, t) in std::mem::take(&mut self.queue) {
             match phase {
+                // A second finger beside one dragging (not a tap to come): the drag lets go and the two pinch.
+                TouchPhase::Down
+                    if self.second.is_none() && self.press.is_some_and(|p| p.tap.is_none() && p.id != id) =>
+                {
+                    if let Some(p) = self.press {
+                        out.push(PointerEv::Release(p.at));
+                    }
+                    self.second = Some((id, at));
+                }
+                TouchPhase::Move if self.second.is_some() => {
+                    let (Some(p), Some((sid, s_at))) = (self.press.as_mut(), self.second.as_mut()) else { continue };
+                    let before = p.at.distance(*s_at);
+                    if p.id == id {
+                        p.at = at;
+                    } else if *sid == id {
+                        *s_at = at;
+                    } else {
+                        continue;
+                    }
+                    let after = p.at.distance(*s_at);
+                    if before > 1.0 && after > 1.0 {
+                        let mid = Pos2::new((p.at.x + s_at.x) / 2.0, (p.at.y + s_at.y) / 2.0);
+                        out.push(PointerEv::Pinch(mid, after / before));
+                    }
+                }
+                TouchPhase::Up | TouchPhase::Cancel if self.second.is_some() => {
+                    // Either finger up ends the pinch; the drag it interrupted is over already.
+                    if self.press.is_some_and(|p| p.id == id) || self.second.is_some_and(|(sid, _)| sid == id) {
+                        self.press = None;
+                        self.second = None;
+                    }
+                }
                 TouchPhase::Down if self.press.is_none() => {
                     let direct = hits.at(at).and_then(|r| r.hit.as_ref());
                     let mouse = matches!(direct, Some(Hit::Drag(_) | Hit::Hold(_) | Hit::Tap(_)));
@@ -715,11 +753,56 @@ mod tests {
         sc_core::data::parse(TOUCH_FILE, &text).expect("data/input/touch.json is valid")
     }
 
-    /// A layer on a phone held sideways (844 x 390, the scale 1), on foot.
+    /// A phone held sideways: 844 x 390 CSS px, the data's scale.
+    fn phone() -> crate::ui::Fit {
+        crate::ui::Fit::new(844, 390, 844.0)
+    }
+
+    /// A layer on the phone, on foot.
     fn layer() -> Layer {
         let mut l = Layer::new(data());
-        l.set([844.0, 390.0], Mode::Foot { down: false });
+        l.set(&phone(), Mode::Foot { down: false });
         l
+    }
+
+    /// A finger at window position `x`, `y` on the phone (CSS px), as the drill hands it to the layer: in points.
+    fn finger(l: &mut Layer, id: u64, phase: TouchPhase, x: f32, y: f32) -> bool {
+        let p = phone().to_points(x, y);
+        l.touch(id, phase, p.x, p.y)
+    }
+
+    #[test]
+    fn every_button_is_whole_on_every_screen_and_found_where_drawn() {
+        // browser-page-fit design 5: the layer is laid out on the reference frame like every screen, so no button
+        // leaves a narrow, short or wide screen, and a finger at a button's drawn centre (in window coordinates)
+        // presses it.
+        let outputs =
+            [(1920, 1080), (1280, 720), (1366, 768), (2560, 1440), (1024, 768), (2560, 1080), (985, 455), (844, 390)];
+        for (w, h) in outputs {
+            for ratio in [1u32, 2] {
+                let fit = crate::ui::Fit::new(w * ratio, h * ratio, w as f32);
+                let screen = Rect::from_min_size(Pos2::ZERO, fit.points);
+                for mode in [Mode::Foot { down: true }, Mode::Seated] {
+                    let mut l = Layer::new(data());
+                    l.set(&fit, mode);
+                    for b in BUTTONS.iter().copied().filter(|b| mode.shows(*b)) {
+                        let (c, r) = l.place(b);
+                        let whole = Rect::from_center_size(c, Vec2::splat(2.0 * r));
+                        assert!(
+                            screen.contains_rect(whole),
+                            "{b:?} at {whole:?} leaves the {w} x {h} screen {screen:?}"
+                        );
+                        let win = fit.to_window(Rect::from_center_size(c, Vec2::ZERO)).center();
+                        let at = fit.to_points(win.x, win.y);
+                        assert_eq!(
+                            l.button_at([at.x, at.y]),
+                            Some(b),
+                            "{b:?} not found where drawn at {w} x {h} x {ratio}"
+                        );
+                    }
+                }
+            }
+        }
     }
 
     #[test]
@@ -731,8 +814,8 @@ mod tests {
     #[test]
     fn a_thumb_at_the_ring_rim_walks_at_full_speed() {
         let mut l = layer();
-        assert!(l.touch(1, TouchPhase::Down, 150.0, 300.0));
-        l.touch(1, TouchPhase::Move, 150.0, 240.0);
+        assert!(finger(&mut l, 1, TouchPhase::Down, 150.0, 300.0));
+        finger(&mut l, 1, TouchPhase::Move, 150.0, 240.0);
         let h = l.frame(1.0 / 60.0);
         assert!((h.forward - 1.0).abs() < 1e-4, "pushed to the rim is full speed, got {}", h.forward);
         assert!(h.right.abs() < 1e-4);
@@ -742,24 +825,24 @@ mod tests {
     #[test]
     fn a_half_pushed_stick_walks_at_half_speed_and_a_small_one_stands() {
         let mut l = layer();
-        l.touch(1, TouchPhase::Down, 150.0, 300.0);
-        l.touch(1, TouchPhase::Move, 180.0, 300.0);
+        finger(&mut l, 1, TouchPhase::Down, 150.0, 300.0);
+        finger(&mut l, 1, TouchPhase::Move, 180.0, 300.0);
         assert!((l.frame(0.016).right - 0.5).abs() < 1e-4);
-        l.touch(1, TouchPhase::Move, 155.0, 300.0);
+        finger(&mut l, 1, TouchPhase::Move, 155.0, 300.0);
         assert_eq!(l.frame(0.016).right, 0.0, "inside the dead zone the body stands");
     }
 
     #[test]
     fn a_thumb_held_at_the_rim_runs() {
         let mut l = layer();
-        l.touch(1, TouchPhase::Down, 150.0, 300.0);
-        l.touch(1, TouchPhase::Move, 150.0, 200.0);
+        finger(&mut l, 1, TouchPhase::Down, 150.0, 300.0);
+        finger(&mut l, 1, TouchPhase::Move, 150.0, 200.0);
         let mut run = false;
         for _ in 0..30 {
             run = l.frame(1.0 / 60.0).run;
         }
         assert!(run, "half a second at the rim is past run_hold_s");
-        l.touch(1, TouchPhase::Up, 150.0, 200.0);
+        finger(&mut l, 1, TouchPhase::Up, 150.0, 200.0);
         assert_eq!(l.frame(0.016), Hands::default(), "a lifted thumb stops the body");
     }
 
@@ -777,11 +860,11 @@ mod tests {
     #[test]
     fn holding_stand_holds_the_stand_key() {
         let mut l = layer();
-        l.set([844.0, 390.0], Mode::Seated);
+        l.set(&phone(), Mode::Seated);
         let (c, _) = l.place(Btn::Stand);
         l.touch(3, TouchPhase::Down, c.x, c.y);
-        assert!(l.frame(0.016).keys().1.contains(&keys::BACKSPACE));
-        assert!(l.frame(0.3).keys().1.contains(&keys::BACKSPACE), "held until the finger lifts");
+        assert!(l.frame(0.016).keys().1.contains(&keys::E));
+        assert!(l.frame(0.3).keys().1.contains(&keys::E), "held until the finger lifts");
         l.touch(3, TouchPhase::Up, c.x, c.y);
         assert!(l.frame(0.016).keys().1.is_empty());
     }
@@ -792,15 +875,15 @@ mod tests {
         let (c, _) = l.place(Btn::Use);
         l.touch(9, TouchPhase::Down, c.x, c.y);
         l.frame(0.016);
-        l.set([844.0, 390.0], Mode::Seated);
+        l.set(&phone(), Mode::Seated);
         assert!(l.frame(0.016).held.is_empty(), "the finger that sat the body down must not hold STAND");
     }
 
     #[test]
     fn a_finger_on_the_look_side_turns_the_view_not_the_body() {
         let mut l = layer();
-        assert!(l.touch(4, TouchPhase::Down, 600.0, 200.0));
-        l.touch(4, TouchPhase::Move, 650.0, 190.0);
+        assert!(finger(&mut l, 4, TouchPhase::Down, 600.0, 200.0));
+        finger(&mut l, 4, TouchPhase::Move, 650.0, 190.0);
         let h = l.frame(0.016);
         assert!((h.look.0 - 50.0 * 0.006).abs() < 1e-5, "50 px of drag at the data's rate, got {}", h.look.0);
         assert!(h.look.1 < 0.0);
@@ -810,10 +893,10 @@ mod tests {
     #[test]
     fn two_thumbs_walk_and_look_at_once() {
         let mut l = layer();
-        l.touch(1, TouchPhase::Down, 150.0, 300.0);
-        l.touch(2, TouchPhase::Down, 600.0, 200.0);
-        l.touch(1, TouchPhase::Move, 150.0, 260.0);
-        l.touch(2, TouchPhase::Move, 610.0, 200.0);
+        finger(&mut l, 1, TouchPhase::Down, 150.0, 300.0);
+        finger(&mut l, 2, TouchPhase::Down, 600.0, 200.0);
+        finger(&mut l, 1, TouchPhase::Move, 150.0, 260.0);
+        finger(&mut l, 2, TouchPhase::Move, 610.0, 200.0);
         let h = l.frame(0.016);
         assert!(h.forward > 0.5 && h.look.0 > 0.0);
     }
@@ -821,8 +904,8 @@ mod tests {
     #[test]
     fn with_the_layer_off_a_finger_is_not_taken() {
         let mut l = layer();
-        l.set([844.0, 390.0], Mode::Off);
-        assert!(!l.touch(1, TouchPhase::Down, 150.0, 300.0), "the menus take it");
+        l.set(&phone(), Mode::Off);
+        assert!(!finger(&mut l, 1, TouchPhase::Down, 150.0, 300.0), "the menus take it");
     }
 
     #[test]
@@ -920,6 +1003,29 @@ mod tests {
                 PointerEv::Move(Pos2::new(10.0, 20.0)),
                 PointerEv::Release(Pos2::new(10.0, 20.0))
             ]
+        );
+    }
+
+    #[test]
+    fn two_fingers_on_a_drag_control_pinch() {
+        // chase-orbit design 5: a second finger beside a dragging one lets the drag go and the two pinch.
+        let rect = Rect::from_min_size(Pos2::new(0.0, 0.0), Vec2::splat(200.0));
+        let orbit = Some(Hit::Drag(crate::console::kit::Drag::Orbit));
+        let hits = Hits { regions: vec![Region { rect, hit: orbit, tip: None, track: rect, seg: None }] };
+        let mut f = ConsoleFinger::new(data().console);
+        f.take(1, TouchPhase::Down, Pos2::new(50.0, 100.0), 0.0);
+        f.take(2, TouchPhase::Down, Pos2::new(150.0, 100.0), 0.02);
+        f.take(2, TouchPhase::Move, Pos2::new(250.0, 100.0), 0.05);
+        f.take(2, TouchPhase::Up, Pos2::new(250.0, 100.0), 0.1);
+        f.take(1, TouchPhase::Up, Pos2::new(50.0, 100.0), 0.11);
+        assert_eq!(
+            f.resolve(&hits, 1.0, 0.11),
+            vec![
+                PointerEv::Press(Pos2::new(50.0, 100.0)),
+                PointerEv::Release(Pos2::new(50.0, 100.0)),
+                PointerEv::Pinch(Pos2::new(150.0, 100.0), 2.0),
+            ],
+            "the drag lets go, the spread doubles, and lifting the fingers sends nothing more"
         );
     }
 }

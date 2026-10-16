@@ -17,6 +17,54 @@ use crate::transport::{Chan, ClientNet, Dial, Impair, NetEvent};
 
 /// How far behind the newest snapshot remote bodies are drawn (netcode-and-sessions section 3: two intervals).
 pub const INTERP_DELAY_S: f64 = 0.1;
+/// How quickly the playback clock is pulled toward its goal, seconds: a time constant long beside a frame, so the pace
+/// of what is drawn is the frame's own step and only drift is taken out (chase-orbit design 2).
+pub const PLAYBACK_SYNC_S: f64 = 1.0;
+/// A playback clock further than this from its goal, seconds, jumps to it (the first snapshot, a new drill, a stall).
+pub const PLAYBACK_SNAP_S: f64 = 0.5;
+
+/// The clock snapshots are played back by, in server seconds (a snapshot's tick times `combat::DT`), chase-orbit
+/// design 2: it runs at the client's frame step and is pulled gently toward the newest snapshot less
+/// [`INTERP_DELAY_S`], so two snapshots handed over in one frame, or a film stepped on its own clock, still play back
+/// evenly. Snapshots used to be timed by when they arrived, which made the ships step (design 1).
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Playback {
+    /// Where playback is, server seconds; none until the first advance with a snapshot.
+    pub at_s: Option<f64>,
+}
+
+impl Playback {
+    /// Move on by the frame's `dt` seconds, toward `newest_s`, the newest snapshot's server time.
+    pub fn advance(&mut self, dt: f64, newest_s: f64) {
+        let goal = newest_s - INTERP_DELAY_S;
+        let dt = if dt.is_finite() { dt.max(0.0) } else { 0.0 };
+        let at = match self.at_s {
+            Some(at) if (goal - at).abs() <= PLAYBACK_SNAP_S => {
+                let at = at + dt;
+                at + (goal - at) * (1.0 - (-dt / PLAYBACK_SYNC_S).exp())
+            }
+            _ => goal,
+        };
+        self.at_s = Some(at.min(newest_s));
+    }
+
+    /// The two of `times` (server seconds, oldest first) that bracket the playback clock, and the blend between them;
+    /// before the oldest, the oldest; past the newest (or never advanced), the newest.
+    pub fn bracket(&self, times: &[f64]) -> Option<(usize, usize, f64)> {
+        let last = times.len().checked_sub(1)?;
+        let Some(t) = self.at_s else { return Some((last, last, 0.0)) };
+        if t >= times[last] {
+            return Some((last, last, 0.0));
+        }
+        if t <= times[0] {
+            return Some((0, 0, 0.0));
+        }
+        let b = times.iter().position(|x| *x > t)?;
+        let (ta, tb) = (times[b - 1], times[b]);
+        let f = if tb > ta { (t - ta) / (tb - ta) } else { 0.0 };
+        Some((b - 1, b, f))
+    }
+}
 
 /// A visual event the client draws (bolts and explosions are drawn, not sent as state).
 #[derive(Clone, Debug, PartialEq)]
@@ -107,6 +155,8 @@ pub struct Session {
     pub crew: Vec<CrewEntry>,
     /// Snapshots received, newest last, with the local time each arrived.
     snaps: VecDeque<(f64, Snapshot)>,
+    /// The clock the snapshots are drawn by (chase-orbit design 2).
+    playback: Playback,
     snap_link: Link,
     stick_link: Link,
     /// Visual events since the last drain.
@@ -151,6 +201,7 @@ impl Session {
             mission: String::new(),
             crew: Vec::new(),
             snaps: VecDeque::new(),
+            playback: Playback::default(),
             snap_link: Link::default(),
             stick_link: Link::default(),
             visuals: Vec::new(),
@@ -204,6 +255,10 @@ impl Session {
                             }
                             if s.route.is_none() {
                                 s.route = self.snaps.back().and_then(|(_, p)| p.route.clone());
+                            }
+                            // A tick that goes back is a new drill: the old one's snapshots are not played back.
+                            if self.snaps.back().is_some_and(|(_, b)| b.tick > s.tick) {
+                                self.snaps.clear();
                             }
                             self.snaps.push_back((now, s));
                             while self.snaps.len() > 40 {
@@ -283,22 +338,20 @@ impl Session {
         self.snaps.back().map(|s| &s.1)
     }
 
-    /// The two snapshots around the render time (`INTERP_DELAY_S` behind the newest) and the blend between them.
+    /// Move the playback clock on by this frame's step, seconds (the frame's own: a film's fixed step, a game's frame
+    /// time). Call once a frame, after [`Session::update`].
+    pub fn advance(&mut self, dt: f64) {
+        if let Some((_, newest)) = self.snaps.back() {
+            self.playback.advance(dt, tick_s(newest));
+        }
+    }
+
+    /// The two snapshots around the playback clock (chase-orbit design 2: by their server ticks, about
+    /// `INTERP_DELAY_S` behind the newest) and the blend between them.
     pub fn interpolation(&self) -> Option<(&Snapshot, &Snapshot, f64)> {
-        let (t_new, newest) = self.snaps.back()?;
-        let t = self.now_s() - INTERP_DELAY_S;
-        if self.snaps.len() < 2 || t >= *t_new {
-            return Some((newest, newest, 0.0));
-        }
-        for w in self.snaps.iter().zip(self.snaps.iter().skip(1)) {
-            let ((ta, a), (tb, b)) = w;
-            if t >= *ta && t <= *tb {
-                let f = if tb > ta { (t - ta) / (tb - ta) } else { 0.0 };
-                return Some((a, b, f));
-            }
-        }
-        let (_, oldest) = self.snaps.front()?;
-        Some((oldest, oldest, 0.0))
+        let times: Vec<f64> = self.snaps.iter().map(|(_, s)| tick_s(s)).collect();
+        let (a, b, f) = self.playback.bracket(&times)?;
+        Some((&self.snaps[a].1, &self.snaps[b].1, f))
     }
 
     /// The share of snapshots that never arrived.
@@ -409,6 +462,11 @@ impl Session {
     }
 }
 
+/// A snapshot's server time, seconds.
+fn tick_s(s: &Snapshot) -> f64 {
+    s.tick as f64 * sc_core::combat::DT
+}
+
 /// Wait up to `timeout` for `f` to hold, updating the session between tries (tests and tools).
 pub fn wait_until(s: &mut Session, timeout: Duration, mut f: impl FnMut(&Session) -> bool) -> bool {
     let end = Instant::now() + timeout;
@@ -420,4 +478,67 @@ pub fn wait_until(s: &mut Session, timeout: Duration, mut f: impl FnMut(&Session
         std::thread::sleep(Duration::from_millis(5));
     }
     false
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sc_core::combat::DT;
+
+    /// Play a server that ticks `ticks_per_frame` (cycled) and snapshots at 20 Hz from 30 ticks, as the solo host does,
+    /// drawing each frame by the playback clock; the server time drawn on each frame.
+    fn drawn(frame_dt: &[f64], ticks_per_frame: &[u32], frames: usize) -> Vec<f64> {
+        let (mut tick, mut acc, mut pb) = (0u64, 0.0f64, Playback::default());
+        let mut times: Vec<f64> = Vec::new();
+        let mut out = Vec::new();
+        for i in 0..frames {
+            for _ in 0..ticks_per_frame[i % ticks_per_frame.len()] {
+                tick += 1;
+                acc += 20.0 * DT;
+                if acc >= 1.0 {
+                    acc -= 1.0;
+                    times.push(tick as f64 * DT);
+                }
+            }
+            let Some(newest) = times.last().copied() else { continue };
+            pb.advance(frame_dt[i % frame_dt.len()], newest);
+            let (a, b, f) = pb.bracket(&times).unwrap();
+            out.push(times[a] + (times[b] - times[a]) * f);
+        }
+        out
+    }
+
+    #[test]
+    fn a_film_stepped_a_tick_a_frame_plays_back_in_even_steps() {
+        // Regression (chase-orbit design 1): drawn by arrival, the film's heading advanced 6.2, 10.6 and 8.8 mrad on
+        // three frames in turn, a third of them showing the newest snapshot unblended.
+        let t = drawn(&[DT], &[1], 300);
+        for w in t[60..].windows(2) {
+            assert!((w[1] - w[0] - DT).abs() < 1e-3, "each frame shows one tick more: {} s", w[1] - w[0]);
+        }
+    }
+
+    #[test]
+    fn frames_that_run_two_ticks_or_none_still_play_back_at_the_frames_pace() {
+        // A Pi frame rate (45 a second) over 30 ticks a second: frames run 0, 1 or 2 ticks, and two snapshots can arrive
+        // in one frame with one arrival time.
+        let dts = [1.0 / 45.0];
+        let ticks = [1, 0, 1, 2, 0, 0, 1, 1, 0];
+        let t = drawn(&dts, &ticks, 900);
+        let steps: Vec<f64> = t[120..].windows(2).map(|w| w[1] - w[0]).collect();
+        let worst = steps.iter().map(|s| (s - dts[0]).abs() / dts[0]).fold(0.0, f64::max);
+        assert!(worst < 0.1, "the drawn time keeps the frame's step within 10 %: worst {:.0} %", worst * 100.0);
+    }
+
+    #[test]
+    fn the_playback_clock_stays_behind_the_newest_snapshot_and_jumps_after_a_stall() {
+        let mut pb = Playback::default();
+        pb.advance(0.016, 10.0);
+        assert_eq!(pb.at_s, Some(10.0 - INTERP_DELAY_S), "the first snapshot sets it");
+        pb.advance(5.0, 10.0);
+        assert!(pb.at_s.unwrap() <= 10.0, "never past the newest snapshot");
+        pb.advance(0.016, 100.0);
+        assert_eq!(pb.at_s, Some(100.0 - INTERP_DELAY_S), "a new drill's ticks: it jumps");
+        assert_eq!(Playback::default().bracket(&[1.0, 2.0]), Some((1, 1, 0.0)), "never advanced: the newest");
+    }
 }

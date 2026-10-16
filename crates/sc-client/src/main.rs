@@ -1,8 +1,9 @@
 //! `sc-client`: the game client (engine-stack design sections 3 and 6).
 //!
 //! Today it loads the ship's compiled decks (`compiled/tern.deck`, from `sc-tools deckc`), every compartment lit
-//! by the bake in the three lighting states, blended by the state weights as the decks will be (keys 1, 2 and 3:
-//! normal, red alert, emergency power), and puts you on your feet on the bridge (deck-pipeline 13a): a body
+//! by the bake in the three lighting states, blended by the state weights as the decks will be (the headless shots
+//! take each state; in play only the captain changes the lighting, bridge-stations 7), and puts you on your feet on
+//! the bridge (deck-pipeline 13a): a body
 //! walking the deck plan's walk world with `sc-core::walk` and the numbers of `data/crew/walk.json`. Click to look
 //! around with the mouse; W A S D walk, Shift runs, Space jumps, E climbs a ladder (up where a trunk goes both ways; Q down) or goes through a hatch; F flies
 //! instead (Space and C rise and sink) and lands you where you are; Tab lets the mouse go; F12 writes a capture;
@@ -22,6 +23,7 @@
 //! `--walk-test DIR` walks a scripted route from the bridge down both ladders to deck C, captures along it, and
 //! fails if the body does not arrive where the route ends.
 
+mod bindings;
 mod console;
 mod deckrepair;
 mod drill;
@@ -41,6 +43,8 @@ mod repairs;
 mod seat;
 mod ships3d;
 mod solo;
+mod stand;
+mod stations;
 mod touch;
 mod ui;
 mod vg;
@@ -252,19 +256,22 @@ struct Outside {
 
 impl Outside {
     /// The sky's parameters seen through `proj * view` (a view with no translation), `px_rad` a pixel's angle.
-    fn sky(&self, proj: Mat4, view: Mat4, px_rad: f32) -> SkyParams {
-        sky_params(&self.data, proj, view, px_rad)
+    fn sky(&self, proj: Mat4, view: Mat4, px_rad: f32, time_s: f64) -> SkyParams {
+        sky_params(&self.data, proj, view, px_rad, time_s)
     }
 }
 
-/// The sky's parameters from the exterior's data, seen through `proj * view`, `px_rad` a pixel's angle.
-fn sky_params(e: &ExteriorData, proj: Mat4, view: Mat4, px_rad: f32) -> SkyParams {
+/// The sky's parameters from the exterior's data, seen through `proj * view`, `px_rad` a pixel's angle, at the clock
+/// `time_s` (the stars' streaks, openspec/changes/nebula-skies 5.2).
+fn sky_params(e: &ExteriorData, proj: Mat4, view: Mat4, px_rad: f32, time_s: f64) -> SkyParams {
     {
         let sun = normalized(e.sun.dir);
         let pl = normalized(e.planet.dir);
         let v4 = |c: [f32; 3], w: f64| [c[0], c[1], c[2], w as f32];
         SkyParams {
-            inv_vp: (proj * view).inverse(),
+            proj,
+            view,
+            time_s,
             sun: v4(sun, (e.sun.disc_deg / 2.0).to_radians().cos()),
             sun_colour: v4(linear(e.sun.colour_srgb), e.sun.glow),
             planet: v4(pl, e.planet.radius_deg.to_radians().sin()),
@@ -505,6 +512,8 @@ impl Client {
             std::fs::read_to_string("data/engine/render.json").map_err(|e| format!("data/engine/render.json: {e}"))?;
         let cfg = sc_core::data::parse("data/engine/render.json", &text).map_err(|e| e.to_string())?;
         let mut r = Renderer::new(&cfg);
+        // The home system's nebula behind every view (openspec/changes/nebula-skies).
+        outside::set_home_sky(&mut r)?;
         let target = r.make_target(RENDER_3D.0, RENDER_3D.1, 4);
         let text = std::fs::read_to_string("data/space/exterior.json")
             .map_err(|e| format!("data/space/exterior.json: {e}"))?;
@@ -638,7 +647,7 @@ impl Client {
         let proj = glam::camera::rh::proj::opengl::perspective(60f32.to_radians(), aspect, 0.05, 300.0);
         self.r.begin_3d(&self.target, [0.0, 0.0, 0.0, 1.0]);
         let px = 60f32.to_radians() / RENDER_3D.1 as f32;
-        self.r.draw_sky(&self.target, &sky_params(&self.exterior, proj, view, px));
+        self.r.draw_sky(&self.target, &sky_params(&self.exterior, proj, view, px, self.time_s));
         self.r.end_pass();
         let Some(l) = self.lobby.as_mut() else { return Flow::Fail };
         let mut action = lobby::LobbyAction::None;
@@ -673,6 +682,7 @@ impl Client {
                     hand_test: hand_dir,
                     playtest: false,
                     film: false,
+                    film_orbit: false,
                     all_hands: false,
                     mission: "drill-hound".into(),
                 };
@@ -1169,7 +1179,7 @@ impl App for Client {
             let look = normalized(v.look);
             let bview = glam::camera::rh::view::look_to_mat4(Vec3::ZERO, Vec3::from(look), Vec3::Y);
             self.r.begin_3d(&o.bow, [0.0, 0.0, 0.0, 1.0]);
-            self.r.draw_sky(&o.bow, &o.sky(bproj, bview, (v.fov_deg as f32).to_radians() / th as f32));
+            self.r.draw_sky(&o.bow, &o.sky(bproj, bview, (v.fov_deg as f32).to_radians() / th as f32, self.time_s));
             let glow = w[0] * panel_glow[0] + w[1] * panel_glow[1] + w[2] * panel_glow[2];
             for room in rooms.iter().filter(|r| r.outside) {
                 let rel = Vec3::new(
@@ -1216,7 +1226,7 @@ impl App for Client {
             Scene::Ship { rooms, figures, probes, outside, hull, tex, panel_first, panel_glow, .. } => {
                 if let Some(o) = outside {
                     let px = 70f32.to_radians() / RENDER_3D.1 as f32;
-                    self.r.draw_sky(&self.target, &o.sky(proj, view, px));
+                    self.r.draw_sky(&self.target, &o.sky(proj, view, px, self.time_s));
                 }
                 let glow = w[0] * panel_glow[0] + w[1] * panel_glow[1] + w[2] * panel_glow[2];
                 for Room { mesh, origin, car, .. } in rooms {
@@ -1406,9 +1416,6 @@ impl App for Client {
                 self.cam.yaw -= dx * k;
                 self.cam.pitch = (self.cam.pitch - dy * k).clamp(-1.5, 1.5);
             }
-            Event::KeyDown(keys::N1) => self.want = 0,
-            Event::KeyDown(keys::N2) => self.want = 1,
-            Event::KeyDown(keys::N3) => self.want = 2,
             Event::KeyDown(keys::F12) => self.capture_next = true,
             Event::KeyDown(keys::F) if self.walker.is_some() => {
                 // Flying, then landing where the camera is: the body stands on the floor under the eye.
@@ -1551,6 +1558,7 @@ fn main() -> ExitCode {
             hand_test: None,
             playtest: false,
             film: false,
+            film_orbit: false,
             all_hands: false,
             mission: "drill-hound".into(),
         };
@@ -1561,7 +1569,8 @@ fn main() -> ExitCode {
     }
     // Single player without the menu (openspec/changes/single-player): `--solo [--station S] [--bot] [--shots DIR]
     // [--playtest] [--all-hands] [--film]`; `--film` (with `--shots DIR`) writes every frame of a scripted run of the
-    // viewscreen's cameras for a video (chase-camera 3); `--bot` lets the player's own station play itself, for captures of a whole round;
+    // viewscreen's cameras for a video (chase-camera 3), `--film-orbit` the chase camera turning with the ship and ORBIT
+    // round it (chase-orbit); `--bot` lets the player's own station play itself, for captures of a whole round;
     // `--playtest` plays it on foot, a scripted player walking the ship to its stations (`playtest`, CLAUDE.md 12);
     // `--all-hands` puts no damage-control teams aboard: the crew fight the fires and fix the ship (all-hands 1).
     if args.iter().any(|a| a == "--solo") {
@@ -1589,7 +1598,8 @@ fn main() -> ExitCode {
             seed: 7,
             hand_test: None,
             playtest: args.iter().any(|a| a == "--playtest"),
-            film: args.iter().any(|a| a == "--film"),
+            film: args.iter().any(|a| a == "--film" || a == "--film-orbit"),
+            film_orbit: args.iter().any(|a| a == "--film-orbit"),
             all_hands: args.iter().any(|a| a == "--all-hands"),
             mission: args
                 .iter()

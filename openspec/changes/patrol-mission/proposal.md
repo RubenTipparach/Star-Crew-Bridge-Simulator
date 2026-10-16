@@ -29,7 +29,7 @@ of one rule; and nothing outside changes with where the Tern is, so a mission th
   a moon, the starbase Tamsin Station, the relay at the Shoals and the points of interest a patrol visits, with their
   positions in the system frame (metres, `f64`) and the arrival point of each. It is `flight-and-navigation` 13's
   system file, kept beside the exterior's other data.
-- **The tour** (phase 3, design 1, 5, 6, 12b; the owner's mix: "Some stops should just be scan the area or planet and
+- **The tour** (phase 3, design 1, 5, 6, 12c; the owner's mix: "Some stops should just be scan the area or planet and
   move on, some stops will be give some fuel to a stranded civilian maybe 2-3 stops will be actual battle"): from the
   O'Neill pair, six stops: **scan** Cinder from orbit; **battle** at Cinder's ore lanes (three Jackals found by the
   sweep); **civilian** at Orrin's rings (helm holds alongside the stranded hauler *Marrow Lark*, a crew member walks to
@@ -84,7 +84,7 @@ placed at `data/space/systems/<id>.json`; `missions` 3's warp out is the same ju
   `docs/mockups/patrol.html`, `crates/sc-client` (`hull.rs`, `drill_bridge.rs`, a new `outside.rs`, `ships3d.rs`'s
   station generator, `drill.rs`'s objects), `crates/sc-render/shaders/deck.glsl` (the hull's relight), and
   `data/space/exterior.json` (the beacons' blink).
-- Phase 3 (the tour, design 12b): `sc-core::combat` (`patrol.rs`'s stops, kinds and groups, the scan, the fuel
+- Phase 3 (the tour, design 12c): `sc-core::combat` (`patrol.rs`'s stops, kinds and groups, the scan, the fuel
   transfer, `fighters.rs`'s pack
   with no carrier, the fight re-armed at each stop with the Tern kept, the `clear` objective, the outcome),
   `data/missions/patrol-shoals.json`, `data/space/systems/shoals.json` (Cinder's ore lanes), the bots, the briefing's
