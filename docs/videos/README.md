@@ -190,3 +190,30 @@ says nothing about a Pi client; the game ran at about 6 frames a second here.
 | 0:40-0:44 | Engage: the captain's console |
 | 0:44-0:52 | E held: up from the chair, on foot on the bridge in red alert, walking back |
 | 0:52-0:56 | Esc: the game menu, Resume, Options and Return to menu, with no Exit in the browser |
+
+## `2026-10-16-chase-smooth-before-after.mp4` (14 s, 1280 x 880, 30 fps; `chase-orbit`)
+
+The owner's "can we get some smooth ness to the rotation there?": the captain's viewscreen through the chase-camera
+film's cameras (FWD off and on, TARGET, PORT, AFT, STBD with CHASE on), the same seeded single-player round rendered
+headless on Pi 1 (Pi 5 8 GB) by `sc-client --headless --solo --station captain --film --shots DIR`. Top: before
+(commit e4c43b3), snapshots drawn by their arrival time, the 10 Hz shudder measured in `chase-orbit` design 1 (the
+heading drawn advanced 6.2, 10.6 and 8.8 mrad a frame in turn), and each camera a cut. Bottom: after, the snapshots
+played back on the server's clock, the chase camera following the turn with its 0.4 s lag, and each change easing over
+0.5 s. Encoded H.264 High, yuv420p. The film steps the game 1/30 s a frame, so it shows what is drawn, not the Pi's
+frame rate.
+
+## `2026-10-16-chase-orbit.mp4` (45 s, 1280 x 720, 30 fps; `chase-orbit`)
+
+ORBIT, filmed the same way with `sc-client --headless --solo --station captain --film-orbit --shots DIR` and
+`tools/video/film.sh`, then scaled and encoded H.264 High, yuv420p. The scripted orbit moves the hand's goal as a drag
+and the wheel would; the rig smooths it as it does a player's. Shots in `docs/screenshots/engine/chase-orbit/`.
+
+| Time | Shows | Shot |
+| --- | --- | --- |
+| 0:00-0:13 | The walk to the captain's chair, sitting, the countdown | |
+| 0:13 | FWD from the bow | |
+| 0:14-0:20 | CHASE on: the camera eases out behind the Tern and follows its turns; ORBIT's keycap becomes available | 1 |
+| 0:20-0:24 | TARGET: the camera eases round to look past the Tern at the Hound | 2 |
+| 0:24-0:34 | ORBIT on (lit): once round the ship, below and above it, in and out | 3, 4, 5 |
+| 0:34-0:37 | ORBIT off: the camera eases back to the chase position | 6 |
+| 0:37-0:45 | On foot behind the chair: the bridge's main viewscreen shows the captain's orbit | 7 |

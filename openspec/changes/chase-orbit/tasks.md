@@ -15,7 +15,7 @@ The owner asked on 2026-10-16 (the proposal).
 - [x] 2.4 The feed and the bracket from one camera (`ConsoleView::cam`); the bridge's main viewscreen's rig.
 - [x] 2.5 ORBIT in the mockup first, then the engine's button, drag, wheel, pinch and the O key.
 - [x] 2.6 `Command::MainView`'s orbit, `Bridge::main_orbit`, the snapshot (protocol 17), `on_screen`; round trip test.
-- [ ] 2.7 The video and the shots: CHASE turning, before and after, and ORBIT round the ship.
+- [x] 2.7 The video and the shots: CHASE turning, before and after, and ORBIT round the ship.
 
 ## 3. Gate
 
