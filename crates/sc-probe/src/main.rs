@@ -5,7 +5,8 @@
 //!
 //! Scenes built so far: 1 (the triangle curve), 2 (the draw-call curve), 3 (fill rate: overdraw,
 //! the texture array fetch, MSAA 4x), 4 (render to texture) and 8 (sokol_gfx's own cost: CPU per
-//! draw from scenes 1 and 2, and the memory its pools took). Scene 5 (UI) waits for the egui
+//! draw from scenes 1 and 2, and the memory its pools took), and 10 (the sky pass, openspec/changes/nebula-skies task
+//! 6.1: the old sky against the nebula mesh with its stars' lines and heads, at rest and turning). Scene 5 (UI) waits for the egui
 //! painter, scene 6 (memory with the Tern's decks) for `deckc`, scene 7 for the ship systems.
 //!
 //! Each frame waits for the GPU before it is shown (`sc_render::finish`), so a frame's time is its
@@ -14,7 +15,7 @@
 //! Its numbers mean something only on a Raspberry Pi 5 (CLAUDE.md 2). Anywhere else it proves that
 //! every scene draws, and the report says so in its first line.
 //!
-//! Usage: sc-probe [--headless] [--quick] [--frames 120] [--warmup 30] [--repeats 3]
+//! Usage: sc-probe [--headless] [--quick] [--frames 120] [--warmup 30] [--repeats 3] [--scenes 1,2,10]
 //!                 [--width 1920 --height 1080] [--out docs/benchmarks/<date>-<name>] [--captures DIR]
 
 mod geometry;
@@ -47,6 +48,8 @@ struct Options {
     out: Option<PathBuf>,
     captures: Option<PathBuf>,
     root: PathBuf,
+    /// Only these scenes (none: all).
+    scenes: Vec<u8>,
 }
 
 fn options() -> Result<Options, String> {
@@ -61,6 +64,7 @@ fn options() -> Result<Options, String> {
         out: None,
         captures: None,
         root: PathBuf::from("."),
+        scenes: Vec::new(),
     };
     let mut args = std::env::args().skip(1);
     while let Some(a) = args.next() {
@@ -76,6 +80,12 @@ fn options() -> Result<Options, String> {
             "--out" => o.out = Some(PathBuf::from(val()?)),
             "--captures" => o.captures = Some(PathBuf::from(val()?)),
             "--root" => o.root = PathBuf::from(val()?),
+            "--scenes" => {
+                o.scenes = val()?
+                    .split(',')
+                    .map(|s| s.trim().parse().map_err(|e| format!("--scenes: {e}")))
+                    .collect::<Result<_, _>>()?
+            }
             _ => return Err(format!("unknown option {a}")),
         }
     }
@@ -96,6 +106,10 @@ pub enum Step {
     Fill { layers: u32, textured: bool, msaa: bool },
     /// Scene 4: 30,000 triangles drawn into a `w` x `h` target, which is then shown.
     Rtt { w: u32, h: u32 },
+    /// Scene 10: the sky pass at 1280 x 720 with MSAA 4x (the bridge's and the feed's targets): the old sky (no
+    /// nebula), or the home system's nebula with its stars, the view at rest or turning at 70 degrees a second (every
+    /// star a 1.7 degree streak), with or without the vector stars (the mesh's cost alone).
+    Sky { nebula: bool, turning: bool, stars: bool },
 }
 
 impl Step {
@@ -105,6 +119,7 @@ impl Step {
             Step::Calls { .. } => 2,
             Step::Fill { .. } => 3,
             Step::Rtt { .. } => 4,
+            Step::Sky { .. } => 10,
         }
     }
     fn label(&self) -> String {
@@ -119,6 +134,12 @@ impl Step {
                 )
             }
             Step::Rtt { w, h } => format!("rtt-{w}x{h}"),
+            Step::Sky { nebula, turning, stars } => format!(
+                "sky-{}{}{}",
+                if *nebula { "nebula" } else { "old" },
+                if *stars || !*nebula { "" } else { "-no-stars" },
+                if *turning { "-turning" } else { "" }
+            ),
         }
     }
 }
@@ -139,6 +160,10 @@ fn steps(quick: bool) -> Vec<Step> {
     }
     s.push(Step::Fill { layers: 4, textured: true, msaa: true });
     s.extend([(512, 256), (1024, 512), (2048, 1024)].map(|(w, h)| Step::Rtt { w, h }));
+    s.extend(
+        [(false, false, false), (true, false, false), (true, false, true), (true, true, true)]
+            .map(|(nebula, turning, stars)| Step::Sky { nebula, turning, stars }),
+    );
     s
 }
 
@@ -166,6 +191,12 @@ struct Probe {
     target: Target,
     target_msaa: Target,
     rtt: Vec<((u32, u32), Target)>,
+    /// Scene 10's sky (the home system's) and stars.
+    sky: (sc_core::sky::NebulaSky, sc_core::sky::Starfield),
+    /// Scene 10's clock and the view's heading, advanced a sixtieth of a second a frame.
+    sky_clock: (f64, f32),
+    /// Which sky is set: 0 the old, 1 the nebula without its stars, 2 with them.
+    sky_set: u8,
     steps: Vec<Step>,
     step: usize,
     repeat: u32,
@@ -235,7 +266,20 @@ impl Probe {
         let target_msaa = r.make_target(RENDER_3D.0, RENDER_3D.1, 4);
         let rtt =
             [(512, 256), (1024, 512), (2048, 1024)].map(|s| (s, r.make_target(s.0, s.1, 1))).into_iter().collect();
-        let steps = steps(o.quick);
+        let mut steps = steps(o.quick);
+        if !o.scenes.is_empty() {
+            steps.retain(|s| o.scenes.contains(&s.scene()));
+        }
+        let read = |rel: &str| {
+            let p = o.root.join(rel);
+            std::fs::read_to_string(&p).map_err(|e| format!("{}: {e}", p.display()))
+        };
+        let home: sc_core::system::SystemFile =
+            parse(sc_core::system::HOME_FILE, &read(sc_core::system::HOME_FILE)?).map_err(|e| e.to_string())?;
+        let field = sc_core::sky::Starfield::load(sc_core::sky::STARFIELD_FILE, &read(sc_core::sky::STARFIELD_FILE)?)
+            .map_err(|e| e.to_string())?;
+        let path = sc_core::sky::sky_file(&home.sky);
+        let sky = sc_core::sky::NebulaSky::load(&path, &read(&path)?, &field).map_err(|e| e.to_string())?;
         let samples = vec![Vec::new(); steps.len()];
         let info = report::RunInfo::collect(gl, &o, rss_before, rss_after_setup, report::rss_bytes());
         println!(
@@ -256,6 +300,9 @@ impl Probe {
             target,
             target_msaa,
             rtt,
+            sky: (sky, field),
+            sky_clock: (0.0, 0.0),
+            sky_set: 0,
             steps,
             step: 0,
             repeat: 0,
@@ -324,6 +371,52 @@ impl Probe {
                 self.r.end_pass();
                 self.r.present(rt, out_w, out_h, true);
                 tris
+            }
+            Step::Sky { nebula, turning, stars } => {
+                let want = match (nebula, stars) {
+                    (false, _) => 0,
+                    (true, false) => 1,
+                    (true, true) => 2,
+                };
+                if self.sky_set != want {
+                    match want {
+                        0 => self.r.clear_sky(),
+                        1 => {
+                            let bare = sc_core::sky::NebulaSky { stars: Vec::new(), ..self.sky.0.clone() };
+                            self.r.set_sky(&bare, &self.sky.1);
+                        }
+                        _ => self.r.set_sky(&self.sky.0, &self.sky.1),
+                    }
+                    self.sky_set = want;
+                }
+                self.sky_clock.0 += 1.0 / 60.0;
+                if turning {
+                    self.sky_clock.1 += 70f32.to_radians() / 60.0;
+                }
+                let t = &self.target_msaa;
+                let vfov = 70f32.to_radians();
+                let proj = sc_render::depth::outside_lens(vfov, RENDER_3D.0 as f32 / RENDER_3D.1 as f32);
+                let view = Mat4::from_rotation_y(self.sky_clock.1) * Mat4::from_rotation_x(0.2);
+                let sun = glam::Vec3::new(0.6, 0.2, -0.77).normalize();
+                let planet = glam::Vec3::new(-0.5, -0.3, -0.81).normalize();
+                let sky = sc_render::SkyParams {
+                    proj,
+                    view,
+                    time_s: self.sky_clock.0,
+                    sun: [sun.x, sun.y, sun.z, 0.00025f32.cos()],
+                    sun_colour: [1.0, 0.86, 0.64, 0.35],
+                    planet: [planet.x, planet.y, planet.z, 0.12],
+                    ocean: [0.03, 0.06, 0.12, 0.35],
+                    land: [0.16, 0.12, 0.08, 0.55],
+                    cloud: [0.7, 0.7, 0.72, 0.02],
+                    atmosphere: [0.25, 0.45, 0.9, 0.04],
+                    stars: [0.06, 0.75, vfov / RENDER_3D.1 as f32, 0.0],
+                };
+                self.r.begin_3d(t, clear);
+                self.r.draw_sky(t, &sky);
+                self.r.end_pass();
+                self.r.present(t, out_w, out_h, true);
+                self.r.sky_counts()[0] as u64
             }
         }
     }

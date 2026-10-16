@@ -225,6 +225,7 @@ ceilings, not targets: low poly is the style (owner: "this game doesn't need hig
 | Secondary views | Up to two at 512 x 256, at most 15 Hz | A turret feed, a fighter's camera on a console. |
 | MSAA | 4x where the probe finds it cheap | Tile-based GPUs resolve MSAA on chip. |
 | Average overdraw | 3x | Glass, particles and UI over the scene. |
+| The sky, a view | 4 draws, 15,982 triangles, about 305 KB of buffers, no texture; about 1 ms of GPU | `nebula-skies`: the mesh, the faint stars, the vector stars' lines and heads. Measured on a Pi 5 (8 GB) on 2026-10-16 at 1280 x 720 with MSAA 4x: 21.45 ms against the old sky's 20.45 ms a frame (`sc-probe` scene 10); the captain's film's median frame 14.83 ms against 14.25 ms (`docs/benchmarks/2026-10-16-nebula-skies-pi5/`). |
 | Client main thread, CPU | 8 ms | Culling and submission 3, UI 2, prediction and interpolation 1, the rest slack. |
 | Client resident memory | 384 MB | Allocated at startup by budget; refuses to load what does not fit. |
 | GPU allocations (CMA) | 192 MB | Textures, buffers, framebuffers. To set and verify on the Pi. |

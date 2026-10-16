@@ -181,7 +181,8 @@ impl Report {
         md.push_str(
             "\nNot yet measured: scene 2 with instancing (the instanced program comes with the projectiles), scene 3 with a lightmap \
              fetch (none planned, `light-baking`), scene 5 (UI: the egui painter), scene 6 (memory with the Tern's decks: `deckc`), \
-             scene 7 (the ship systems), scene 9 (the browser build).\n",
+             scene 7 (the ship systems), scene 9 (the browser build). Scene 10 (the sky pass) counts the sky mesh's triangles; \
+             the stars' lines and heads are two more draws.\n",
         );
         let json = json!({
             "schema": "starcrew.probe-report/1", "date": info.date, "is_pi5": info.is_pi,
