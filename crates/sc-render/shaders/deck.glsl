@@ -21,6 +21,9 @@ layout(binding=0) uniform deck_vs_params {
     // A baked sun to relight (patrol-mission design 11.3): xyz the direction the colours were baked from, in the
     // mesh's frame; w the bake's ambient share, 0 for none. With it, flash is the frame's sun, not an added light.
     vec4 relight;
+    // With a relight, the sky's tint on the bake's ambient share (openspec/changes/nebula-skies design 6): display
+    // multipliers for a surface facing +X, -X, +Y, -Y, +Z and -Z of the mesh's frame, all 1 for no sky.
+    vec4 tint[6];
 };
 
 // Integer attributes (sokol_gfx's SHORT4 and SHORT2 are integer formats): exact, decoded here.
@@ -49,7 +52,13 @@ void main() {
     if (relight.w > 0.0) {
         // The bake's light divided out and the frame's sun multiplied in: light(s) = a + (1 - a) max(0, n . s).
         float baked = relight.w + (1.0 - relight.w) * max(dot(normal.xyz, relight.xyz), 0.0);
-        c.rgb *= (relight.w + (1.0 - relight.w) * sun_now) / baked;
+        // The ambient share takes the sky's colour from the way the surface faces (Half-Life 2's ambient cube).
+        vec3 n = normal.xyz;
+        vec3 n2 = n * n / max(dot(n, n), 1e-6);
+        vec3 sky = n2.x * (n.x >= 0.0 ? tint[0].rgb : tint[1].rgb)
+                 + n2.y * (n.y >= 0.0 ? tint[2].rgb : tint[3].rgb)
+                 + n2.z * (n.z >= 0.0 ? tint[4].rgb : tint[5].rgb);
+        c.rgb *= (relight.w * sky + (1.0 - relight.w) * sun_now) / baked;
     } else {
         c.rgb += vec3(sun_now);
     }

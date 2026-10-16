@@ -124,8 +124,10 @@ another player's body.
 - **THEN** the player operates engineering at the next tick and the helm passes to automation
 
 ### Requirement: Condition and red alert
-The ship SHALL have a condition of normal or red alert, set by the captain, by any seated bridge
-player while no captain is seated, or by the auto-condition. Entering red alert SHALL, at the next
+The ship SHALL have a condition of normal or red alert, set only from the Captain's station: by the
+player seated there or, while no player holds it, by the captain's auto-condition. The server SHALL
+refuse a condition command from any other station, and no key or control outside the captain's
+console SHALL change the ship's lighting in a game. Entering red alert SHALL, at the next
 tick, blend every powered compartment to its red alert lighting over 0.5 s, sound the klaxon, apply
 the Combat preset to automated Engineering, and make automated Tactical raise shields. A
 compartment whose lighting load is unpowered while the emergency bus is up SHALL show emergency
@@ -134,6 +136,10 @@ lighting whatever the condition.
 #### Scenario: Red alert called
 - **WHEN** the captain holds red alert for 0.6 s
 - **THEN** within 0.5 s every powered compartment's lighting is the red alert set and every console's condition chip reads RED ALERT
+
+#### Scenario: Another station asks for red alert
+- **WHEN** a player seated at the helm, or at any station but the captain's, sends red alert
+- **THEN** the server refuses it as not their station, and the condition and the lighting stay as they were
 
 #### Scenario: Auto-condition
 - **WHEN** no captain is seated and a contact identified hostile comes within 15 km

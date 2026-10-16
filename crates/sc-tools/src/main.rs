@@ -66,7 +66,28 @@ fn check_data(root: &Path) -> Result<usize, String> {
         .collect();
     ids.sort();
     sc_core::repair::data::RepairData::load(&ids, read)?;
-    Ok(files.len() + drill.len() + missions.len() + 2 + 3 + ids.len())
+    // The skies (nebula-skies design 9): the stars' file, every generated sky against it, and the home system's sky
+    // must be one of them.
+    let starfield_text = read(sc_core::sky::STARFIELD_FILE)?;
+    let starfield =
+        sc_core::sky::Starfield::load(sc_core::sky::STARFIELD_FILE, &starfield_text).map_err(|e| e.to_string())?;
+    let mut skies: Vec<String> = std::fs::read_dir(root.join("data/space/skies"))
+        .map_err(|e| format!("data/space/skies: cannot be read: {e}"))?
+        .filter_map(|e| e.ok()?.file_name().into_string().ok()?.strip_suffix(".json").map(str::to_owned))
+        .filter(|id| id != "recipes")
+        .collect();
+    skies.sort();
+    for id in &skies {
+        let rel = sc_core::sky::sky_file(id);
+        sc_core::sky::NebulaSky::load(&rel, &read(&rel)?, &starfield).map_err(|e| e.to_string())?;
+    }
+    let home: sc_core::system::SystemFile =
+        sc_core::data::parse(sc_core::system::HOME_FILE, &read(sc_core::system::HOME_FILE)?)
+            .map_err(|e| e.to_string())?;
+    if !skies.contains(&home.sky) {
+        return Err(format!("{}: sky: no sky named {:?} in data/space/skies", sc_core::system::HOME_FILE, home.sky));
+    }
+    Ok(files.len() + drill.len() + missions.len() + 2 + 3 + ids.len() + 1 + skies.len())
 }
 
 fn main() -> ExitCode {

@@ -18,7 +18,7 @@ use crate::console::{
 use crate::console::{BusesView, CoolView, EngView, GroupView, PreviewView, PumpView, ReactorView, TankView};
 use crate::console::{HitView, HoldView, Hpr, OrderView, PlanView, ScanCam, ScanCams, SciView, TubeView, TurretView};
 use egui::{Pos2, Rect};
-use glam::{DQuat, DVec3};
+use glam::DVec3;
 use sc_client::platform::keys;
 use sc_core::combat::attitude::{self, from_hpr, hpr_of, whole_deg};
 use sc_core::combat::damage::{self, RoomState};
@@ -100,6 +100,13 @@ pub struct Seat {
     feed_cam: Cam,
     /// The chase toggle: the viewscreen's camera seen from behind the ship (chase-camera 1).
     chase: bool,
+    /// ORBIT's goal while it is on, [heading, elevation, distance] (degrees, degrees, metres; chase-orbit design 5),
+    /// the orbit last sent to the main viewscreen as its bytes and when (the captain's, design 6).
+    orbit: Option<[f64; 3]>,
+    orbit_sent: Option<[u8; 3]>,
+    orbit_sent_s: f64,
+    /// The viewscreen's camera rig: the one camera its feed and bracket are drawn from (chase-orbit design 7).
+    rig: console::rig::FeedRig,
     oe: Hpr,
     /// The helm's speed set point and strafe as this seat sets them (sent as commands).
     pub speed_set: f64,
@@ -176,6 +183,10 @@ impl Default for Seat {
             scan_cam: ScanCams::default(),
             feed_cam: Cam { yaw: 40.0, el: 30.0 },
             chase: false,
+            orbit: None,
+            orbit_sent: None,
+            orbit_sent_s: -1e9,
+            rig: console::rig::FeedRig::default(),
             oe: Hpr { h: 45.0, p: 10.0, r: -30.0 },
             speed_set: 0.0,
             strafe: [0.0; 2],
@@ -412,8 +423,19 @@ impl Seat {
         let verb_of = |to: Station, i: u8| data.order_verbs(to).get(usize::from(i)).map(|v| v[0].clone());
         let order =
             br.orders.iter().find(|(to, _, done)| *to == station && !done).and_then(|(to, v, _)| verb_of(*to, *v));
-        // The captain's camera on every viewscreen while it is taken.
-        let feed = br.view.and_then(|i| FEEDS.get(usize::from(i))).map_or(self.feed.clone(), |f| (*f).to_owned());
+        // The captain's camera, CHASE, zoom and orbit on every viewscreen while it is taken (captains-viewscreen 1,
+        // chase-orbit 6); the captain's own console shows his own orbit as he drags it, not its echo.
+        let own = console::ScreenSet {
+            feed: self.feed.clone(),
+            chase: self.chase,
+            zoom: self.zoom,
+            orbit: self.orbit.filter(|_| self.chase),
+        };
+        let mut set = console::on_screen(br.view, (br.main_chase, br.main_zoom, br.main_orbit), own);
+        if station == Station::Captain && set.chase && set.chase == self.chase {
+            set.orbit = self.orbit;
+        }
+        let console::ScreenSet { feed, chase, zoom, orbit } = set;
         let sci = SciView {
             sel: self.sci_sel.clone(),
             scanning: br.scanning,
@@ -491,7 +513,7 @@ impl Seat {
         let gun_turret = data.tern_combat.turrets.iter().position(|t| t.id == GUNNER_TURRET);
         let gun_snap = gun_turret.and_then(|i| tern.turrets.get(i));
         let objectives = objectives_view(snap, tern, hound, data);
-        ConsoleView {
+        let mut v = ConsoleView {
             station: station.id().into(),
             word: word.into(),
             role: role.into(),
@@ -541,8 +563,11 @@ impl Seat {
                 .collect(),
             flash_age_s: std::array::from_fn(|f| now - self.face_hit[f]),
             feed,
-            chase: self.chase,
-            zoom: self.zoom,
+            chase,
+            zoom,
+            orbit,
+            orbit_on: orbit.is_some(),
+            cam: None,
             nav_km: self.nav_km,
             tac_km: self.tac_km,
             sci_km: self.sci_km,
@@ -581,13 +606,17 @@ impl Seat {
             gun_locked: gun_snap.is_some_and(|t| t.cooling),
             objectives_open: self.obj_open,
             objectives,
+            leave: None,
             // Engineering's schematic, while open: it waits for the first snapshots with the grid and the routing.
             schem: if self.schem_open {
                 snap.power.as_ref().zip(snap.route.as_ref()).map(|(p, r)| self.schem(p, r, snap, data))
             } else {
                 None
             },
-        }
+        };
+        // The viewscreen's camera this frame, stepped once: the feed and the bracket both use it (chase-orbit 7).
+        v.cam = Some(self.rig.step(now, tern.rot, &console::feed_want(&v), console::chase_cfg()));
+        v
     }
 
     /// Engineering's schematic (power-routing 6.3): the routing and the grid as the snapshot has them, with the client's
@@ -896,23 +925,15 @@ impl Seat {
         self.stick_drag = [0.0; 3];
     }
 
-    /// The viewscreen's camera: where it stands (chase on: off the ship, relative to its centre, in the system frame's
-    /// axes; off: None, on the bow), forward and up in the system frame, and the vertical field of view in radians (the
-    /// mockup's feed: 70 degrees across at zoom 1; the chase camera's own wider lens).
-    pub fn feed_camera(
-        &self,
-        v: &ConsoleView,
-        tern_rot: DQuat,
-        chase: &sc_core::exterior::Chase,
-    ) -> (Option<DVec3>, DVec3, DVec3, f64) {
-        let tgt = v.target.as_ref().and_then(|id| v.contacts.iter().find(|c| &c.id == id));
-        let (eye, b, vfov) = console::feed_view(&v.feed, self.chase, tgt.map(|c| console::v3(c.rel)), chase, v.zoom);
-        (eye.map(|e| tern_rot * e), tern_rot * b.f, tern_rot * b.u, vfov)
-    }
-
     /// Turn the chase camera on or off (scripted captures; a player presses CHASE).
     pub fn set_chase(&mut self, on: bool) {
         self.chase = on;
+    }
+
+    /// Set ORBIT's goal, [heading, elevation, distance] (scripted captures; a player presses ORBIT and drags), held to
+    /// its limits; none: off.
+    pub fn set_orbit(&mut self, goal: Option<[f64; 3]>) {
+        self.orbit = goal.map(|g| console::rig::clamp_orbit(g, console::chase_cfg()));
     }
 
     /// Zoom this seat's viewscreen (scripted captures; a player presses the zoom column).
@@ -925,16 +946,43 @@ impl Seat {
         self.feed = feed.to_owned();
     }
 
-    /// The captain's camera, chase and zoom on the bridge's main viewscreen (chase-camera 2, viewscreen-zoom 3); other
-    /// stations send nothing.
-    fn send_main_view(&self, v: &ConsoleView, out: &mut Vec<SeatAsk>) {
+    /// The captain's camera, chase, zoom and orbit on the bridge's main viewscreen (chase-camera 2, viewscreen-zoom 3,
+    /// chase-orbit 6); other stations send nothing.
+    fn send_main_view(&mut self, v: &ConsoleView, out: &mut Vec<SeatAsk>) {
         if v.station != "captain" {
             return;
         }
         let (Some(feed), Some(zoom)) = (FEEDS.iter().position(|f| *f == self.feed), zoom_index(self.zoom)) else {
             return;
         };
-        out.push(SeatAsk::Command(Command::MainView { feed: feed as u8, chase: self.chase, zoom: zoom as u8 }));
+        let orbit = self.orbit_bytes();
+        self.orbit_sent = orbit;
+        out.push(SeatAsk::Command(Command::MainView { feed: feed as u8, chase: self.chase, zoom: zoom as u8, orbit }));
+    }
+
+    /// ORBIT's goal as the three bytes the main viewscreen is sent (chase-orbit design 6), while it is on.
+    fn orbit_bytes(&self) -> Option<[u8; 3]> {
+        let o = &console::chase_cfg().orbit;
+        self.orbit.filter(|_| self.chase).map(|[y, p, d]| o.quantize(y, p, d))
+    }
+
+    /// ORBIT on or off (chase-orbit design 5): on only with CHASE, starting where the chase camera is.
+    fn toggle_orbit(&mut self, v: &ConsoleView, out: &mut Vec<SeatAsk>) {
+        if !self.chase {
+            return;
+        }
+        self.orbit = match self.orbit {
+            Some(_) => None,
+            None => Some(console::rig::orbit_start(&self.feed, console::feed_want(v).target, console::chase_cfg())),
+        };
+        self.send_main_view(v, out);
+    }
+
+    /// ORBIT's distance moved in (`k` over 1) or out, held to its limits.
+    fn orbit_zoom(&mut self, k: f64) {
+        if let Some(o) = self.orbit.as_mut() {
+            *o = console::rig::clamp_orbit([o[0], o[1], o[2] / k], console::chase_cfg());
+        }
     }
 
     fn act(
@@ -949,6 +997,8 @@ impl Seat {
         let cmd = |c| SeatAsk::Command(c);
         let presets = &data.tern_shields.presets;
         match a {
+            // The drill stands the player up before the console sees the press (leave-station 4).
+            Act::Leave => {}
             Act::Swap(id) => {
                 self.obj_open = false;
                 if let Some(st) = Station::from_id(&id) {
@@ -1040,6 +1090,10 @@ impl Seat {
                 } else {
                     self.chase = !self.chase;
                 }
+                // ORBIT goes with CHASE, and a new camera starts the chase camera afresh (chase-orbit O3).
+                if !self.chase || chose {
+                    self.orbit = None;
+                }
                 self.send_main_view(v, out);
                 if chose && v.station == "captain" && v.captain.as_ref().is_some_and(|c| c.view_override) {
                     if let Some(i) = FEEDS.iter().position(|f| *f == self.feed) {
@@ -1048,6 +1102,7 @@ impl Seat {
                     }
                 }
             }
+            Act::Orbit => self.toggle_orbit(v, out),
             Act::SciSel(id) => self.sci_sel = Some(id),
             Act::Scan => {
                 let scanning = v.sci.as_ref().is_some_and(|q| q.scanning);
@@ -1082,8 +1137,13 @@ impl Seat {
                 out.push(cmd(Command::Brace(!braced)));
             }
             Act::ViewTake => {
+                // On screen: his camera, CHASE and zoom first, so the big screen and every panel show his whole
+                // picture the moment he takes it (captains-viewscreen 2).
                 let taken = v.captain.as_ref().is_some_and(|c| c.view_override);
                 let feed = FEEDS.iter().position(|f| *f == self.feed).unwrap_or(1) as u8;
+                if !taken {
+                    self.send_main_view(v, out);
+                }
                 out.push(cmd(Command::Viewscreen((!taken).then_some(feed))));
             }
             Act::Room(id) => self.ship_sel = id,
@@ -1183,6 +1243,7 @@ impl Seat {
                 (c.yaw, c.d_el)
             }
             Drag::FeedView => (self.feed_cam.yaw, self.feed_cam.el),
+            Drag::Orbit => self.orbit.map_or((0.0, 0.0), |o| (o[0], o[1])),
             Drag::ShieldCam => (self.shield_cam.yaw, self.shield_cam.el),
             Drag::GunAim => (self.gun.yaw, self.gun.pitch),
             Drag::SchemCam => (self.schem_cam[0], self.schem_cam[1]),
@@ -1248,6 +1309,17 @@ impl Seat {
                     yaw: d.cam0.0 + f64::from(dx / r.width().max(1.0)) * 180.0,
                     el: (d.cam0.1 + f64::from(dy / r.height().max(1.0)) * 120.0).clamp(-85.0, 85.0),
                 };
+            }
+            // ORBIT (chase-orbit design 5): the ship follows the pointer, a drag across the viewscreen turning the camera
+            // `drag_deg_across` round it and down it half that, held short of the poles.
+            Drag::Orbit => {
+                let c = console::chase_cfg();
+                let k = c.orbit.drag_deg_across;
+                if let Some(o) = self.orbit.as_mut() {
+                    let yaw = d.cam0.0 - f64::from(dx / r.width().max(1.0)) * k;
+                    let pitch = d.cam0.1 - f64::from(dy / r.height().max(1.0)) * k / 2.0;
+                    *o = console::rig::clamp_orbit([yaw, pitch, o[2]], c);
+                }
             }
             // The schematic: a drag across turns the ship a full turn, up and down 120 degrees (held to 5-85 above);
             // the board follows the pointer.
@@ -1317,7 +1389,8 @@ impl Seat {
         // drag, a hold or a key: the player's hands on this console (the mockup's soloTakeOver).
         let band =
             |h: &Option<Hit>| matches!(h, Some(Hit::Act(Act::View(_) | Act::Mode(_) | Act::Tab(_) | Act::Swap(_))));
-        let quiet = [keys::TAB, keys::M, keys::LSHIFT, keys::RSHIFT];
+        // The stand key is the player's own, not a hand on the console shown.
+        let quiet = [keys::TAB, keys::M, keys::LSHIFT, keys::RSHIFT, ctx_input.keys.use_key];
         self.touched = ctx_input.pressed.iter().any(|k| !quiet.contains(k));
         for e in &ctx_input.events {
             match *e {
@@ -1426,6 +1499,10 @@ impl Seat {
                                 }
                             }
                             Drag::Wheel(k) => self.step_wheel(k, if up { 1.0 } else { -1.0 }),
+                            Drag::Orbit => {
+                                let step = console::chase_cfg().orbit.wheel_step;
+                                self.orbit_zoom(if up { step } else { 1.0 / step });
+                            }
                             Drag::ScanCam(key) => {
                                 self.act(Act::Range(key, if up { -1 } else { 1 }), v, tern, hound, data, &mut out)
                             }
@@ -1433,6 +1510,27 @@ impl Seat {
                         }
                     }
                 }
+                // Two fingers spread or closed on the viewscreen with ORBIT on: the orbit moves in or out by their ratio.
+                PointerEv::Pinch(p, k) => {
+                    let top = hits.regions.iter().rev().find(|r| r.contains(p));
+                    if top.is_some_and(|r| r.hit == Some(Hit::Drag(Drag::Orbit))) && k.is_finite() && k > 0.0 {
+                        self.orbit_zoom(f64::from(k));
+                    }
+                }
+            }
+        }
+        // ORBIT and its key (`data/input/bindings.json` `viewscreen.orbit`), at every console with a viewscreen; the
+        // captain's orbit goes to the main viewscreen while it changes, at most `orbit.send_hz` a second (design 6).
+        if ctx_input.pressed.contains(&ctx_input.keys.orbit) && station != Station::Gunner {
+            self.toggle_orbit(v, &mut out);
+        }
+        if station == Station::Captain && self.orbit.is_some() {
+            let q = self.orbit_bytes();
+            let every = 1.0 / console::chase_cfg().orbit.send_hz;
+            let letting_go = self.drag.is_none();
+            if q != self.orbit_sent && (letting_go || now - self.orbit_sent_s >= every) {
+                self.orbit_sent_s = now;
+                self.send_main_view(v, &mut out);
             }
         }
         // A guarded hold done: FIRE from the first ready tube.
@@ -1535,11 +1633,15 @@ impl Seat {
                 }
                 let axis =
                     |p: u32, n: u32| f64::from(u8::from(held.contains(&p))) - f64::from(u8::from(held.contains(&n)));
-                // The mockup's keys: A and D yaw to port and starboard, R and F pitch up and down, Q and E roll.
-                let stick_keys = [axis(keys::D, keys::A), axis(keys::R, keys::F), axis(keys::E, keys::Q)];
+                // A and D yaw to port and starboard, R and F pitch up and down, the bound roll keys (Z and C) roll: E is
+                // the stand key at every station (leave-station 3).
+                let (rp, rs) = ctx_input.keys.roll;
+                let stick_keys = [axis(keys::D, keys::A), axis(keys::R, keys::F), axis(rs, rp)];
                 let stick: [f64; 3] = std::array::from_fn(|i| (stick_keys[i] + self.stick_drag[i]).clamp(-1.0, 1.0));
-                // Z and C strafe to port and starboard, Space and Ctrl up and down, while held; the pad otherwise.
-                let (lat, ver) = (axis(keys::C, keys::Z), axis(keys::SPACE, keys::LCTRL));
+                // The bound strafe keys (the Left and Right arrows) strafe to port and starboard, Space and Ctrl up and
+                // down, while held; the pad otherwise.
+                let (sp, ss) = ctx_input.keys.strafe;
+                let (lat, ver) = (axis(ss, sp), axis(keys::SPACE, keys::LCTRL));
                 let m = fl.strafe_max_mps;
                 let want = [
                     if lat != 0.0 { lat * m } else { self.strafe[0] },
@@ -1646,6 +1748,16 @@ pub enum PointerEv {
     Release(Pos2),
     /// A scroll notch: up or down.
     Scroll(Pos2, bool),
+    /// Two fingers on the screen spread (over 1) or closed (under 1) by this ratio, about this point (touch).
+    Pinch(Pos2, f32),
+}
+
+/// Whether this frame's pointer pressed LEAVE STATION (leave-station 4): a press whose topmost control is it. The
+/// drill asks before the console's own input, in any phase, and stands the player up.
+pub fn leave_pressed(hits: &console::kit::Hits, events: &[PointerEv]) -> bool {
+    events
+        .iter()
+        .any(|e| matches!(e, PointerEv::Press(p) if hits.at(*p).is_some_and(|r| r.hit == Some(Hit::Act(Act::Leave)))))
 }
 
 /// This frame's input for the seat.
@@ -1654,12 +1766,15 @@ pub struct Input {
     pub events: Vec<PointerEv>,
     pub held: HashSet<u32>,
     pub pressed: HashSet<u32>,
+    /// The keys that are data (`data/input/bindings.json`).
+    pub keys: crate::bindings::Bindings,
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::console::kit::{Drag, Hits};
+    use glam::DQuat;
     use sc_core::combat::{Drill, Phase, TurretMode, TICK_HZ};
 
     /// A drill in Engage with both seats taken, its snapshot, and its data.
@@ -1685,13 +1800,13 @@ mod tests {
         (Snapshot::of(&d), data)
     }
 
-    /// The console painted headless at 1280 x 720 points: its controls.
+    /// The console painted headless on the reference frame (1280 x 720 points): its controls.
     fn paint(v: &ConsoleView) -> Hits {
         let ctx = egui::Context::default();
         crate::vg::install_fonts(&ctx);
         let mut hits = None;
         let raw = egui::RawInput {
-            screen_rect: Some(Rect::from_min_size(Pos2::ZERO, egui::vec2(1280.0, 720.0))),
+            screen_rect: Some(Rect::from_min_size(Pos2::ZERO, crate::ui::layout_size())),
             ..Default::default()
         };
         let _ = ctx.run(raw, |ctx| hits = Some(console::paint(ctx, v, false, None).0));
@@ -1703,7 +1818,7 @@ mod tests {
         let ctx = egui::Context::default();
         crate::vg::install_fonts(&ctx);
         let mut raw = egui::RawInput {
-            screen_rect: Some(Rect::from_min_size(Pos2::ZERO, egui::vec2(1280.0, 720.0))),
+            screen_rect: Some(Rect::from_min_size(Pos2::ZERO, crate::ui::layout_size())),
             ..Default::default()
         };
         if let Some(vp) = raw.viewports.get_mut(&raw.viewport_id) {
@@ -1824,7 +1939,11 @@ mod tests {
         b.press(Hit::Act(Act::Verb("HOLD FIRE".into())), 1.1);
         let verb = b.data.order_verbs(Station::Tactical).iter().position(|v| v[0] == "HOLD FIRE").unwrap() as u8;
         assert_eq!(b.press(Hit::Act(Act::Send), 1.2), vec![Command::Order(Station::Tactical, verb)]);
-        assert_eq!(b.press(Hit::Act(Act::ViewTake), 1.3), vec![Command::Viewscreen(Some(1))], "the seat's FWD camera");
+        assert_eq!(
+            b.press(Hit::Act(Act::ViewTake), 1.3),
+            vec![Command::MainView { feed: 1, chase: false, zoom: 0, orbit: None }, Command::Viewscreen(Some(1))],
+            "the seat's FWD camera, with his CHASE and zoom first (captains-viewscreen 2)"
+        );
         assert_eq!(b.press(Hit::Act(Act::Brace), 1.4), vec![Command::Brace(true)]);
     }
 
@@ -1833,25 +1952,216 @@ mod tests {
         let mut b = Bench::new(Station::Captain);
         assert_eq!(
             b.press(Hit::Act(Act::Feed("TARGET".into())), 1.0),
-            vec![Command::MainView { feed: 0, chase: false, zoom: 0 }],
+            vec![Command::MainView { feed: 0, chase: false, zoom: 0, orbit: None }],
             "his TARGET is the bridge's main viewscreen's (chase-camera 2)"
         );
         assert_eq!(
             b.press(Hit::Act(Act::Feed("CHASE".into())), 1.1),
-            vec![Command::MainView { feed: 0, chase: true, zoom: 0 }],
+            vec![Command::MainView { feed: 0, chase: true, zoom: 0, orbit: None }],
             "CHASE toggles the chase camera on the camera he has, TARGET (chase-camera 1)"
         );
         assert_eq!(
             b.press(Hit::Act(Act::Feed("CHASE".into())), 1.2),
-            vec![Command::MainView { feed: 0, chase: false, zoom: 0 }]
+            vec![Command::MainView { feed: 0, chase: false, zoom: 0, orbit: None }]
         );
         assert_eq!(
             b.press(Hit::Act(Act::ZoomTo(3)), 1.3),
-            vec![Command::MainView { feed: 0, chase: false, zoom: 3 }],
+            vec![Command::MainView { feed: 0, chase: false, zoom: 3, orbit: None }],
             "his zoom, 10x, goes with his camera (viewscreen-zoom 3)"
         );
         let mut h = Bench::new(Station::Helm);
         assert!(h.press(Hit::Act(Act::Feed("CHASE".into())), 1.0).is_empty(), "another station's camera is its own");
+    }
+
+    #[test]
+    fn while_the_captain_holds_the_viewscreen_every_panel_shows_his_camera_chase_and_zoom() {
+        // Regression (captains-viewscreen 1): the panels took his camera but kept their own CHASE and zoom.
+        let mut h = Bench::new(Station::Helm);
+        h.snap.bridge.view = Some(0);
+        h.snap.bridge.main_chase = true;
+        h.snap.bridge.main_zoom = 3;
+        let v = h.view(1.0);
+        assert_eq!((v.feed.as_str(), v.chase, v.zoom), ("TARGET", true, 10.0), "his TARGET, on CHASE, at 10x");
+        h.snap.bridge.view = None;
+        let v = h.view(1.1);
+        assert_eq!((v.feed.as_str(), v.chase, v.zoom), ("FWD", false, 1.0), "given back: the helm's own camera");
+    }
+
+    /// The orbit in a MainView command, unpacked.
+    fn sent_orbit(sent: &[Command]) -> Option<(f64, f64, f64)> {
+        let o = &console::chase_cfg().orbit;
+        sent.iter().rev().find_map(|c| match c {
+            Command::MainView { orbit, .. } => Some(orbit.map(|q| o.unquantize(q))),
+            _ => None,
+        })?
+    }
+
+    #[test]
+    fn the_captain_orbits_with_a_drag_and_the_wheel_and_the_main_viewscreen_follows() {
+        // chase-orbit design 5 and 6.
+        let c = console::chase_cfg().clone();
+        let mut b = Bench::new(Station::Captain);
+        let paint_now = |b: &mut Bench, t: f64| paint(&b.view(t));
+        assert!(
+            paint_now(&mut b, 1.0).regions.iter().all(|r| r.hit != Some(Hit::Act(Act::Orbit))),
+            "ORBIT is unavailable while CHASE is off"
+        );
+        b.press(Hit::Act(Act::Feed("CHASE".into())), 1.0);
+        let on = b.press(Hit::Act(Act::Orbit), 1.1);
+        let (yaw, pitch, dist) = sent_orbit(&on).expect("ORBIT on goes to the main viewscreen");
+        assert!(yaw.min(360.0 - yaw) < 1.0 && pitch.abs() < 1.0, "it starts on the chase camera's line: {yaw} {pitch}");
+        assert!((dist - c.distance_m).abs() < 2.0, "and its distance: {dist}");
+        assert!(b.view(1.15).orbit_on, "the button is lit");
+        // A drag a quarter of the viewscreen across: the ship follows the pointer, a quarter of a turn.
+        let hits = paint_now(&mut b, 1.2);
+        let screen = hits.regions.iter().find(|r| r.hit == Some(Hit::Drag(Drag::Orbit))).expect("the viewscreen");
+        let (p0, w) = (screen.rect.center(), screen.rect.width());
+        let p1 = p0 + egui::vec2(w / 4.0, 0.0);
+        let sent = b.input(vec![PointerEv::Press(p0), PointerEv::Move(p1), PointerEv::Release(p1)], 1.3);
+        let (yaw, _, _) = sent_orbit(&sent).expect("the orbit goes on letting go");
+        assert!((yaw - (360.0 - c.orbit.drag_deg_across / 4.0)).abs() < 1.0, "a quarter turn round: {yaw}");
+        // Dragged far down: held short of the pole.
+        let p2 = p0 + egui::vec2(0.0, screen.rect.height() * 4.0);
+        b.input(vec![PointerEv::Press(p0), PointerEv::Move(p2), PointerEv::Release(p2)], 1.4);
+        assert_eq!(b.seat.orbit.unwrap()[1], -c.orbit.pitch_limit_deg, "short of the pole");
+        let before = b.seat.orbit.unwrap()[2];
+        b.input(vec![PointerEv::Scroll(p0, true)], 1.5);
+        assert!((b.seat.orbit.unwrap()[2] - before / c.orbit.wheel_step).abs() < 1e-9, "a notch in");
+        b.input(vec![PointerEv::Pinch(p0, 0.01)], 1.6);
+        assert_eq!(b.seat.orbit.unwrap()[2], c.orbit.distance_m[1], "pinched closed: as far out as it goes");
+        let off = b.press(Hit::Act(Act::Feed("CHASE".into())), 1.7);
+        assert_eq!(sent_orbit(&off), None, "CHASE off takes ORBIT with it");
+        assert!(b.seat.orbit.is_none());
+    }
+
+    #[test]
+    fn o_turns_orbit_on_and_off_at_any_console_with_chase_on() {
+        let mut b = Bench::new(Station::Helm);
+        let key = |b: &mut Bench, t: f64| {
+            let v = b.view(t);
+            let hits = paint(&v);
+            let (tn, hd) = (b.snap.ships[0].clone(), b.snap.ships[1].clone());
+            let input = Input { pressed: [keys::O].into(), ..Default::default() };
+            let asks = b.seat.input(&input, &hits, 1.0, &v, &tn, &hd, &b.data, Station::Helm, t);
+            assert!(asks.iter().all(|a| !matches!(a, SeatAsk::Command(Command::MainView { .. }))), "the helm's own");
+        };
+        key(&mut b, 1.0);
+        assert!(b.seat.orbit.is_none(), "not without CHASE");
+        b.seat.set_chase(true);
+        key(&mut b, 1.1);
+        assert!(b.seat.orbit.is_some(), "O: on");
+        key(&mut b, 1.2);
+        assert!(b.seat.orbit.is_none(), "O again: off");
+    }
+
+    #[test]
+    fn while_the_captain_holds_the_viewscreen_every_panel_shows_his_orbit() {
+        let o = &console::chase_cfg().orbit;
+        let mut h = Bench::new(Station::Helm);
+        h.snap.bridge.view = Some(1);
+        h.snap.bridge.main_chase = true;
+        h.snap.bridge.main_orbit = Some(o.quantize(90.0, 20.0, 300.0));
+        let v = h.view(1.0);
+        let [yaw, pitch, dist] = v.orbit.expect("his orbit");
+        assert!((yaw - 90.0).abs() < 1.0 && (pitch - 20.0).abs() < 1.0 && (dist / 300.0 - 1.0).abs() < 0.01);
+        assert!(v.orbit_on && v.chase);
+    }
+
+    #[test]
+    fn the_bracket_is_projected_through_the_camera_the_feed_is_drawn_from() {
+        // chase-orbit design 7: with the camera lagging a turn, the bracket must be where the feed shows the Hound.
+        let mut b = Bench::new(Station::Helm);
+        b.seat.set_chase(true);
+        b.seat.set_feed("TARGET");
+        let rot0 = b.snap.ships[0].rot;
+        let mut v = b.view(1.0);
+        for i in 1..=20 {
+            b.snap.ships[0].rot = DQuat::from_rotation_y(f64::from(i) * 0.3f64.to_radians()) * rot0;
+            v = b.view(1.0 + f64::from(i) / 60.0);
+        }
+        let shot = v.cam.expect("the rig's camera");
+        assert_eq!(console::feed_shot(&v), shot, "the bracket's camera is the rig's");
+        let settled = console::rig::Shot::settled(&console::feed_want(&v), console::chase_cfg());
+        assert!(shot.rot.angle_between(settled.rot).to_degrees() > 1.0, "the camera lags the turn");
+        // The feed's camera in the system frame, as render_feed places it, sees the Hound where the bracket is.
+        let (t, h) = (&b.snap.ships[0], &b.snap.ships[1]);
+        let (eye_w, bw) = (t.pos + t.rot * shot.eye, shot.basis());
+        let (f, r, u) = (t.rot * bw.f, t.rot * bw.r, t.rot * bw.u);
+        let d = h.pos - eye_w;
+        let foc = 97.0 / (shot.vfov / 2.0).tan();
+        let seen = [307.0 + d.dot(r) / d.dot(f) * foc, 97.0 - d.dot(u) / d.dot(f) * foc];
+        let k = v.contacts.iter().find(|k| Some(&k.id) == v.target.as_ref()).expect("the Hound locked");
+        let br = console::bracket_rect(k, shot.eye, &shot.basis(), foc, v.zoom).expect("in front");
+        let mid = [(br[0] + br[2]) / 2.0, (br[1] + br[3]) / 2.0];
+        assert!((mid[0] - seen[0]).abs() < 6.0 && (mid[1] - seen[1]).abs() < 6.0, "bracket {mid:?}, feed {seen:?}");
+    }
+
+    #[test]
+    fn the_helm_rolls_on_z_and_c_strafes_on_the_arrows_and_e_does_neither() {
+        // E is the stand key at every station (leave-station 3): the helm's roll moved to Z and C.
+        let mut b = Bench::new(Station::Helm);
+        let m = b.data.tern_flight.strafe_max_mps;
+        let mut sent = |held: &[u32], now: f64| {
+            let v = b.view(now);
+            let hits = paint(&v);
+            let (t, h) = (b.snap.ships[0].clone(), b.snap.ships[1].clone());
+            let input = Input { held: held.iter().copied().collect(), ..Default::default() };
+            b.seat
+                .input(&input, &hits, 1.0, &v, &t, &h, &b.data, Station::Helm, now)
+                .into_iter()
+                .filter_map(|a| match a {
+                    SeatAsk::Command(c) => Some(c),
+                    _ => None,
+                })
+                .collect::<Vec<_>>()
+        };
+        let roll = |cmds: &[Command]| {
+            cmds.iter().find_map(|c| match c {
+                Command::Stick { roll, .. } => Some(*roll),
+                _ => None,
+            })
+        };
+        assert_eq!(roll(&sent(&[keys::C], 1.0)), Some(1.0), "C rolls to starboard");
+        assert_eq!(roll(&sent(&[keys::Z], 1.1)), Some(-1.0), "Z rolls to port");
+        assert_eq!(roll(&sent(&[keys::E], 1.2)), Some(0.0), "E rolls nothing");
+        let strafe = sent(&[keys::RIGHT], 1.3);
+        assert!(strafe.iter().any(|c| matches!(c, Command::Strafe { lat_mps, .. } if *lat_mps == m)), "{strafe:?}");
+    }
+
+    #[test]
+    fn leave_station_is_in_every_consoles_title_band_and_the_order_ends_before_it() {
+        for st in Station::ALL {
+            let mut b = Bench::new(st);
+            let mut v = b.view(1.0);
+            v.leave = Some(console::LeaveView { key: "E".into(), share: 0.4 });
+            v.order = Some("CLOSE ON THE HOUND".into());
+            let hits = paint(&v);
+            let p = centre(&hits, &Hit::Act(Act::Leave));
+            assert!(p.y < 32.0, "{st:?}: LEAVE STATION is in the title band");
+            let leave = hits.regions.iter().find(|r| r.hit == Some(Hit::Act(Act::Leave))).unwrap().rect;
+            if let Some(order) = hits.regions.iter().find(|r| r.hit == Some(Hit::Act(Act::Ack))) {
+                assert!(order.rect.max.x <= leave.min.x, "{st:?}: the order chip runs into LEAVE STATION");
+            }
+            let click = vec![PointerEv::Press(p), PointerEv::Release(p)];
+            assert!(leave_pressed(&hits, &click), "{st:?}: a click on it is LEAVE STATION's");
+            let (t, h) = (b.snap.ships[0].clone(), b.snap.ships[1].clone());
+            let input = Input { events: click, ..Default::default() };
+            let asks = b.seat.input(&input, &hits, 1.0, &v, &t, &h, &b.data, st, 1.1);
+            // What a console sends every frame of its own (the stick, the barrel) is not the press's.
+            let steady = |c: &Command| {
+                matches!(
+                    c,
+                    Command::Stick { .. }
+                        | Command::Strafe { .. }
+                        | Command::GunnerAim { .. }
+                        | Command::GunnerTrigger(_)
+                )
+            };
+            let sent = asks.iter().any(|a| matches!(a, SeatAsk::Command(c) if !steady(c)));
+            assert!(!sent, "{st:?}: the console sends nothing for it; the drill stands the player up");
+            let elsewhere = vec![PointerEv::Press(Pos2::new(640.0, 400.0))];
+            assert!(!leave_pressed(&hits, &elsewhere), "{st:?}: a press on the panels is not LEAVE STATION");
+        }
     }
 
     #[test]

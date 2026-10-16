@@ -19,6 +19,8 @@ pub struct UiFrame {
     meshes: Vec<OwnedMesh>,
     /// The output's size in points.
     pub points: [f32; 2],
+    /// Output pixels a point.
+    pub ppp: f32,
 }
 
 impl UiFrame {
@@ -40,15 +42,181 @@ pub struct Ui {
     /// The textures' pixels as egui last set them (a patch updates the copy, then the whole texture is uploaded).
     textures: HashMap<u64, (usize, usize, Vec<u8>)>,
     text_on: bool,
-    /// Window coordinates to points, from the last frame (the UI is laid out on a screen 720 points high).
-    win_to_pt: f32,
+    /// The output on the reference frame, from the last frame (design 5).
+    fit: Fit,
+    /// Where each marked control was last said to be, window coordinates ([`mark`]).
+    marks: HashMap<String, [i32; 4]>,
     /// The first finger as the pointer: menus and buttons are tapped (touch-controls design 2).
     touch: platform::TouchMouse,
 }
 
-/// The UI is laid out on a screen this many points high, whatever the output's size, so it reads the same at 720p and
-/// 1080p (and on the Pi's 1280 x 720).
-const UI_HEIGHT_PT: f32 = 720.0;
+/// `data/ui/reference.json` (`starcrew.ui-reference/1`): the one reference frame every screen is laid out on
+/// (openspec/changes/browser-page-fit design 5).
+#[derive(Debug, Clone, serde::Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct Reference {
+    /// `starcrew.ui-reference/1`.
+    pub schema: String,
+    /// The frame's size in reference pixels (1920 x 1080).
+    pub reference_px: [f64; 2],
+    /// The frame's size in layout points, the units every layout is written in (the mockups' 1280 x 720 canvas).
+    pub layout_pt: [f64; 2],
+}
+
+impl sc_core::data::Validate for Reference {
+    fn validate(&self, c: &mut sc_core::data::Checks) {
+        c.equals("schema", &self.schema, "starcrew.ui-reference/1");
+        for (i, v) in self.reference_px.iter().enumerate() {
+            c.number(&format!("reference_px[{i}]"), *v, 100.0, 10000.0);
+        }
+        for (i, v) in self.layout_pt.iter().enumerate() {
+            c.number(&format!("layout_pt[{i}]"), *v, 100.0, 10000.0);
+        }
+        // A layout point is the same number of reference pixels across and down, or the frame would be stretched.
+        let (ax, ay) = (self.reference_px[0] / self.layout_pt[0], self.reference_px[1] / self.layout_pt[1]);
+        if (ax - ay).abs() > 1e-9 * ax.abs().max(1.0) {
+            c.number("layout_pt", -1.0, 0.0, 0.0);
+        }
+    }
+}
+
+/// The file the reference frame is read from.
+pub const REFERENCE_FILE: &str = "data/ui/reference.json";
+
+/// The reference frame, parsed once from the compiled-in `data/ui/reference.json`; a bad file stops the client at its
+/// first frame with its path and field (CLAUDE.md 6.5).
+pub fn reference() -> &'static Reference {
+    static REF: std::sync::OnceLock<Reference> = std::sync::OnceLock::new();
+    REF.get_or_init(|| {
+        sc_core::data::parse(REFERENCE_FILE, include_str!("../../../data/ui/reference.json"))
+            .unwrap_or_else(|e| panic!("{e}"))
+    })
+}
+
+/// The reference frame's size in layout points (1280 x 720).
+pub fn layout_size() -> Vec2 {
+    let r = reference();
+    Vec2::new(r.layout_pt[0] as f32, r.layout_pt[1] as f32)
+}
+
+/// The one mapping of the reference frame onto a screen (design 5): the frame, scaled by the smaller of the screen's
+/// width and height over the frame's so it always fits whole, and centred, the extra space at the edges. Returns the
+/// frame's origin on `screen` and its scale (`screen`'s units a layout point). Every screen places itself by it, in
+/// pixels ([`Fit::of`]) or in points (a console, the briefing).
+pub fn frame_in(screen: egui::Rect) -> (Pos2, f32) {
+    let f = layout_size();
+    let s = (screen.width() / f.x).min(screen.height() / f.y).max(f32::MIN_POSITIVE);
+    (screen.min + (screen.size() - f * s) / 2.0, s)
+}
+
+/// The output laid out on the reference frame (design 5), made by [`frame_in`] from the output's pixels and the
+/// window's size. The UI draws in layout points; this is the only place that knows the pixels, the pixel ratio or the
+/// window's real size.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct Fit {
+    /// Output pixels a layout point.
+    pub ppp: f32,
+    /// The whole output in layout points: at least the frame's 1280 x 720, more on the side the aspect gives.
+    pub points: Vec2,
+    /// Layout points a window unit (the platform's mouse and finger coordinates).
+    pub win_to_pt: f32,
+}
+
+impl Default for Fit {
+    /// The reference frame drawn at one pixel a layout point, until a frame says otherwise.
+    fn default() -> Self {
+        let f = layout_size();
+        Self::new(f.x as u32, f.y as u32, f.x)
+    }
+}
+
+impl Fit {
+    /// The fit for an output `width_px` x `height_px` pixels in a window `window_w` units wide (the window and its
+    /// output are one shape: the output's pixels are the window's units times its pixel ratio).
+    pub fn new(width_px: u32, height_px: u32, window_w: f32) -> Self {
+        let px = egui::Rect::from_min_size(Pos2::ZERO, Vec2::new(width_px.max(1) as f32, height_px.max(1) as f32));
+        let (_, ppp) = frame_in(px);
+        let points = px.size() / ppp;
+        Self { ppp, points, win_to_pt: px.width() / window_w.max(1.0) / ppp }
+    }
+
+    /// The fit for a platform frame.
+    pub fn of(f: &Frame) -> Self {
+        Self::new(f.width, f.height, f.window_w)
+    }
+
+    /// The reference frame's rectangle on the screen, layout points.
+    pub fn frame(&self) -> egui::Rect {
+        let (o, s) = frame_in(egui::Rect::from_min_size(Pos2::ZERO, self.points));
+        egui::Rect::from_min_size(o, layout_size() * s)
+    }
+
+    /// A window position (the mouse's, a finger's) in layout points: the mapping's inverse, so a click lands on
+    /// what is drawn under it.
+    pub fn to_points(self, x: f32, y: f32) -> Pos2 {
+        Pos2::new(x * self.win_to_pt, y * self.win_to_pt)
+    }
+
+    /// A window position in the units of a canvas `size` units big drawn at `rect` (layout points): a repair game's
+    /// pointer on its own 1280 x 720 canvas.
+    pub fn to_canvas(self, x: f32, y: f32, rect: egui::Rect, size: Vec2) -> [f32; 2] {
+        let p = self.to_points(x, y) - rect.min;
+        [p.x * size.x / rect.width().max(f32::MIN_POSITIVE), p.y * size.y / rect.height().max(f32::MIN_POSITIVE)]
+    }
+
+    /// A rectangle in layout points as window coordinates (for a test placing the mouse on a control).
+    pub fn to_window(self, r: egui::Rect) -> egui::Rect {
+        egui::Rect::from_min_max(
+            (r.min.to_vec2() / self.win_to_pt).to_pos2(),
+            (r.max.to_vec2() / self.win_to_pt).to_pos2(),
+        )
+    }
+}
+
+/// egui's memory slot for the controls marked this frame.
+const MARKS: &str = "sc-client-ui-marks";
+
+/// Mark a control the player presses, named `label`: where it is drawn is said whenever it moves, in window
+/// coordinates (`sc-client: ui <label> at x y w h`), and a press is said (`sc-client: ui clicked <label>`). The browser's
+/// release test clicks a control where the engine says it drew it and fails if the press does not land
+/// (browser-page-fit design 3). Returns the response, so it wraps an `add`.
+pub fn mark(label: &str, r: egui::Response) -> egui::Response {
+    if r.clicked() {
+        println!("sc-client: ui clicked {label}");
+    }
+    r.ctx.data_mut(|d| {
+        d.get_temp_mut_or_default::<Vec<(String, egui::Rect)>>(egui::Id::new(MARKS)).push((label.to_owned(), r.rect))
+    });
+    r
+}
+
+/// Every text in a frame's shapes, nested ones too (for tests of what a screen shows).
+#[cfg(test)]
+pub fn texts(shapes: &[egui::epaint::ClippedShape]) -> Vec<String> {
+    fn walk(s: &egui::Shape, out: &mut Vec<String>) {
+        match s {
+            egui::Shape::Text(t) => out.push(t.galley.text().to_owned()),
+            egui::Shape::Vec(v) => v.iter().for_each(|x| walk(x, out)),
+            _ => {}
+        }
+    }
+    let mut out = Vec::new();
+    shapes.iter().for_each(|c| walk(&c.shape, &mut out));
+    out
+}
+
+/// A fixed-size panel's top left corner (its outer size `outer`, points) to sit centred on `screen`, moved by
+/// `offset`. egui's anchoring places a window by its size of the frame before, so a window shown anew, or one that
+/// changed size, was drawn a frame off centre and a click then missed (browser-page-fit design 6); a panel whose size
+/// is fixed is placed by that size.
+pub fn centred(screen: egui::Rect, outer: Vec2, offset: Vec2) -> Pos2 {
+    screen.center() - outer / 2.0 + offset
+}
+
+/// The controls [`mark`]ed since the last call, layout points.
+pub fn take_marks(ctx: &egui::Context) -> Vec<(String, egui::Rect)> {
+    ctx.data_mut(|d| d.remove_temp::<Vec<(String, egui::Rect)>>(egui::Id::new(MARKS))).unwrap_or_default()
+}
 
 fn texture_key(id: egui::TextureId) -> u64 {
     match id {
@@ -121,7 +289,8 @@ impl Ui {
             pointer: Pos2::ZERO,
             textures: HashMap::new(),
             text_on: false,
-            win_to_pt: 1.0,
+            fit: Fit::default(),
+            marks: HashMap::new(),
             touch: platform::TouchMouse::default(),
         }
     }
@@ -131,9 +300,10 @@ impl Ui {
         egui::Modifiers { alt, ctrl, shift, mac_cmd: false, command: ctrl }
     }
 
-    /// Points a window unit, from the last frame.
-    pub fn win_to_pt(&self) -> f32 {
-        self.win_to_pt
+    /// The output on the reference frame, from the last frame: where the frame is, and the mouse and fingers in its
+    /// points.
+    pub fn fit(&self) -> Fit {
+        self.fit
     }
 
     /// Take an input event (the app calls it with every event while the UI has the input). A finger is the pointer.
@@ -147,7 +317,7 @@ impl Ui {
         let m = Self::modifiers();
         match e {
             Event::Pointer(x, y) => {
-                self.pointer = Pos2::new(*x * self.win_to_pt, *y * self.win_to_pt);
+                self.pointer = self.fit.to_points(*x, *y);
                 self.events.push(egui::Event::PointerMoved(self.pointer));
             }
             Event::MouseButton(b, down) => {
@@ -184,9 +354,8 @@ impl Ui {
     /// Run the app's UI for `frame` (`time_s` the session's clock) and tessellate it; textures that changed are
     /// uploaded to `r`.
     pub fn run(&mut self, r: &mut Renderer, frame: &Frame, time_s: f64, ui: impl FnMut(&egui::Context)) -> UiFrame {
-        let ppp = (frame.height as f32 / UI_HEIGHT_PT).max(0.5);
-        self.win_to_pt = frame.width as f32 / frame.window_w / ppp;
-        let points = Vec2::new(frame.width as f32 / ppp, frame.height as f32 / ppp);
+        self.fit = Fit::of(frame);
+        let (ppp, points) = (self.fit.ppp, self.fit.points);
         let mut raw = egui::RawInput {
             screen_rect: Some(egui::Rect::from_min_size(Pos2::ZERO, points)),
             time: Some(time_s),
@@ -198,6 +367,14 @@ impl Ui {
             vp.native_pixels_per_point = Some(ppp);
         }
         let out = self.ctx.run(raw, ui);
+        for (label, r) in take_marks(&self.ctx) {
+            let w = self.fit.to_window(r);
+            let at = [w.min.x, w.min.y, w.width(), w.height()].map(|v| v.round() as i32);
+            if self.marks.get(&label) != Some(&at) {
+                println!("sc-client: ui {label} at {} {} {} {}", at[0], at[1], at[2], at[3]);
+                self.marks.insert(label, at);
+            }
+        }
         for (id, delta) in &out.textures_delta.set {
             let key = texture_key(*id);
             let egui::ImageData::Color(img) = &delta.image;
@@ -249,6 +426,110 @@ impl Ui {
                 .collect();
             meshes.push((clip, texture_key(m.texture_id), v, m.indices));
         }
-        UiFrame { meshes, points: [points.x, points.y] }
+        UiFrame { meshes, points: [points.x, points.y], ppp }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The outputs every screen must fit (browser-page-fit design 5).
+    const OUTPUTS: [(u32, u32); 8] =
+        [(1920, 1080), (1280, 720), (1366, 768), (2560, 1440), (1024, 768), (2560, 1080), (985, 455), (844, 390)];
+
+    #[test]
+    fn the_reference_frame_file_is_valid_and_one_shape() {
+        let r = reference();
+        assert_eq!(r.reference_px, [1920.0, 1080.0], "the owner's reference is 1920 x 1080");
+        assert_eq!(r.layout_pt, [1280.0, 720.0], "the layouts' canvas, the mockups' and the parity fixtures'");
+        let bad = r#"{"schema": "starcrew.ui-reference/1", "reference_px": [1920, 1080], "layout_pt": [1280, 800]}"#;
+        assert!(sc_core::data::parse::<Reference>(REFERENCE_FILE, bad).is_err(), "a stretched frame is refused");
+    }
+
+    #[test]
+    fn the_whole_frame_fits_every_output_centred() {
+        for (w, h) in OUTPUTS {
+            let fit = Fit::new(w, h, w as f32);
+            let frame = fit.frame();
+            let screen = egui::Rect::from_min_size(Pos2::ZERO, fit.points);
+            assert!(screen.expand(1e-3).contains_rect(frame), "the frame {frame:?} leaves the screen at {w} x {h}");
+            // It touches two opposite edges (nothing is wasted) and is centred between the other two.
+            let touches_x = frame.min.x.abs() < 1e-3 && (frame.max.x - screen.max.x).abs() < 1e-3;
+            let touches_y = frame.min.y.abs() < 1e-3 && (frame.max.y - screen.max.y).abs() < 1e-3;
+            assert!(touches_x || touches_y, "the frame fills one way at {w} x {h}");
+            assert!((frame.center() - screen.center()).length() < 1e-3, "the frame is centred at {w} x {h}");
+            // The scale is the owner's: min(width / 1920, height / 1080) reference pixels a pixel, 1.5 a point.
+            let k = (w as f32 / 1920.0).min(h as f32 / 1080.0);
+            assert!((fit.ppp - 1.5 * k).abs() < 1e-4, "{} pixels a point at {w} x {h}, not {}", fit.ppp, 1.5 * k);
+        }
+    }
+
+    #[test]
+    fn a_click_lands_where_it_was_drawn_at_any_pixel_ratio() {
+        // The bug on itch.io: the drawing and the mouse used different sizes. Here a control drawn at a rectangle of
+        // points is found again from the window position at its centre, at a pixel ratio of 1, 2 and 3.
+        let control = egui::Rect::from_min_size(Pos2::new(900.0, 640.0), Vec2::new(140.0, 44.0));
+        for (w, h) in OUTPUTS {
+            for ratio in [1.0f32, 2.0, 3.0] {
+                let (pw, ph) = ((w as f32 * ratio).round() as u32, (h as f32 * ratio).round() as u32);
+                let fit = Fit::new(pw, ph, w as f32);
+                let at = fit.to_window(control).center();
+                let back = fit.to_points(at.x, at.y);
+                assert!((back - control.center()).length() < 0.01, "missed by {:?} at {w} x {h} x {ratio}", back);
+            }
+        }
+    }
+
+    #[test]
+    fn no_screen_reads_the_output_size() {
+        // Design 5: nothing in a screen's code knows the device's pixels, its pixel ratio or the window's real size;
+        // they go through `Fit` and `frame_in`, here. The renderer's present calls and captures take the output's
+        // pixels as they are (no `as f32`), and the 3D camera's aspect is not layout.
+        let dir = std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/src"));
+        let mut files = Vec::new();
+        let mut stack = vec![dir.to_path_buf()];
+        while let Some(d) = stack.pop() {
+            for e in std::fs::read_dir(&d).expect("read src") {
+                let p = e.expect("entry").path();
+                if p.is_dir() {
+                    stack.push(p);
+                } else if p.extension().is_some_and(|x| x == "rs") {
+                    files.push(p);
+                }
+            }
+        }
+        let banned = [
+            "window_w",
+            "window_h",
+            "devicePixelRatio",
+            "f.width as f32",
+            "f.height as f32",
+            "frame.width as f32",
+            "frame.height as f32",
+            "/ 720.0).max(",
+            "/ 1280.0).min(",
+            "/ W).min(",
+        ];
+        let mut bad = Vec::new();
+        for p in files {
+            let name = p.strip_prefix(dir).expect("in src").to_string_lossy().into_owned();
+            if name == "ui.rs" || name == "platform.rs" {
+                continue;
+            }
+            let text = std::fs::read_to_string(&p).expect("read");
+            for (n, line) in text.lines().enumerate() {
+                let code = line.split("//").next().unwrap_or("");
+                if code.contains("let aspect =") {
+                    continue;
+                }
+                for b in banned {
+                    if code.contains(b) {
+                        bad.push(format!("{name}:{}: {b}", n + 1));
+                    }
+                }
+            }
+        }
+        assert!(bad.is_empty(), "screens reading the output's size outside ui::Fit: {bad:?}");
     }
 }

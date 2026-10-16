@@ -4,8 +4,10 @@
 //! It plays single player the way a person does, through the same body and keys: it walks from where it joined to a
 //! station by the walk grid (`sc-core::bots::steer`, the bot crew's own steering, Use at the ladders), presses E to sit
 //! at the seat in reach, works the console a while (at Engineering, the schematic in 3D and then the board), holds
-//! Stand to get up, walks to the next station or down the decks to a room, and so on. It is a capture instrument
-//! (CLAUDE.md 4): it decides nothing a player could not, and the server checks it as it checks a player.
+//! the stand key to get up (the key a player holds, through the same hold and its ring: leave-station 2), presses a
+//! console's controls where a player's pointer would, walks to the next station or down the decks to a room, and so
+//! on. It is a capture instrument (CLAUDE.md 4): it decides nothing a player could not, and the server checks it as it
+//! checks a player.
 
 use sc_core::bots::steer;
 use sc_core::combat::Station;
@@ -37,7 +39,29 @@ pub enum Beat {
     Repair,
     /// Walk to a window and look out of it this many seconds (patrol-mission design 11: the outside as it changes).
     Gaze(Window, f64),
+    /// Seated: wait for the fight (Engage), then work this many seconds more.
+    Engaged(f64),
+    /// Seated: press a control of the console, where a player's pointer would.
+    Press(Control),
+    /// Walk to the bridge's main viewscreen and look at it this many seconds (captains-viewscreen 3).
+    Screen(f64),
 }
+
+/// A console control the script presses (the drill finds it on the console as drawn and clicks its middle).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Control {
+    /// The captain's SCREEN: take the viewscreen.
+    Screen,
+    /// The viewscreen's camera pad: TARGET.
+    Target,
+    /// The viewscreen's CHASE.
+    Chase,
+}
+
+/// Where a person stands to watch the bridge's main viewscreen (ship frame, metres) and the way they face (radians,
+/// 0 the bow): on the deck before the helm and tactical desks, square to the screen (the deck's `viewscreen` view,
+/// centred at (0.0, 5.2, 31.5) facing aft), a little over 3 m from it.
+pub const MAIN_SCREEN_STAND: ([f32; 3], f32) = ([0.0, 3.5, 28.3], 0.0);
 
 /// A window the patrol's script looks out of: where a person stands in front of it (ship frame, metres) and the way
 /// they face (radians about +Y, 0 the bow). Each stands 1.6 m in from its window's centre in the layout; a test holds
@@ -108,8 +132,10 @@ pub struct HandsOut {
 pub struct AtConsole {
     /// Engineering's schematic: open, in 3D, turned this many degrees.
     pub schematic: Option<(bool, f64)>,
-    /// Get up now (Stand held its time).
+    /// Hold the stand key now (the body stands once it has been held its time).
     pub stand: bool,
+    /// Press this control now.
+    pub press: Option<Control>,
 }
 
 /// The script and where it is.
@@ -159,19 +185,51 @@ impl Playtest {
     /// The script for a player whose own station is `own`: to it, the console, up, across the bridge to another
     /// station (taking it from its NPC), down the decks to engineering and the medbay, back, and so on, a fight's worth.
     pub fn new(own: Station) -> Self {
+        if own == Station::Captain {
+            return Self::on_screen();
+        }
         Self::with(Self::drill_beats(own), LOOP_FROM)
     }
 
-    /// The patrol's script (patrol-mission): out of the bridge's windows at the station and the berth, to the station,
-    /// up again to watch the cradle slide past and the station fall away, down to the mess's windows, back to work
-    /// through the jump; then the drill's tour as long as the fight lasts.
-    pub fn patrol(own: Station) -> Self {
+    /// The captain's script (captains-viewscreen, leave-station, relieve-bots): to the captain's chair; in the fight,
+    /// TARGET and CHASE on his viewscreen, and SCREEN to put it on every screen; up with the stand key; to the bridge's
+    /// main viewscreen to watch his picture on it; on to a window; to the helm, taken from its NPC (who swaps into the
+    /// captain's chair); then the drill's tour.
+    fn on_screen() -> Self {
+        let own = Station::Captain;
         let mut beats = vec![
-            Beat::Gaze(Window::BridgeStbd, 10.0),
-            Beat::Gaze(Window::BridgePort, 6.0),
             Beat::To(own),
             Beat::Sit,
-            Beat::Work(25.0),
+            Beat::Engaged(6.0),
+            Beat::Press(Control::Target),
+            Beat::Work(2.0),
+            Beat::Press(Control::Chase),
+            Beat::Work(3.0),
+            Beat::Press(Control::Screen),
+            Beat::Work(6.0),
+            Beat::Stand,
+            Beat::Screen(14.0),
+            Beat::Gaze(Window::BridgeStbd, 5.0),
+            Beat::To(Station::Helm),
+            Beat::Sit,
+            Beat::Work(20.0),
+            Beat::Stand,
+            Beat::Screen(8.0),
+        ];
+        let loop_from = beats.len();
+        beats.extend(Self::drill_beats(own).into_iter().skip(LOOP_FROM));
+        Self::with(beats, loop_from)
+    }
+
+    /// The patrol's script (patrol-mission): straight to the station before the drive is up (at the helm, to UNDOCK from
+    /// the seat), up again to watch the bay's wall slide past from the bridge's windows, down to the mess's windows,
+    /// back to work, up to watch the throat and the station fall away, then the drill's tour as long as the fight lasts.
+    pub fn patrol(own: Station) -> Self {
+        let mut beats = vec![
+            Beat::To(own),
+            Beat::Sit,
+            // Long enough for the drive to come up and, at the helm, UNDOCK to be pressed from the seat.
+            Beat::Work(40.0),
             Beat::Stand,
             Beat::Gaze(Window::BridgeStbd, 10.0),
             Beat::Gaze(Window::BridgePort, 6.0),
@@ -485,6 +543,31 @@ impl Playtest {
                 }
                 (Input { yaw: look.0, ..Input::default() }, None)
             }
+            Some(Beat::Screen(secs)) => {
+                // Walk before the main viewscreen, then face it, level, and watch.
+                let (at, yaw) = MAIN_SCREEN_STAND;
+                let g = foot.grid.snap_joined(at, ROOM_REACH_M, foot.body.feet).unwrap_or(at);
+                let arrived = (foot.body.feet[0] - g[0]).hypot(foot.body.feet[2] - g[2]) < 0.6;
+                if !arrived && self.goal != g {
+                    self.goal = g;
+                    self.plan = None;
+                }
+                if !arrived && self.t < GIVE_UP_S {
+                    return (self.walk(foot, look, dt, |_| false), None);
+                }
+                if self.goal != [f32::MAX; 3] {
+                    self.goal = [f32::MAX; 3];
+                    self.t = 0.0;
+                    println!("sc-client: playtest: watching the main viewscreen");
+                }
+                let d = (yaw - look.0 + std::f32::consts::PI).rem_euclid(std::f32::consts::TAU) - std::f32::consts::PI;
+                look.0 += d * (dt as f32 * 3.0).min(1.0);
+                look.1 += (0.08 - look.1) * (dt as f32 * 2.0).min(1.0);
+                if self.t >= secs {
+                    self.next();
+                }
+                (Input { yaw: look.0, ..Input::default() }, None)
+            }
             Some(Beat::Look(secs)) => {
                 look.0 += (0.6 * dt) as f32;
                 look.1 = -0.05 + 0.1 * (self.t * 0.8).sin() as f32;
@@ -494,7 +577,15 @@ impl Playtest {
                 (Input { yaw: look.0, ..Input::default() }, None)
             }
             // Seated beats while on foot: the seat was lost (taken); go on.
-            Some(Beat::Work(_) | Beat::Stand | Beat::Locker | Beat::Fight | Beat::Repair) => {
+            Some(
+                Beat::Work(_)
+                | Beat::Stand
+                | Beat::Engaged(_)
+                | Beat::Press(_)
+                | Beat::Locker
+                | Beat::Fight
+                | Beat::Repair,
+            ) => {
                 self.next();
                 (still, None)
             }
@@ -550,18 +641,23 @@ impl Playtest {
 
     /// Seated this frame at `st`: what the console shows, and whether to get up (a fire burning and none fought for a
     /// minute gets it up after a few seconds' work).
-    pub fn at_console(&mut self, st: Station, fire: bool, dt: f64) -> AtConsole {
+    /// `engaged`: the fight is on (Engage).
+    pub fn at_console(&mut self, st: Station, fire: bool, engaged: bool, dt: f64) -> AtConsole {
         if self.beat() == Some(Beat::Sit) {
             self.next();
         }
         self.t += dt;
         self.clock += dt;
-        let mut out = AtConsole { schematic: None, stand: false };
+        let mut out = AtConsole { schematic: None, stand: false, press: None };
         if fire
             && self.clock - self.fought_at > FIGHT_EVERY_S
             && matches!(self.beat(), Some(Beat::Work(_)))
             && self.t > 8.0
         {
+            // Up for the fire: the stand key held until the body is on its feet (the Stand beat ends there).
+            if self.beats.get(self.k + 1) != Some(&Beat::Stand) {
+                self.beats.insert(self.k + 1, Beat::Stand);
+            }
             self.next();
             out.stand = true;
             return out;
@@ -583,12 +679,18 @@ impl Playtest {
                     self.next();
                 }
             }
-            Some(Beat::Stand) => {
-                // Stand held its time, then up.
-                out.stand = self.t >= 0.6;
-                if out.stand {
+            // The stand key held until the body is up; the beat ends on foot.
+            Some(Beat::Stand) => out.stand = true,
+            Some(Beat::Engaged(secs)) => {
+                if !engaged {
+                    self.t = 0.0;
+                } else if self.t >= secs {
                     self.next();
                 }
+            }
+            Some(Beat::Press(c)) => {
+                out.press = Some(c);
+                self.next();
             }
             // On-foot beats while seated: get up for them.
             Some(_) => out.stand = true,

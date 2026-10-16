@@ -15,6 +15,9 @@ use sc_core::deck::DeckView;
 use sc_core::exterior::ExteriorData;
 use sc_net::msg::BodySnap;
 use sc_render::{DeckParams, DeckProgram, Indices, Mesh, Renderer, Target, TextureArray};
+// The outside is drawn after the bridge at the back of the depth buffer (the bridge in the front half, the outside
+// behind it, the sky layer at the far plane: sky-behind-solids), so it shows only through the windows.
+use sc_render::depth::{behind_everything, in_front_half, outside_lens};
 
 /// A body's eye above its feet standing, and seated (crew-on-deck), metres.
 const EYE_STAND_M: f32 = 1.65;
@@ -22,13 +25,6 @@ const EYE_SEAT_M: f32 = 1.2;
 /// A seated eye's lean toward the desk, from the seat point, metres.
 const EYE_SEAT_FWD_M: f32 = 0.1;
 
-/// The outside's near and far planes, metres: the Hound at a few kilometres, the farthest bolt and burst well inside.
-const OUTSIDE_NEAR_M: f32 = 1.0;
-const OUTSIDE_FAR_M: f32 = 80_000.0;
-
-/// The depth the outside is squeezed into, at the back of the depth buffer (window depth 1 - this to 1): drawn after
-/// the bridge, it shows only where no part of the bridge is in front, which is through the windows.
-const OUTSIDE_DEPTH: f32 = 0.0001;
 /// A room's bounds, ship frame, metres: least and greatest corner.
 type Bounds = ([f64; 3], [f64; 3]);
 /// The eye above the floor it stands on, metres (a standing person's, near enough for the overview's eye too).
@@ -52,8 +48,6 @@ pub struct BridgeView {
     panel_glow: f32,
     /// The hull (tern-exterior 4): the bow's rim and the forward hull through the bridge's windows.
     hull: Option<crate::hull::HullView>,
-    /// The dock's cradle (the deck file's `outside` rooms): each mesh and its origin, the docked Tern's frame.
-    cradle: Vec<(Mesh, [f64; 3])>,
     /// Triangles drawn for the rooms.
     pub triangles: usize,
     /// The eye's vertical field of view, degrees (Options, game-menu 3).
@@ -88,7 +82,7 @@ impl BridgeView {
         let d = sc_core::deck::read(&bytes).map_err(|e| format!("{}: {e}", path.display()))?;
         let t = &d.index.textures;
         let tex = r.make_texture_array_mips(t.size_px, t.layers, &d.texture_levels());
-        let (mut rooms, mut figures, mut triangles, mut cradle) = (Vec::new(), Vec::new(), 0, Vec::new());
+        let (mut rooms, mut figures, mut triangles) = (Vec::new(), Vec::new(), 0);
         for c in &d.index.compartments {
             let idx = d.indices_of(c);
             match (c.deck.as_str(), c.id.as_str()) {
@@ -96,7 +90,8 @@ impl BridgeView {
                     id.trim_start_matches("figure_").to_owned(),
                     r.make_mesh(d.vertices_of(c), Indices::U32(&idx)),
                 )),
-                ("outside", _) => cradle.push((r.make_mesh(d.vertices_of(c), Indices::U32(&idx)), c.origin_m)),
+                // The walk's dock (the tour's girder frame) is not the patrol's: Tamsin Station is `stations` (12b).
+                ("outside", _) => {}
                 (deck, _) => {
                     if deck == "A" {
                         triangles += idx.len() / 3;
@@ -138,7 +133,6 @@ impl BridgeView {
             panel_first: t.panel_first,
             panel_glow,
             hull,
-            cradle,
             triangles,
             fov_deg,
             points: Vec::new(),
@@ -201,13 +195,15 @@ impl BridgeView {
         out: Outside<'_>,
     ) -> Mat4 {
         let fov = self.fov_deg.to_radians();
-        let proj = glam::camera::rh::proj::opengl::perspective(fov, aspect, 0.05, 400.0);
+        let lens = glam::camera::rh::proj::opengl::perspective(fov, aspect, 0.05, 400.0);
+        // The bridge in the front half of the depth buffer, the outside behind it (`OUTSIDE_DEPTH`).
+        let proj = in_front_half() * lens;
         let dir = Vec3::new(yaw.sin() * pitch.cos(), pitch.sin(), yaw.cos() * pitch.cos());
         let view = glam::camera::rh::view::look_to_mat4(Vec3::ZERO, dir, Vec3::Y);
         // The outside is in the system's frame: a direction there reaches the eye turned into the ship's.
         let view_out = view * Mat4::from_quat(out.attitude.inverse());
         r.begin_3d(t, [0.004, 0.005, 0.012, 1.0]);
-        r.draw_sky(t, &crate::sky_params(ext, proj, view_out, fov / 720.0));
+        r.draw_sky(t, &crate::sky_params(ext, lens, view_out, fov / 720.0, inside.time_s));
         let w = out.lighting;
         // Every room in view, whatever its deck: the depth buffer hides what walls and floors cover.
         let vp = proj * view;
@@ -228,28 +224,8 @@ impl BridgeView {
         // The hull (tern-exterior 4): after the rooms, so their walls hide most of it before it is shaded.
         // Lit by the sky's sun, turned into the ship's frame by the Tern's attitude (patrol-mission design 11.3).
         if let Some(h) = &self.hull {
-            h.draw(r, t, proj * view, eye, crate::outside::sun_in_ship(ext, out.attitude));
-        }
-        // The berth's cradle while the Tern is in it or near it (patrol-mission design 3): the deck's girders, in the
-        // docked frame, carried into the Tern's frame now.
-        if let Some(m) = out.cradle {
-            let eye64 = glam::DVec3::from_array(eye);
-            for (mesh, o) in &self.cradle {
-                let model = glam::DMat4::from_translation(-eye64)
-                    * m
-                    * glam::DMat4::from_translation(glam::DVec3::from_array(*o));
-                let p = DeckParams {
-                    mvp: proj * view * model.as_mat4(),
-                    state_weights: [1.0, 0.0, 0.0],
-                    flash_dir: Vec3::Z,
-                    flash: 0.0,
-                    panel_first: u32::MAX,
-                    panel_glow: 0.0,
-                    clip_y: f32::MAX,
-                    relight: sc_render::NO_RELIGHT,
-                };
-                r.draw_deck(t, mesh, DeckProgram::Textured, &p, Some(&self.tex));
-            }
+            let (light, k) = out.hull_light.unwrap_or((crate::outside::sun_in_ship(ext, out.attitude), 1.0));
+            h.draw_lit(r, t, proj * view, eye, light, k, out.hull_light.is_none().then_some(out.attitude));
         }
         // The viewscreens: the feed's picture on a quad 3 cm in front of each, as the walk draws them.
         if let Some((feed, scanlines)) = out.screen {
@@ -314,8 +290,7 @@ impl BridgeView {
             r.draw_deck(t, inside.held, DeckProgram::Flat, &flat_params(proj * held), None);
         }
         // Last, the fight outside, at the back of the depth buffer: only the windows let it through.
-        let far = glam::camera::rh::proj::opengl::perspective(fov, aspect, OUTSIDE_NEAR_M, OUTSIDE_FAR_M);
-        (out.objects)(r, t, behind_everything() * far * view_out);
+        (out.objects)(r, t, behind_everything() * outside_lens(fov, aspect) * view_out);
         r.end_pass();
         proj * view
     }
@@ -389,8 +364,9 @@ pub struct Outside<'a> {
     pub lighting: [f32; 3],
     /// The viewscreens' picture and its scan lines' depth, once rendered this frame.
     pub screen: Option<(&'a Target, f32)>,
-    /// The berth's cradle while it is near: the docked Tern's frame into the Tern's now (patrol-mission design 3).
-    pub cradle: Option<glam::DMat4>,
+    /// The light on the hull when it is not the sky's sun: under a station's roof, its floods' way (the ship's frame)
+    /// and strength (patrol-mission design 12b).
+    pub hull_light: Option<(Vec3, f32)>,
     /// Draws the Hound, missiles, bolts and bursts into the pass, given the view-projection from the bridge's eye in
     /// the system's frame (directions only: positions are taken relative to the eye).
     pub objects: DrawOutside<'a>,
@@ -398,13 +374,6 @@ pub struct Outside<'a> {
 
 /// Draws the fight outside into a pass, given the view-projection from the bridge's eye in the system's frame.
 pub type DrawOutside<'a> = Box<dyn FnOnce(&mut Renderer, &Target, Mat4) + 'a>;
-
-/// The clip-space map that puts a projection's depth into the last `OUTSIDE_DEPTH` of the buffer (OpenGL's -1..1 to
-/// 1 - 2 * OUTSIDE_DEPTH..1), keeping x, y and w.
-pub fn behind_everything() -> Mat4 {
-    let k = 2.0 * OUTSIDE_DEPTH;
-    Mat4::from_cols(Vec4::X, Vec4::Y, Vec4::new(0.0, 0.0, k / 2.0, 0.0), Vec4::new(0.0, 0.0, 1.0 - k / 2.0, 1.0))
-}
 
 /// A viewscreen's quad seen from `eye` (ship frame): its corners (-1..1) on the screen's face, 3 cm out from the wall.
 pub fn screen_model(vw: &DeckView, eye: [f64; 3]) -> Mat4 {
@@ -516,21 +485,20 @@ mod tests {
 
     #[test]
     fn the_outside_lands_behind_every_part_of_the_bridge() {
-        let aspect = 16.0 / 9.0;
-        let fov = 70f32.to_radians();
-        let far = behind_everything()
-            * glam::camera::rh::proj::opengl::perspective(fov, aspect, OUTSIDE_NEAR_M, OUTSIDE_FAR_M);
-        let near = glam::camera::rh::proj::opengl::perspective(fov, aspect, 0.05, 400.0);
-        let depth = |m: Mat4, d: f32| {
-            let c = m * Vec4::new(0.0, 0.0, -d, 1.0);
-            (c.z / c.w) * 0.5 + 0.5
-        };
+        use sc_render::depth::{window_depth, OUTSIDE_DEPTH, OUTSIDE_NEAR_M, SOLID_REACH_M};
+        let (aspect, fov) = (16.0 / 9.0, 70f32.to_radians());
+        let far = behind_everything() * outside_lens(fov, aspect);
+        let near = in_front_half() * glam::camera::rh::proj::opengl::perspective(fov, aspect, 0.05, 400.0);
         // The farthest wall of the bridge, 40 m away, against the nearest thing outside, the near plane.
-        assert!(depth(near, 40.0) < depth(far, OUTSIDE_NEAR_M), "the bridge's back wall must hide the outside");
-        for d in [OUTSIDE_NEAR_M, 2_000.0, OUTSIDE_FAR_M * 0.99] {
-            let z = depth(far, d);
-            assert!((1.0 - OUTSIDE_DEPTH - 1e-6..=1.0).contains(&z), "{d} m lands at depth {z}");
+        assert!(
+            window_depth(near, 40.0) < window_depth(far, OUTSIDE_NEAR_M),
+            "the bridge's back wall hides the outside"
+        );
+        for d in [OUTSIDE_NEAR_M, 2_000.0, SOLID_REACH_M] {
+            let z = window_depth(far, d);
+            assert!((f64::from(1.0 - OUTSIDE_DEPTH) - 1e-6..1.0).contains(&z), "{d} m lands at depth {z}");
         }
-        assert!(depth(far, 1_500.0) < depth(far, 3_000.0), "the outside keeps its own order");
+        assert!(window_depth(far, 1_500.0) < window_depth(far, 3_000.0), "the outside keeps its own order");
+        assert!(window_depth(near, 399.0) <= f64::from(1.0 - OUTSIDE_DEPTH), "the whole bridge is in front of it");
     }
 }

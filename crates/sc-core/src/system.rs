@@ -16,6 +16,10 @@ use crate::data::{Checks, Validate};
 /// 7: "authored at least 5 km from anything").
 pub const ARRIVAL_CLEAR_M: f64 = 5_000.0;
 
+/// The home system: the one the walk and the drill stand in, and the sky every view draws until a patrol names its
+/// own (patrol-mission design 2: the one star system so far).
+pub const HOME_FILE: &str = "data/space/systems/shoals.json";
+
 /// The whole file.
 #[derive(Debug, Clone, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
@@ -26,6 +30,9 @@ pub struct SystemFile {
     pub id: String,
     /// Its name in a sentence ("the Shoals").
     pub name: String,
+    /// The nebula sky behind the whole system, by id: `data/space/skies/<sky>.json` (openspec/changes/nebula-skies
+    /// design 9). Required: a system without a sky is refused at load.
+    pub sky: String,
     /// The star at the origin.
     pub star: Star,
     /// Planets and moons.
@@ -297,6 +304,13 @@ const SYSTEM_LIM_M: f64 = 1.5e13;
 impl Validate for SystemFile {
     fn validate(&self, c: &mut Checks) {
         c.equals("schema", &self.schema, "starcrew.system/1");
+        // The sky's id names a file: lower case, digits, '-' and '_' only.
+        let id_ok = |s: &str| {
+            !s.is_empty() && s.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-' || b == b'_')
+        };
+        if !id_ok(&self.sky) {
+            c.equals("sky", &self.sky, "a sky id (data/space/skies/<id>.json)");
+        }
         let s = &self.star;
         c.number("star.radius_m", s.radius_m, 1e6, 1e11);
         colour(c, "star.colour_srgb", s.colour_srgb);

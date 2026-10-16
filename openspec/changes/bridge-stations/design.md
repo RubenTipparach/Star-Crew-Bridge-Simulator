@@ -280,9 +280,22 @@ with no occupant.
 
 ### 7. Command: condition, orders, alerts
 
-**Condition** (proposed): normal or red alert, set by the captain, or, while no captain is seated,
-by any player seated at a bridge console (from the title band), or by the captain's auto-condition
-(section 4). Setting red alert is a guarded control (hold 0.6 s).
+**Condition**: normal or red alert, set only from the Captain's station: by the player seated in
+the captain's chair (the captain console's ALERT panel), or, while no player holds the captain's
+station, by the captain's automation (the auto-condition, section 4). Setting red alert is a guarded
+control (hold 0.6 s).
+
+Only the captain changes the lighting (owner, 2026-10-15: "also lighting can only be changed by the
+captain"). The earlier plan let any seated bridge player set the condition while no captain was
+seated; that is gone. The rule exists once, `Command::may` in `sc-core::combat`: the server checks
+every command with it before queueing it (a command from any other station is refused as
+`NotYourStation`), the bots' commands reach the server the same way, the drill's own automation
+issues the condition only as the Captain's station, and the only console control that sends it is
+the captain console's ALERT panel. A player walks to the captain's chair and sits to change the
+lights (CLAUDE.md, the law). The game has no key that changes the lighting: the tour's 1, 2 and 3
+keys are removed. Viewing tools keep switching the three lighting states, because they are not the
+game: the mockups' and the deck plan's lighting buttons, and the client's headless capture flags
+(`--shots`, `--console-fixture`).
 
 Red alert does, ship-wide, at the next tick:
 - **Lighting.** Every compartment whose lamps are powered blends from its normal to its red alert

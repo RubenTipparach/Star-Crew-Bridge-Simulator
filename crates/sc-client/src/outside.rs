@@ -11,7 +11,7 @@ use sc_core::exterior::{normalized, Beacons, ExteriorData};
 use sc_render::{DeckProgram, Indices, Mesh, Renderer, Target};
 use serde::Deserialize;
 
-use crate::ships3d::{beacon_lamp, station, MeshBuilder, StationKind};
+use crate::ships3d::{beacon_lamp, station, Beacon, MeshBuilder, StationKind};
 
 /// The light baked into the hull's vertex colours by the exterior build (`tools/blender/build_ship_exteriors.py`):
 /// `ambient_fraction + (1 - ambient_fraction) max(0, n . sun_dir_ship)`.
@@ -61,6 +61,38 @@ impl HullBake {
     }
 }
 
+/// Load the sky `system` names (`data/space/skies/<sky>.json`, with `data/space/starfield.json`) and set it as the
+/// sky every view draws (openspec/changes/nebula-skies, task 3). A missing or bad sky stops startup with its path and
+/// field (CLAUDE.md 6.5).
+pub fn set_system_sky(r: &mut Renderer, system: &sc_core::system::SystemFile) -> Result<(), String> {
+    use sc_core::sky::{sky_file, NebulaSky, Starfield, STARFIELD_FILE};
+    if r.sky().0 == system.sky {
+        return Ok(());
+    }
+    let read = |p: &str| std::fs::read_to_string(p).map_err(|e| format!("{p}: {e}"));
+    let starfield = Starfield::load(STARFIELD_FILE, &read(STARFIELD_FILE)?).map_err(|e| e.to_string())?;
+    let path = sky_file(&system.sky);
+    let sky = NebulaSky::load(&path, &read(&path)?, &starfield).map_err(|e| e.to_string())?;
+    r.set_sky(&sky, &starfield);
+    let [tris, lines, heads] = r.sky_counts();
+    println!(
+        "sc-client: the sky of {} is {}: {} vertices, {tris} triangles, {lines} stars, {heads} heads",
+        system.name,
+        system.sky,
+        sky.directions.len()
+    );
+    Ok(())
+}
+
+/// Set the home system's sky (`sc_core::system::HOME_FILE`): the walk's, the drill's, and a patrol's until its own
+/// system's is set.
+pub fn set_home_sky(r: &mut Renderer) -> Result<(), String> {
+    let path = sc_core::system::HOME_FILE;
+    let text = std::fs::read_to_string(path).map_err(|e| format!("{path}: {e}"))?;
+    let system: sc_core::system::SystemFile = sc_core::data::parse(path, &text).map_err(|e| e.to_string())?;
+    set_system_sky(r, &system)
+}
+
 /// The way to the sun in the ship's frame, unit length, for a ship whose attitude (ship frame to the system's) is
 /// `attitude`: the exterior's sun is a system direction (in the walk's dock, the system's axes are the ship's).
 pub fn sun_in_ship(ext: &ExteriorData, attitude: Quat) -> Vec3 {
@@ -69,13 +101,45 @@ pub fn sun_in_ship(ext: &ExteriorData, attitude: Quat) -> Vec3 {
 
 /// The ambient cube that lights a ship, a craft or a station outside, from the sun's direction `sun` in the frame the
 /// cube's axes are in (`sc_render::Renderer::draw_deck_probe`): a face toward the sun takes up to 1.5 times its
-/// albedo, a face away a little of the shade side's fill, so the shape reads on its dark side.
-pub fn sun_cube(sun: Vec3) -> [[f32; 3]; 6] {
+/// albedo, a face away a little of the shade side's fill, so the shape reads on its dark side; the flat ambient under
+/// both is tinted by the sky's colour from that face's way (`tint`, [`sky_tint`]; nebula-skies design 6).
+pub fn sun_cube(sun: Vec3, tint: &[[f32; 3]; 6]) -> [[f32; 3]; 6] {
     let axes = [Vec3::X, -Vec3::X, Vec3::Y, -Vec3::Y, Vec3::Z, -Vec3::Z];
-    axes.map(|a| {
+    let mut out = [[0.0; 3]; 6];
+    for (k, a) in axes.into_iter().enumerate() {
         let s = a.dot(sun).max(0.0);
         let fill = (-a.dot(sun)).max(0.0) * 0.12;
-        [0.2 + 1.3 * s + fill * 0.6, 0.2 + 1.25 * s + fill * 0.7, 0.22 + 1.15 * s + fill]
+        let t = tint[k];
+        out[k] = [0.2 * t[0] + 1.3 * s + fill * 0.6, 0.2 * t[1] + 1.25 * s + fill * 0.7, 0.22 * t[2] + 1.15 * s + fill];
+    }
+    out
+}
+
+/// A linear value as sRGB (the display's), 0-1.
+fn to_srgb(x: f32) -> f32 {
+    let x = x.max(0.0);
+    if x <= 0.003_130_8 {
+        12.92 * x
+    } else {
+        1.055 * x.powf(1.0 / 2.4) - 0.055
+    }
+}
+
+/// The sky's tint on an ambient term (openspec/changes/nebula-skies design 6): for a surface facing +X, -X, +Y, -Y, +Z
+/// and -Z of a frame turned by `turn` (that frame into the sky's: a ship's attitude), what multiplies its ambient
+/// share, as display values: the sky's ambient cube there over its strength, so the sky gives the ambient its colour
+/// and the way it leans and the bake keeps how strong it is. All 1 when no sky is set.
+pub fn sky_tint(r: &Renderer, turn: Quat) -> [[f32; 3]; 6] {
+    let Some((cube, strength)) = r.sky().1 else { return sc_render::NO_TINT };
+    let norm = to_srgb(strength).max(1e-4);
+    let axes = [Vec3::X, -Vec3::X, Vec3::Y, -Vec3::Y, Vec3::Z, -Vec3::Z];
+    axes.map(|a| {
+        // The face's way in the sky's frame, and the sky's light there (Half-Life 2's ambient cube).
+        let d = turn * a;
+        let d2 = d * d;
+        let pick = |v: f32, pos: usize| if v >= 0.0 { cube[pos] } else { cube[pos + 1] };
+        let (x, y, z) = (pick(d.x, 0), pick(d.y, 2), pick(d.z, 4));
+        [0, 1, 2].map(|c| to_srgb(d2.x * x[c] + d2.y * y[c] + d2.z * z[c]) / norm)
     })
 }
 
@@ -107,14 +171,40 @@ pub fn exterior_at(ext: &ExteriorData, sys: &sc_core::system::SystemFile, eye: g
     e
 }
 
+/// A station's beacons on the GPU: each one's lamp (radius 1), where it is in the station's frame and its radius up
+/// close, metres. The relay and every spacedock blink theirs by this one rule (CLAUDE.md 6.1).
+pub struct BeaconLamps(Vec<(Mesh, Vec3, f32)>);
+
+impl BeaconLamps {
+    /// The lamps of `beacons`, on the GPU.
+    pub fn new(r: &Renderer, beacons: &[Beacon]) -> Self {
+        let mesh = |m: &MeshBuilder| r.make_mesh(&m.vertices, Indices::U16(&m.indices));
+        Self(beacons.iter().map(|b| (mesh(&beacon_lamp(b.rgb)), Vec3::from(b.at_m), b.radius_m)).collect())
+    }
+
+    /// Draw them into the current pass of `t` through `vp` (a view at the eye), the station's frame at `rel` from the
+    /// eye and turned by `rot`, only while `b.lit` at `time_s`, each at least `b.min_radius_deg` across from the eye.
+    #[allow(clippy::too_many_arguments)]
+    pub fn draw(&self, r: &mut Renderer, t: &Target, vp: Mat4, rel: Vec3, rot: Quat, b: &Beacons, time_s: f64) {
+        if !b.lit(time_s) {
+            return;
+        }
+        for (lamp, at, radius) in &self.0 {
+            let p = rel + rot * *at;
+            let size = beacon_radius_m(*radius, p.length(), b.min_radius_deg);
+            let m = Mat4::from_translation(p) * Mat4::from_scale(Vec3::splat(size));
+            r.draw_deck(t, lamp, DeckProgram::Flat, &crate::drill_bridge::flat_params(vp * m), None);
+        }
+    }
+}
+
 /// A placeholder station ready to draw (patrol-mission design 3): its structure lit by the sun, its windows and strips
 /// glowing, its beacons blinking.
 pub struct StationView {
     scale: f32,
     body: Mesh,
     lights: Mesh,
-    /// Each beacon's lamp (radius 1), where it is in the station's frame and its radius up close, metres.
-    beacons: Vec<(Mesh, Vec3, f32)>,
+    beacons: BeaconLamps,
     /// Its triangles.
     pub triangles: usize,
 }
@@ -124,8 +214,7 @@ impl StationView {
     pub fn new(r: &Renderer, kind: StationKind) -> Self {
         let s = station(kind);
         let mesh = |m: &MeshBuilder| r.make_mesh(&m.vertices, Indices::U16(&m.indices));
-        let beacons =
-            s.beacons.iter().map(|b| (mesh(&beacon_lamp(b.rgb)), Vec3::from(b.at_m), b.radius_m)).collect::<Vec<_>>();
+        let beacons = BeaconLamps::new(r, &s.beacons);
         Self { scale: s.scale, body: mesh(&s.body), lights: mesh(&s.lights), beacons, triangles: s.triangles() }
     }
 
@@ -145,17 +234,10 @@ impl StationView {
         time_s: f64,
     ) {
         let model = Mat4::from_rotation_translation(rot, rel) * Mat4::from_scale(Vec3::splat(self.scale));
-        r.draw_deck_probe(t, &self.body, vp * model, Mat4::from_quat(rot), &sun_cube(sun), [1.0, 0.0, 0.0]);
+        let cube = sun_cube(sun, &sky_tint(r, Quat::IDENTITY));
+        r.draw_deck_probe(t, &self.body, vp * model, Mat4::from_quat(rot), &cube, [1.0, 0.0, 0.0]);
         r.draw_deck(t, &self.lights, DeckProgram::Flat, &crate::drill_bridge::flat_params(vp * model), None);
-        if !b.lit(time_s) {
-            return;
-        }
-        for (lamp, at, radius) in &self.beacons {
-            let p = rel + rot * *at;
-            let size = beacon_radius_m(*radius, p.length(), b.min_radius_deg);
-            let m = Mat4::from_translation(p) * Mat4::from_scale(Vec3::splat(size));
-            r.draw_deck(t, lamp, DeckProgram::Flat, &crate::drill_bridge::flat_params(vp * m), None);
-        }
+        self.beacons.draw(r, t, vp, rel, rot, b, time_s);
     }
 }
 
@@ -238,7 +320,7 @@ mod tests {
 
     #[test]
     fn the_sunward_face_is_brightest_and_the_far_face_gets_the_fill() {
-        let c = sun_cube(Vec3::Y);
+        let c = sun_cube(Vec3::Y, &sc_render::NO_TINT);
         assert!(c[2][0] > c[0][0] && c[0][0] > 0.0, "up, toward the sun, outshines a side face");
         assert!(c[3][2] > c[0][2], "the face away from the sun takes the shade side's fill over a side face's");
     }

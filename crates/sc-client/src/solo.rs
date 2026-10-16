@@ -23,7 +23,8 @@ use sc_server::{DrillServer, Listen, ServerConfig};
 
 /// An NPC crew member at one station.
 pub struct Npc {
-    /// The station they hold.
+    /// The station they hold, or walk to: where they joined at first, then wherever the seats take them (a person
+    /// relieves them, and they swap into the seat the person left: relieve-bots 3 and 5).
     pub station: Station,
     /// "Lt. Dal Varen".
     pub name: String,
@@ -40,13 +41,26 @@ impl Npc {
     pub fn seated(&self) -> bool {
         self.session.station() == Some(self.station)
     }
+
+    /// Their station follows their seat: the one they hold, else the seat their body walks to.
+    fn follow(&mut self) {
+        let slot = self.session.slot;
+        let going = self
+            .session
+            .latest()
+            .and_then(|snap| snap.bodies.iter().find(|b| Some(b.slot) == slot))
+            .and_then(|b| b.going);
+        if let Some(st) = self.session.station().or(going) {
+            self.station = st;
+        }
+    }
 }
 
 /// The drill server and the NPC crew of a single-player game.
 pub struct SoloHost {
     server: DrillServer,
     clock: FixedClock,
-    /// The player's own station.
+    /// The player's own station: where they joined at first, then the station they last sat at (relieve-bots 5).
     pub seat: Station,
     /// One NPC per other station of the roster, in the roster's order.
     pub crew: Vec<Npc>,
@@ -129,8 +143,17 @@ impl SoloHost {
         }
         for n in &mut self.crew {
             n.session.update();
+            n.follow();
             n.bot.manual = !n.auto;
             n.bot.drive(&mut n.session, data);
+        }
+    }
+
+    /// The player now holds `st` (or none, on foot): their own chip and Tab's first console follow the seat they sit
+    /// at (relieve-bots 5).
+    pub fn follow(&mut self, st: Option<Station>) {
+        if let Some(st) = st {
+            self.seat = st;
         }
     }
 
@@ -214,5 +237,66 @@ mod tests {
         host.command_as(Station::Science, Command::Scan(true));
         let scanned = run(&mut host, &mut me, &data, 5.0, |h, _| h.server().drill.bridge.scanning);
         assert!(scanned, "the player's scan reached the server as Science's");
+    }
+
+    /// Walk the player's body to `to` as the client does: steps of at most a metre, each sent, while the game runs.
+    fn walk_to(host: &mut SoloHost, me: &mut Session, data: &DrillData, to: [f32; 3]) {
+        for _ in 0..400 {
+            let Some(at) = me.latest().and_then(|s| s.bodies.iter().find(|b| Some(b.slot) == me.slot).map(|b| b.pos))
+            else {
+                run(host, me, data, 0.05, |_, _| false);
+                continue;
+            };
+            let v = [to[0] - at[0], to[1] - at[1], to[2] - at[2]];
+            let len = v.iter().map(|x| x * x).sum::<f32>().sqrt();
+            if len < 0.05 {
+                return;
+            }
+            let k = (1.0 / len).min(1.0);
+            me.walked([at[0] + v[0] * k, at[1] + v[1] * k, at[2] + v[2] * k], 0.0);
+            run(host, me, data, 0.05, |_, _| false);
+        }
+        panic!("the walk never arrived at {to:?}");
+    }
+
+    #[test]
+    fn the_player_takes_the_captains_chair_in_a_fight_and_the_tabs_follow_the_swap() {
+        // The owner, 2026-10-15: "for example I'm helmsman, I should be able to sit in captains seat whenever"
+        // (relieve-bots 5): after the swap the player's own chip is the captain's and the captain's NPC holds the helm.
+        let data = DrillData::shipped();
+        let root = std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../.."));
+        let (bridge, _) = sc_server::bridge::load(&data, root, None).expect("the bridge's seats");
+        let (helm, captain) = (bridge.stand_point(Station::Helm), bridge.stand_point(Station::Captain));
+        let mut host = SoloHost::start(&data, Station::Helm, &names(), 7, Some(bridge)).unwrap();
+        for n in &mut host.crew {
+            n.bot.read_s = 0.2;
+        }
+        let mut me =
+            Session::connect(host.dial(), "Capt. Raggra of House Da", false, None, Impair::default(), 7).unwrap();
+        assert!(run(&mut host, &mut me, &data, 30.0, |_, me| me.slot.is_some()), "joined");
+        walk_to(&mut host, &mut me, &data, helm);
+        me.claim(Station::Helm);
+        assert!(run(&mut host, &mut me, &data, 30.0, |h, me| h.all_seated() && me.station() == Some(Station::Helm)));
+        me.set_ready(true);
+        assert!(run(&mut host, &mut me, &data, 60.0, |h, _| h.server().drill.phase == Phase::Engage), "the fight");
+        let skipper = host.npc(Station::Captain).map(|n| n.name.clone()).expect("an NPC captain");
+        me.stand();
+        assert!(run(&mut host, &mut me, &data, 10.0, |_, me| me.station().is_none()), "up from the helm");
+        walk_to(&mut host, &mut me, &data, captain);
+        me.claim(Station::Captain);
+        let swapped = run(&mut host, &mut me, &data, 30.0, |h, me| {
+            me.station() == Some(Station::Captain) && h.npc(Station::Helm).is_some_and(|n| n.seated())
+        });
+        assert!(swapped, "the player sat in the captain's chair and an NPC took the helm");
+        host.follow(me.station());
+        assert_eq!(host.seat, Station::Captain, "the player's own chip is the captain's now");
+        assert_eq!(
+            host.npc(Station::Helm).map(|n| n.name.clone()),
+            Some(skipper),
+            "the captain's NPC swapped to the helm"
+        );
+        assert!(host.npc(Station::Captain).is_none(), "no NPC tab for the player's own seat");
+        assert!(host.all_seated(), "READY waits for nobody");
+        assert_eq!(host.server().drill.phase, Phase::Engage, "all in the fight");
     }
 }

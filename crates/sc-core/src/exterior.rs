@@ -159,6 +159,56 @@ pub struct Chase {
     /// Where the ship's centre sits on the screen: how far down from the middle, as a share of the half height (0 is
     /// the middle, 1 the bottom edge).
     pub ship_low: f64,
+    /// The time constant of the critically damped lag with which the chase camera follows the ship's turn, seconds
+    /// (chase-orbit design 3): turning at a steady rate it settles this many seconds of the turn behind.
+    pub follow_tau_s: f64,
+    /// How long a change of camera, CHASE or ORBIT eases from the old picture to the new, seconds (chase-orbit 4).
+    pub blend_s: f64,
+    /// ORBIT: the chase camera turned round the ship by hand (chase-orbit design 5).
+    pub orbit: Orbit,
+}
+
+/// ORBIT's numbers (openspec/changes/chase-orbit design 5 and 6).
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct Orbit {
+    /// The nearest and farthest the orbit stands from the ship's centre, metres.
+    pub distance_m: [f64; 2],
+    /// How far above or below the ship the look line may tilt, degrees (short of the poles).
+    pub pitch_limit_deg: f64,
+    /// Degrees of heading a drag across the whole viewscreen turns (half that of elevation down its height).
+    pub drag_deg_across: f64,
+    /// A wheel notch in divides the distance by this, out multiplies it.
+    pub wheel_step: f64,
+    /// The time constant the orbit drawn follows the hand's with, seconds (the follow's damper).
+    pub smooth_tau_s: f64,
+    /// The most times a second the captain's orbit is sent to the main viewscreen while it changes.
+    pub send_hz: f64,
+}
+
+impl Orbit {
+    /// An orbit's heading (degrees, any turn), elevation (degrees) and distance (metres) as `Command::MainView`'s three
+    /// bytes (chase-orbit design 6): heading over a whole turn, elevation over the limits, distance logarithmic over
+    /// `distance_m`. The one mapping both ends use.
+    pub fn quantize(&self, yaw_deg: f64, pitch_deg: f64, dist_m: f64) -> [u8; 3] {
+        let lim = self.pitch_limit_deg;
+        let [lo, hi] = self.distance_m;
+        let byte = |k: f64| (k.clamp(0.0, 1.0) * 255.0).round() as u8;
+        let yaw = (yaw_deg.rem_euclid(360.0) / 360.0 * 256.0).round() as u32 % 256;
+        let pitch = byte((pitch_deg + lim) / (2.0 * lim));
+        let dist = byte((dist_m.max(lo) / lo).ln() / (hi / lo).ln());
+        [yaw as u8, pitch, dist]
+    }
+
+    /// The three bytes back as heading (0-360 degrees), elevation (degrees) and distance (metres).
+    pub fn unquantize(&self, q: [u8; 3]) -> (f64, f64, f64) {
+        let lim = self.pitch_limit_deg;
+        let [lo, hi] = self.distance_m;
+        let yaw = f64::from(q[0]) / 256.0 * 360.0;
+        let pitch = f64::from(q[1]) / 255.0 * 2.0 * lim - lim;
+        let dist = lo * (hi / lo).powf(f64::from(q[2]) / 255.0);
+        (yaw, pitch, dist)
+    }
 }
 
 fn unit(c: &mut Checks, field: &str, v: [f64; 3]) {
@@ -227,6 +277,18 @@ impl Validate for ExteriorData {
         c.number("viewscreen.chase.distance_m", v.chase.distance_m, 20.0, 2000.0);
         c.number("viewscreen.chase.fov_across_deg", v.chase.fov_across_deg, 30.0, 150.0);
         c.number("viewscreen.chase.ship_low", v.chase.ship_low, 0.0, 0.9);
+        c.number("viewscreen.chase.follow_tau_s", v.chase.follow_tau_s, 0.01, 5.0);
+        c.number("viewscreen.chase.blend_s", v.chase.blend_s, 0.0, 5.0);
+        let o = &v.chase.orbit;
+        c.number("viewscreen.chase.orbit.distance_m[0]", o.distance_m[0], 20.0, 2000.0);
+        c.number("viewscreen.chase.orbit.distance_m[1]", o.distance_m[1], o.distance_m[0] * 1.01, 5000.0);
+        c.number("viewscreen.chase.orbit.pitch_limit_deg", o.pitch_limit_deg, 10.0, 89.0);
+        c.number("viewscreen.chase.orbit.drag_deg_across", o.drag_deg_across, 30.0, 1440.0);
+        c.number("viewscreen.chase.orbit.wheel_step", o.wheel_step, 1.01, 3.0);
+        c.number("viewscreen.chase.orbit.smooth_tau_s", o.smooth_tau_s, 0.01, 2.0);
+        c.number("viewscreen.chase.orbit.send_hz", o.send_hz, 1.0, 30.0);
+        // The chase camera's own distance is where an orbit starts: it must be one the orbit can hold.
+        c.number("viewscreen.chase.distance_m", v.chase.distance_m, o.distance_m[0], o.distance_m[1]);
     }
 }
 
@@ -234,6 +296,14 @@ impl Validate for ExteriorData {
 pub fn normalized(v: [f64; 3]) -> [f32; 3] {
     let l = (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt();
     [(v[0] / l) as f32, (v[1] / l) as f32, (v[2] / l) as f32]
+}
+
+impl ExteriorData {
+    /// The file as shipped (built in): for tests, and for a console drawn with no drill to load it (a fixture).
+    pub fn shipped() -> Self {
+        crate::data::parse("data/space/exterior.json", include_str!("../../../data/space/exterior.json"))
+            .expect("the shipped exterior is valid")
+    }
 }
 
 /// An sRGB 0-1 colour as linear light.
@@ -260,6 +330,29 @@ mod tests {
         let b = &e.beacons;
         assert!(b.lit(0.0) && b.lit(b.period_s * 3.0 + b.on_s * 0.5), "lit at the start of every period");
         assert!(!b.lit(b.on_s * 1.01) && !b.lit(b.period_s * 2.0 - 0.001), "dark for the rest of it");
+    }
+
+    #[test]
+    fn an_orbit_survives_its_three_bytes_within_a_step() {
+        // chase-orbit design 6: 1.4 degrees of heading, 0.63 of elevation, 0.74 % of distance.
+        let o = ExteriorData::shipped().viewscreen.chase.orbit;
+        for (yaw, pitch, dist) in [(0.0, 0.0, 160.0), (359.0, 79.0, 600.0), (-45.0, -80.0, 90.0), (725.0, 12.5, 333.0)]
+        {
+            let (y, p, d) = o.unquantize(o.quantize(yaw, pitch, dist));
+            let dy = (y - f64::rem_euclid(yaw, 360.0) + 540.0).rem_euclid(360.0) - 180.0;
+            assert!(dy.abs() <= 0.71, "heading {yaw}: {y}");
+            assert!((p - pitch).abs() <= 0.32, "elevation {pitch}: {p}");
+            assert!((d / dist - 1.0).abs() <= 0.004, "distance {dist}: {d}");
+        }
+        let (_, p, d) = o.unquantize(o.quantize(0.0, 200.0, 1e6));
+        assert!(p <= o.pitch_limit_deg && d <= o.distance_m[1] + 1e-9, "held to the limits");
+    }
+
+    #[test]
+    fn a_chase_distance_an_orbit_cannot_hold_is_refused() {
+        let bad = FILE.replace("\"distance_m\": 160.0", "\"distance_m\": 1200.0");
+        let err = parse::<ExteriorData>("x", &bad).expect_err("the orbit starts at the chase distance");
+        assert_eq!(err.field, "viewscreen.chase.distance_m");
     }
 
     #[test]

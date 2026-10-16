@@ -210,7 +210,7 @@ footer{height:56px;padding:10px 24px;border-top:1px solid var(--line);display:fl
     return {
       seed: g("seed"), reference_lux: g("reference_lux"), shadow_samples: g("shadow_samples"),
       emitter_sample_area_m2: g("emitter_sample_area_m2"), emitter_sample_spacing_m: g("emitter_sample_spacing_m"),
-      gather_rays: g("gather_rays"), cache_gather_rays: g("cache_gather_rays"), cache_filter: g("cache_filter_passes"),
+      gather_rays: g("gather_rays"), gather_range_m: g("gather_range_m"), cache_gather_rays: g("cache_gather_rays"), cache_filter: g("cache_filter_passes"),
       ao_rays: g("ao_rays"), ao_radius_m: g("ao_radius_m"), bounces: g("bounces"), cache_spacing_m: g("cache_spacing_m"),
       bias_m: g("ray_bias_m"), inset_m: g("sample_inset_m"), dither: g("dither"),
     };
@@ -3054,7 +3054,8 @@ footer{height:56px;padding:10px 24px;border-top:1px solid var(--line);display:fl
   }
   /** Merge textured flat-shaded primitives into a single draw, using the existing array. */
   function batch(T,K,mats,entries){
-    const out={position:[],normal:[],color:[],surfUv:[],surfLayer:[],surfGlow:[]};
+    // albedo: each vertex's colour before the stand-in key light, for a page that lights the hull itself (spacedock's probes).
+    const out={position:[],normal:[],color:[],albedo:[],surfUv:[],surfLayer:[],surfGlow:[]};
     const roles={};
     const sun=new T.Vector3(-.5,.9,.3).normalize();
     for(const e of entries){
@@ -3090,6 +3091,7 @@ footer{height:56px;padding:10px 24px;border-top:1px solid var(--line);display:fl
       for(const v of vertices){
         const [x,y,z]=v.v,[nx,ny,nz]=v.n;
         const c=new T.Color(v.color);
+        out.albedo.push(c.r,c.g,c.b);
         const illumination=e.glow?1:.47+.53*Math.max(0,nx*sun.x+ny*sun.y+nz*sun.z);
         c.multiplyScalar(illumination);
         out.position.push(x,y,z);out.normal.push(nx,ny,nz);out.color.push(c.r,c.g,c.b);

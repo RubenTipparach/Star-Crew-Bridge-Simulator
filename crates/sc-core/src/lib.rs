@@ -24,6 +24,7 @@ pub mod repair;
 pub mod replay;
 pub mod rng;
 pub mod schematic;
+pub mod sky;
 pub mod spacedock;
 pub mod system;
 pub mod vertex;

@@ -192,7 +192,8 @@ impl Lobby {
             .title_bar(false)
             .resizable(false)
             .fixed_size(size)
-            .anchor(Align2::CENTER_CENTER, Vec2::new(0.0, 60.0))
+            // Placed by its fixed size: anchored, a panel shown anew sat a frame off centre (browser-page-fit 6).
+            .fixed_pos(crate::ui::centred(ctx.content_rect(), size + Vec2::splat(2.0 * 22.0), Vec2::new(0.0, 60.0)))
             .frame(egui::Frame::window(&ctx.style()).inner_margin(22.0).corner_radius(18.0))
             .show(ctx, |ui| {
                 ui.set_width(size.x);
@@ -203,12 +204,13 @@ impl Lobby {
     /// The four buttons (front-menu design 1): Single Player first, focused and filled, the main action.
     fn main_page(&mut self, ctx: &egui::Context) -> LobbyAction {
         let web = cfg!(target_os = "emscripten");
-        let rows = MAIN.len() + 1;
+        // The browser cannot close its own page: there is no QUIT there (browser-page-fit design 6), rather than a
+        // button that does nothing.
+        let rows = if web { MAIN.len() } else { MAIN.len() + 1 };
         let (up, down, enter) = ctx.input(|i| {
             (i.key_pressed(egui::Key::ArrowUp), i.key_pressed(egui::Key::ArrowDown), i.key_pressed(egui::Key::Enter))
         });
-        // The browser cannot close its own page: Quit is off there, and the focus passes it by.
-        let last = if web { rows - 2 } else { rows - 1 };
+        let last = rows - 1;
         if up {
             self.focus = self.focus.saturating_sub(1);
         }
@@ -231,8 +233,7 @@ impl Lobby {
                         .corner_radius(32.0)
                         .fill(if main { AMBER } else { SLATE })
                         .stroke(egui::Stroke::new(if focused { 3.0_f32 } else { 0.0 }, LILAC));
-                    let enabled = page.is_some() || !web;
-                    let clicked = ui.add_enabled(enabled, b).clicked() || (enter && focused && enabled);
+                    let clicked = crate::ui::mark(word, ui.add(b)).clicked() || (enter && focused);
                     if clicked {
                         self.focus = i;
                         match page {
@@ -257,7 +258,8 @@ impl Lobby {
         let mut back = false;
         Self::panel(ctx, "lobby", size, |ui| {
             ui.horizontal(|ui| {
-                if ui.add(egui::Button::new(RichText::new("BACK").color(PALE)).corner_radius(14.0)).clicked() {
+                let b = egui::Button::new(RichText::new("BACK").color(PALE)).corner_radius(14.0);
+                if crate::ui::mark("BACK", ui.add(b)).clicked() {
                     back = true;
                 }
                 ui.add_space(8.0);
@@ -317,7 +319,7 @@ impl Lobby {
                     .min_size(Vec2::new(size.x, 64.0))
                     .corner_radius(32.0)
                     .fill(AMBER);
-                if ui.add_enabled(ready, beam).clicked() {
+                if crate::ui::mark("BEAM ABOARD", ui.add_enabled(ready, beam)).clicked() {
                     action = LobbyAction::Solo;
                 }
                 ui.add_space(8.0);
@@ -325,7 +327,7 @@ impl Lobby {
                     .min_size(Vec2::new(size.x, 40.0))
                     .corner_radius(20.0)
                     .fill(SLATE);
-                if ui.add_enabled(ready, tour).clicked() {
+                if crate::ui::mark("TOUR", ui.add_enabled(ready, tour)).clicked() {
                     action = LobbyAction::Tour;
                 }
             } else {
@@ -372,7 +374,8 @@ impl Lobby {
         let options = &mut self.options;
         Self::panel(ctx, "options", Vec2::new(560.0, 300.0), |ui| {
             ui.horizontal(|ui| {
-                if ui.add(egui::Button::new(RichText::new("BACK").color(PALE)).corner_radius(14.0)).clicked() {
+                let b = egui::Button::new(RichText::new("BACK").color(PALE)).corner_radius(14.0);
+                if crate::ui::mark("BACK", ui.add(b)).clicked() {
                     back = true;
                 }
                 ui.add_space(8.0);

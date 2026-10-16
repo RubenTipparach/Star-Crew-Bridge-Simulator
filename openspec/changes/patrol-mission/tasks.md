@@ -1,7 +1,9 @@
 # Tasks: patrol-mission
 
 The owner asked for it on 2026-10-14 ("have the ship undock from star base, go patrol a star system and encounter
-hostiles", "the view through the window should reflect whats going on around the ship").
+hostiles", "the view through the window should reflect whats going on around the ship"), and widened it on 2026-10-15
+("travel to various planets in the star system and encounter enemies we have to clear out, begining of the game starts
+at space dock"; "we do start at the oneil cylinders"; "baked lighting in the interior hanger bay").
 
 ## 1. Write-up and mockup (phase 1)
 
@@ -46,9 +48,39 @@ hostiles", "the view through the window should reflect whats going on around the
 
 - [x] 5.1 The sky from the system file: the star's direction, size and light; the near planet's look (the banded
   look and three far-body slots still to do).
-- [x] 5.2 The starbase and its cradle in the system frame; the cradle sliding past as the Tern backs out.
+- [x] 5.2 The starbase and its cradle in the system frame; the cradle sliding past as the Tern backs out. (Replaced
+  2026-10-15 by 5.5.)
 - [ ] 5.3 Motes, the jump's streaks and flash, the belt's far rocks.
-- [ ] 5.4 `starbase.glb` replacing the placeholder when the `starbase` change lands.
+- [ ] 5.4 `starbase.glb` replacing the placeholder when the `starbase` change lands. (Superseded by 5.5: Tamsin Station is
+  spacedock's version E, generated.)
+- [x] 5.5 The stations' models (design 12b): Tamsin Station generated from the spacedock sizes, lit per vertex (spacedock
+  5b's fallback), its bay's floods baked at load, two sister ships at their berths; the other four stations as flagged
+  placeholders; the outside's depth slice widened; the girder cradle gone from the drill.
+
+## 7. The tour: scan, battle and civilian stops (phase 3, design 12c)
+
+- [x] 7.1 The write-up: six stops of three kinds (two scans, a rescue, three battles), the battles' hostiles, `clear`,
+  `scan`, `refuel`, moving on undone, the ship kept between stops, the outcome, the bots' lines, the windows at Cinder
+  (design 1, 5, 6, 9, 11.1, 12c; spec).
+- [ ] 7.2 The four new points in `data/space/systems/shoals.json` (Cinder orbit, Cinder's ore lanes, Orrin's rings,
+  the Shoals' edge), with their arrival points and checks.
+- [ ] 7.3 The mission's `route` as stops with a kind and, for a battle, a group; `groups`; the `civilian` block; the
+  resolve's checks.
+- [ ] 7.4 Mockups first (CLAUDE.md 10): science's SCAN aimed at a body and engineering's FUEL, in
+  `docs/mockups/patrol-consoles.html`.
+- [ ] 7.5 The scan stops: SCAN of a body and the edge's sweep with the trail.
+- [ ] 7.6 `fighters.rs`: a pack with no carrier.
+- [ ] 7.7 The fight re-armed at each battle stop with the Tern's damage, fires, missiles, power and crew kept.
+- [ ] 7.8 The hidden group found by the sweep; `clear`; moving on undone; PATROL COMPLETE or INCOMPLETE.
+- [ ] 7.9 The civilian stop: the *Marrow Lark* and its placeholder mesh, the hail, the alongside rule, the fuel coupling
+  at the docking collar (`ship-interactables`), FUEL, the transfer from the reactor's store, the line parting.
+- [ ] 7.10 The raider at the Shoals: `missions`' Grabon raider class, the Hound with four Jackals until it is built.
+- [ ] 7.11 The bots and automation do every kind of stop (a bot walks to the fuel coupling) and wait for the fires to
+  be out before the next jump; their lines.
+- [ ] 7.12 The briefing's route and the OBJECTIVES tab's rows; the end screen's outcome.
+- [ ] 7.13 The hull lit by the bay's probes while berthed, the star's over the throat (spacedock 8a and 2.5).
+- [ ] 7.14 A playtest on foot of the whole tour on the Pi 5: the scans, the rescue, three battles, repairs between them,
+  home.
 
 ## 6. Verification
 

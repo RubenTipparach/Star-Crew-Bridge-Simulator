@@ -99,7 +99,8 @@ for (const file of pages) {
     await page.evaluate((i) => Promise.resolve(window.MOCKUP_SHOTS[i].setup()), i);
     await frames(page, 45);
     const out = path.join(outDir, `${name}-${shots[i]}.png`);
-    await page.screenshot({ path: out });
+    // A software-rendered frame of a heavy view (a station's bay through a bridge window) can take seconds.
+    await page.screenshot({ path: out, timeout: 120000 });
     taken.push(path.relative(ROOT, out));
   }
   const budget = await page.evaluate(() => (window.MOCKUP_BUDGET ? window.MOCKUP_BUDGET() : null));

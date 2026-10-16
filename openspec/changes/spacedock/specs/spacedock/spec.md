@@ -64,3 +64,19 @@ rotate, and a pair of habitats SHALL turn in opposite directions so their spin c
 - **WHEN** the Tern lies berthed in the dock of a station whose cylinders turn at 1 rpm
 - **THEN** the berth, its clamps and its crew tube stay still relative to the Tern while the cylinders turn behind the
   dock, one each way
+
+### Requirement: The bay is lit by baked light
+
+The inside of a station's bay SHALL be lit by light baked offline from its fixtures (the rings, the floods, the berths'
+work lights and the window tiers) into vertex colours in three states, and every ship in the bay, the Tern's hull
+included, SHALL be lit by the bay's baked probes rather than by the star.
+
+#### Scenario: Berthed in Tamsin Station's bay
+- **WHEN** the Tern lies in its berth in E's round bay
+- **THEN** its hull and the docked ships are lit by the bay's floods and work lights from the probes, and no sunlight
+  falls on them
+
+#### Scenario: Leaving the bay
+- **WHEN** the Tern flies out down the throat
+- **THEN** the light on its hull goes from the bay's probes to the star's over the throat, and in open space it is the
+  star's

@@ -3,7 +3,7 @@
 //! the ship is shared), it only takes this player's input. It lives in the client because it is the client's screen.
 
 use crate::options::Options;
-use egui::{Align2, Color32, RichText, Vec2};
+use egui::{Color32, RichText, Vec2};
 
 const AMBER: Color32 = Color32::from_rgb(242, 160, 70);
 const LILAC: Color32 = Color32::from_rgb(190, 160, 230);
@@ -11,6 +11,8 @@ const PALE: Color32 = Color32::from_rgb(200, 212, 230);
 const DIM: Color32 = Color32::from_rgb(150, 160, 178);
 const SLATE: Color32 = Color32::from_rgb(38, 46, 66);
 const PANEL: Color32 = Color32::from_rgb(16, 22, 34);
+/// The panel's margin round its rows, points.
+const MARGIN: f32 = 22.0;
 
 /// The rows, in their order.
 const ROWS: [&str; 4] = ["Resume", "Options", "Return to menu", "Exit"];
@@ -38,9 +40,20 @@ pub enum MenuAsk {
 }
 
 /// The menu: closed, or open on a page.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct GameMenu {
     page: Option<Page>,
+    /// In a browser: a page cannot close itself, so there is no Exit (browser-page-fit design 6). Exit there stopped
+    /// the engine and left a frozen frame with no way back.
+    web: bool,
+}
+
+// Not derived: `web` is true in the browser build, where clippy (run for the desktop) does not look.
+#[allow(clippy::derivable_impls)]
+impl Default for GameMenu {
+    fn default() -> Self {
+        Self { page: None, web: cfg!(target_os = "emscripten") }
+    }
 }
 
 impl GameMenu {
@@ -64,6 +77,7 @@ impl GameMenu {
     /// works on every row. `place` says where the player is ("SCS Tern, Helm"). Returns what was chosen.
     pub fn show(&mut self, ctx: &egui::Context, place: &str, options: &mut Options) -> Option<MenuAsk> {
         let page = self.page?;
+        let rows = if self.web { &ROWS[..3] } else { &ROWS[..] };
         let (up, down, left, right, enter) = ctx.input(|i| {
             (
                 i.key_pressed(egui::Key::ArrowUp),
@@ -82,14 +96,16 @@ impl GameMenu {
         let mut ask = None;
         let mut next = page;
         let size = if page == Page::Options { Vec2::new(560.0, 420.0) } else { Vec2::new(434.0, 360.0) };
+        // Placed by its fixed size, not anchored: anchored, the rows were drawn a frame at Options' place coming back
+        // from it, and a click there missed (browser-page-fit design 6).
         egui::Window::new("game-menu")
             .title_bar(false)
             .resizable(false)
             .fixed_size(size)
             // Above the veil, which is on the foreground layer over everything else.
             .order(egui::Order::Tooltip)
-            .anchor(Align2::CENTER_CENTER, Vec2::ZERO)
-            .frame(egui::Frame::window(&ctx.style()).fill(PANEL).inner_margin(22.0).corner_radius(18.0))
+            .fixed_pos(crate::ui::centred(screen, size + Vec2::splat(2.0 * MARGIN), Vec2::ZERO))
+            .frame(egui::Frame::window(&ctx.style()).fill(PANEL).inner_margin(MARGIN).corner_radius(18.0))
             .show(ctx, |ui| {
                 ui.set_width(size.x);
                 let title = if page == Page::Options { "OPTIONS" } else { "MENU" };
@@ -105,15 +121,15 @@ impl GameMenu {
                         }
                     }
                     Page::Main(focus) => {
-                        let mut focus = focus;
+                        let mut focus = focus.min(rows.len() - 1);
                         if up {
-                            focus = (focus + ROWS.len() - 1) % ROWS.len();
+                            focus = (focus + rows.len() - 1) % rows.len();
                         }
                         if down {
-                            focus = (focus + 1) % ROWS.len();
+                            focus = (focus + 1) % rows.len();
                         }
                         let mut pressed = enter.then_some(focus);
-                        for (i, w) in ROWS.iter().enumerate() {
+                        for (i, w) in rows.iter().enumerate() {
                             if row_button(ui, w, i == focus, size.x).clicked() {
                                 pressed = Some(i);
                             }
@@ -132,7 +148,7 @@ impl GameMenu {
                         if left || right || up || down {
                             yes = !yes;
                         }
-                        for (i, w) in ROWS.iter().enumerate() {
+                        for (i, w) in rows.iter().enumerate() {
                             if i != row {
                                 if row_button(ui, w, false, size.x).clicked() {
                                     next = Page::Main(i);
@@ -183,7 +199,8 @@ fn row_button(ui: &mut egui::Ui, word: &str, on: bool, w: f32) -> egui::Response
         .min_size(Vec2::new(w, 50.0))
         .corner_radius(10.0)
         .fill(if on { LILAC } else { SLATE });
-    ui.add(b)
+    let r = ui.add(b);
+    crate::ui::mark(word, r)
 }
 
 /// Yes or No inside a question's row.
@@ -217,7 +234,7 @@ mod tests {
     #[test]
     fn exit_asks_first_and_no_is_where_the_focus_starts() {
         let ctx = egui::Context::default();
-        let mut m = GameMenu { page: Some(Page::Main(3)) };
+        let mut m = GameMenu { page: Some(Page::Main(3)), web: false };
         let mut o = Options::default();
         let press = |ctx: &egui::Context, m: &mut GameMenu, o: &mut Options, key: Option<egui::Key>| {
             let events = key
@@ -244,5 +261,61 @@ mod tests {
         press(&ctx, &mut m, &mut o, Some(egui::Key::ArrowLeft));
         assert_eq!(press(&ctx, &mut m, &mut o, Some(egui::Key::Enter)), Some(MenuAsk::Exit), "Yes exits");
         assert!(!m.open());
+    }
+
+    #[test]
+    fn the_browser_has_no_exit_to_leave_a_frozen_page() {
+        // Regression (browser-page-fit design 6): Exit in the browser stopped the engine, and the page sat frozen.
+        let ctx = egui::Context::default();
+        let mut m = GameMenu { page: Some(Page::Main(2)), web: true };
+        let mut o = Options::default();
+        let down = egui::Event::Key {
+            key: egui::Key::ArrowDown,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers: Default::default(),
+        };
+        let raw = egui::RawInput { events: vec![down], ..Default::default() };
+        let _ = ctx.run(raw, |ctx| {
+            m.show(ctx, "SCS Tern, Helm", &mut o);
+        });
+        // A frame more with no keys, past egui's first sizing frame, to read what is drawn.
+        let out = ctx.run(egui::RawInput::default(), |ctx| {
+            m.show(ctx, "SCS Tern, Helm", &mut o);
+        });
+        let texts = crate::ui::texts(&out.shapes);
+        assert_eq!(m.page, Some(Page::Main(0)), "down from Return to menu wraps to Resume, past no Exit");
+        assert!(!texts.iter().any(|t| t == "Exit"), "no Exit row is drawn in the browser: {texts:?}");
+        assert!(texts.iter().any(|t| t == "Return to menu"), "the way back to the front menu stays");
+    }
+
+    #[test]
+    fn the_rows_are_where_they_settle_on_the_first_frame_back_from_options() {
+        // Regression (browser-page-fit design 6): back from Options the rows were drawn a frame at Options' place, so a
+        // click there missed.
+        let ctx = egui::Context::default();
+        let mut o = Options::default();
+        let mut m = GameMenu { page: Some(Page::Options), web: false };
+        let frame = |m: &mut GameMenu, o: &mut Options| {
+            let raw = egui::RawInput {
+                screen_rect: Some(egui::Rect::from_min_size(egui::Pos2::ZERO, Vec2::new(1280.0, 720.0))),
+                ..Default::default()
+            };
+            let _ = ctx.run(raw, |ctx| {
+                m.show(ctx, "SCS Tern, Helm", o);
+            });
+            crate::ui::take_marks(&ctx).into_iter().find(|(l, _)| l == "Resume").map(|x| x.1)
+        };
+        for _ in 0..3 {
+            frame(&mut m, &mut o);
+        }
+        m.page = Some(Page::Main(1));
+        let first = frame(&mut m, &mut o).expect("Resume is drawn");
+        let mut settled = first;
+        for _ in 0..3 {
+            settled = frame(&mut m, &mut o).expect("Resume is drawn");
+        }
+        assert!((first.center() - settled.center()).length() < 0.5, "Resume moved from {first:?} to {settled:?}");
     }
 }

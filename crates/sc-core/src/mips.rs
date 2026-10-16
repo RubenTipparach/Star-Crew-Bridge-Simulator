@@ -1,7 +1,7 @@
 //! Texture layers made smaller: the box filter and the mip chain every texture array is uploaded with
 //! (openspec/changes/surface-materials). It lives in the core because `deckc` packs the rooms' and the hull's arrays with
 //! it and the client builds the stations' arrays with it (patrol-mission design 12b): one filter, so a layer looks the
-//! same however far off it is in either (CLAUDE.md 6.1).
+//! same however far off it is in either (CLAUDE.md 6.1). A smaller layer joins a bigger array by `grow`.
 
 /// Box-filter `src` (square RGBA8 layers of `from` px) to `to` px, `to` dividing `from`.
 pub fn shrink(src: &[u8], from: u32, to: u32) -> Vec<u8> {
@@ -42,6 +42,21 @@ pub fn mip_chain(level0: Vec<u8>, size: u32, layers: u32) -> Vec<Vec<u8>> {
     levels
 }
 
+/// Repeat each texel of `src` (one square RGBA8 layer of `from` px) into a square block, to `to` px, `from` dividing
+/// `to`: a small layer joining an array of bigger ones, its texels kept as they are.
+pub fn grow(src: &[u8], from: u32, to: u32) -> Vec<u8> {
+    let k = (to / from) as usize;
+    let (f, t) = (from as usize, to as usize);
+    let mut out = vec![0u8; t * t * 4];
+    for y in 0..t {
+        for x in 0..t {
+            let s = ((y / k) * f + x / k) * 4;
+            out[(y * t + x) * 4..(y * t + x) * 4 + 4].copy_from_slice(&src[s..s + 4]);
+        }
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -50,6 +65,14 @@ mod tests {
     fn a_layer_halves_by_averaging_each_two_by_two_block() {
         let src: Vec<u8> = [[0u8, 0, 0, 255], [255, 255, 255, 255]].iter().cycle().take(4).flatten().copied().collect();
         assert_eq!(shrink(&src, 2, 1), vec![127, 127, 127, 255]);
+    }
+
+    #[test]
+    fn a_layer_grows_by_repeating_each_texel_and_shrinks_back_to_itself() {
+        let src: Vec<u8> = (0..16u8).collect();
+        let big = grow(&src, 2, 4);
+        assert_eq!(&big[0..8], &[0, 1, 2, 3, 0, 1, 2, 3], "the first texel twice across");
+        assert_eq!(shrink(&big, 4, 2), src);
     }
 
     #[test]

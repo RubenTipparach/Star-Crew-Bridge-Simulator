@@ -51,6 +51,25 @@
     },
     "indicator_panel": {
       "kind": "area", "luminance_cd_m2": 90, "range_m": 2.5, "light": "fixed", "color_srgb": "#ffb347", "emergency": "always"
+    },
+    "bay_ring": {
+      "_doc": "A spacedock bay's general light (openspec/changes/spacedock design 8a): a strip round the bay's wall on every second rib, 80 m apart down E's 620 m bay. Off the emergency bus: red on the station's alert, dark on its emergency supply.",
+      "kind": "area", "luminance_cd_m2": 1500, "range_m": 350.0, "width_m": 4.0, "end_clear_m": 0.0,
+      "light": "strip", "emergency": "bus"
+    },
+    "bay_flood": {
+      "_doc": "A spacedock bay's flood (spacedock design 8a): one a berth, on the spine down the bay's axis, aimed at its berth. Warm and steady for the work on alert; out on emergency power. Radius 0: from 190 m a lens's penumbra is narrower than a 4 m cell.",
+      "kind": "point", "intensity_cd": 4000000, "radius_m": 0.0, "beam_exponent": 6, "range_m": 600.0, "drop_m": 0.0,
+      "light": "fixed", "color_srgb": "#ffe2b8", "emergency": "bus"
+    },
+    "berth_work": {
+      "_doc": "A berth's work light (spacedock design 8a): on the pad's corner masts, the portal frames and under the gantry; bright and short. On the emergency bus at 0.6.",
+      "kind": "point", "intensity_cd": 120000, "radius_m": 0.0, "beam_exponent": 1.5, "range_m": 90.0, "drop_m": 0.0,
+      "light": "fixed", "color_srgb": "#ffd6a0", "emergency": "bus", "emergency_scale": 0.6
+    },
+    "window_tier": {
+      "_doc": "A tier of lit control-room windows on a bay's back wall (spacedock design 8a): soft and warm; a little light on the back wall's foot and the sterns. Always lit, at 0.4 on emergency power.",
+      "kind": "area", "luminance_cd_m2": 150, "range_m": 250.0, "light": "fixed", "color_srgb": "#ffd9a8", "emergency": "always", "emergency_scale": 0.4
     }
   }
 }

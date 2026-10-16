@@ -123,3 +123,115 @@ game. Times are the video's, about 27 s ahead of the drill's clock in the log.
 Not in it yet: the jump's streaks and flash (the windows simply change), the starbase's model (a placeholder ring is
 far off the starboard side and dark against the star), the console controls for UNDOCK, JUMP, SHORE and SWEEP (a
 mockup awaits approval; the NPCs play them).
+
+## `2026-10-15-tamsin-undock-pi5.mp4` (344 s, 1280 x 678, 30 fps; `patrol-mission` design 12b, spacedock tasks 2.9)
+
+Undocking from Tamsin Station on foot at the helm, in single player on Pi 1 (Pi 5 8 GB), `sc-client --solo --mission
+patrol-shoals --station helm --playtest --window`: the scripted player walks onto the bridge, sits at the helm and
+presses UNDOCK from the seat once the drive is green and the captain gives the order (the console's UNDOCK control
+awaits its mockup's approval, so the script sends the command it will send, by `combat::patrol::decide`); then it gets
+up and walks the ship while the Tern leaves the round bay, goes down the throat and clears the station. The NPC crew
+play their stations. The game window's content alone, recorded with `wf-recorder` and re-encoded to H.264 High, yuv420p
+(`ffmpeg -vf fps=30,scale=1280:-2,format=yuv420p -c:v libx264 -crf 30`). Times are the video's, about 4 s ahead of the
+drill's clock.
+
+| Time | Shows |
+| --- | --- |
+| 0:00-0:04 | Loading (black) |
+| 0:04-0:12 | Muster: the body walks out of the corridor onto the bridge, past the captain's chair to the helm; through the forward windows the round bay's wall, its flood rings and ribs, and the throat at its end with the star in it |
+| 0:12-0:36 | Sat at the helm, the console up from the desk: the briefing, then the helm console, its viewscreen on the bay and the throat |
+| 0:36-0:41 | Engineering's NPC drops shore power, the drive comes on line, the captain orders "Helm, take us out", the script presses UNDOCK at the helm, the clamps release |
+| 0:41-1:00 | The helm console while the Tern rises off its berth toward the axis at the bay's 5 m/s |
+| 1:00-1:30 | Up and across the bridge: the bay's wall and its rings sliding past the windows |
+| 1:30-2:30 | Down to the mess on deck B and back to the helm; the viewscreen ahead down the axis to the throat and the star |
+| 2:30-4:00 | Up to the bridge windows in the throat, then across to Tactical (the drill's tour) |
+| 4:00-5:44 | The tour of the decks (the hangar, the corridors); the computer reports "Clear of the berth" at about 5:04 |
+
+Not in it yet: the iris's leaves (it stands open), the habitats' land and see-through windows, docked ships other
+than the two Herons, the console controls for UNDOCK, JUMP, SHORE and SWEEP (awaiting approval).
+
+## `2026-10-16-captains-viewscreen-on-foot-pi5.mp4` (160 s, 1280 x 678, 30 fps; `leave-station`, `captains-viewscreen`, `relieve-bots`)
+
+The owner's three asks from the browser build ("why cant I get up during combat? and walk around? and see the captains
+screen on the main view screen"), played on foot in single player on Pi 1 (Pi 5 8 GB), `sc-client --solo --station
+captain --playtest --window`, commit 207fa21. The scripted player works the console through the same pointer and keys a
+person uses: it clicks SCREEN where a pointer would, and gets up by holding E, the stand key, through the same hold
+that fills LEAVE STATION's ring. The game window's content alone, recorded with `wf-recorder` and re-encoded to H.264
+High, yuv420p (`ffmpeg -vf crop,fps=30,scale=1280:-2,format=yuv420p -c:v libx264 -crf 30`). Shots of each step are in
+`docs/screenshots/engine/leave-station/`.
+
+| Time | Shows | Shot |
+| --- | --- | --- |
+| 0:00-0:09 | Muster: the body walks onto the bridge to the captain's chair and sits; the console rises from the desk | 1 |
+| 0:09-0:44 | The briefing over the captain's console, LEAVE STATION in its title band; the crew sit, READY, the countdown | 2 |
+| 0:44-0:52 | Engage: the captain's console in the fight | 3 |
+| 0:52-0:58 | TARGET on his viewscreen, then SCREEN (lit): his picture goes on every screen | 4 |
+| 1:04-1:06 | E held: LEAVE STATION's keycap ring fills, and he stands; the captain's chair passes to automation, and a bot takes it | 5, 6 |
+| 1:06-1:32 | On foot mid-fight, he walks to the bridge's main viewscreen and watches his picture on it: the Hound on TARGET | 7 |
+| 1:32-1:44 | On to the starboard window | 8 |
+| 1:44-1:49 | To the helm: "E  Take Helm from Lt. Sil Saren"; Saren stands and walks to the nearest unmanned station, Laser port (the captain's chair he would swap into was taken already) | 9 |
+| 1:49-2:16 | Seated at the helm, the captain's TARGET picture on the helm's own VIEWSCREEN panel | 10 |
+| 2:16-2:40 | Up again with E and back to the main viewscreen; the helm's NPC returns to the helm | |
+
+Not in it: the CHASE press of the script did not take (the picture stays on TARGET), and bodies pass through each other
+(Saren stands up through the player's eye at 1:45).
+
+## 2026-10-16-browser-single-player-walk.mp4
+
+The browser build (`openspec/changes/browser-page-fit`), played by mouse and keys in headless Chromium on the Pi 5's
+GPU at 1280 x 720 (`tools/web/smoke.mjs` style, recorded by Playwright, re-encoded to yuv420p). A browser frame rate
+says nothing about a Pi client; the game ran at about 6 frames a second here.
+
+| Time | Shows |
+| --- | --- |
+| 0:00-0:15 | Loading, the front menu with no Quit, SINGLE PLAYER and BEAM ABOARD clicked where they are drawn |
+| 0:15-0:31 | Muster: the body walks up the corridor onto the bridge to the captain's chair; the round waits for it |
+| 0:31-0:40 | "E  Take Captain from ..."; sitting is the player's READY, and the countdown starts once the crew are seated |
+| 0:40-0:44 | Engage: the captain's console |
+| 0:44-0:52 | E held: up from the chair, on foot on the bridge in red alert, walking back |
+| 0:52-0:56 | Esc: the game menu, Resume, Options and Return to menu, with no Exit in the browser |
+
+## `2026-10-16-chase-smooth-before-after.mp4` (14 s, 1280 x 880, 30 fps; `chase-orbit`)
+
+The owner's "can we get some smooth ness to the rotation there?": the captain's viewscreen through the chase-camera
+film's cameras (FWD off and on, TARGET, PORT, AFT, STBD with CHASE on), the same seeded single-player round rendered
+headless on Pi 1 (Pi 5 8 GB) by `sc-client --headless --solo --station captain --film --shots DIR`. Top: before
+(commit e4c43b3), snapshots drawn by their arrival time, the 10 Hz shudder measured in `chase-orbit` design 1 (the
+heading drawn advanced 6.2, 10.6 and 8.8 mrad a frame in turn), and each camera a cut. Bottom: after, the snapshots
+played back on the server's clock, the chase camera following the turn with its 0.4 s lag, and each change easing over
+0.5 s. Encoded H.264 High, yuv420p. The film steps the game 1/30 s a frame, so it shows what is drawn, not the Pi's
+frame rate.
+
+## `2026-10-16-chase-orbit.mp4` (45 s, 1280 x 720, 30 fps; `chase-orbit`)
+
+ORBIT, filmed the same way with `sc-client --headless --solo --station captain --film-orbit --shots DIR` and
+`tools/video/film.sh`, then scaled and encoded H.264 High, yuv420p. The scripted orbit moves the hand's goal as a drag
+and the wheel would; the rig smooths it as it does a player's. Shots in `docs/screenshots/engine/chase-orbit/`.
+
+| Time | Shows | Shot |
+| --- | --- | --- |
+| 0:00-0:13 | The walk to the captain's chair, sitting, the countdown | |
+| 0:13 | FWD from the bow | |
+| 0:14-0:20 | CHASE on: the camera eases out behind the Tern and follows its turns; ORBIT's keycap becomes available | 1 |
+| 0:20-0:24 | TARGET: the camera eases round to look past the Tern at the Hound | 2 |
+| 0:24-0:34 | ORBIT on (lit): once round the ship, below and above it, in and out | 3, 4, 5 |
+| 0:34-0:37 | ORBIT off: the camera eases back to the chase position | 6 |
+| 0:37-0:45 | On foot behind the chair: the bridge's main viewscreen shows the captain's orbit | 7 |
+
+## `2026-10-16-nebula-skies-pi5.mp4` (45 s, 1280 x 720, 30 fps; `nebula-skies`)
+
+The nebula sky in the engine: the Shoals' sky A, Bloom, and its vector stars, filmed with `sc-client --headless --solo
+--station captain --film-orbit --shots DIR` on Pi 1 (Pi 5 8 GB) and `tools/video/film.sh`, then scaled and encoded
+H.264 High, yuv420p. The film steps the game 1/30 s a frame, so it shows what is drawn, not the Pi's frame rate (that
+is `docs/benchmarks/2026-10-16-nebula-skies-pi5/`). Shots in `docs/screenshots/engine/nebula-skies/`.
+
+| Time | Shows | Shot |
+| --- | --- | --- |
+| 0:00-0:06 | The walk to the captain's chair on the bridge, the nebula in the viewscreens | |
+| 0:06-0:13 | Seated: the console comes up, the countdown | |
+| 0:13-0:20 | FWD, then CHASE on: the Tern in front of the cloud and the sun; the stars streak as the camera turns with the ship | 4 |
+| 0:20-0:24 | TARGET: the camera eases round, the stars streak, then settle to points | |
+| 0:24-0:34 | ORBIT: the camera turned round the Tern, every star a short line toward where it was | 5, 6 |
+| 0:34-0:37 | ORBIT off: the camera eases back | |
+| 0:37-0:45 | On foot behind the chair: the nebula through the bridge's windows and on the main viewscreen | 3 |
+

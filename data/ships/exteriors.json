@@ -187,6 +187,11 @@
         3000,
         600
       ],
+      "smooth_magnify_materials": [
+        "tern_hull",
+        "tern_rim",
+        "tern_nacelle"
+      ],
       "layout_patch": "data/ships/tern/command_suite.json",
       "window_patch": "data/ships/tern/exterior_windows.json",
       "skin_m": 0.22,

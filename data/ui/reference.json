@@ -1,0 +1,6 @@
+{
+  "schema": "starcrew.ui-reference/1",
+  "_doc": "The one reference frame every screen is laid out on (openspec/changes/browser-page-fit design 5; owner, 2026-10-15: 'buttons and text need to scale with reference pixels at 1920x1080'). The frame is reference_px wide and high, scaled to the output by min(width / 1920, height / 1080) and centred, so it always fits and the extra space goes to the edges. Layouts are written in layout points, layout_pt to the frame (the mockups' 1280 x 720 canvas): one layout point is reference_px / layout_pt reference pixels, the same on both axes.",
+  "reference_px": [1920.0, 1080.0],
+  "layout_pt": [1280.0, 720.0]
+}

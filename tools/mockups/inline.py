@@ -19,7 +19,8 @@ read a ship's other data files (power.json, atmosphere.json, detailing.json).
 "data:lighting/<name>" copies data/lighting/<name>.json (fixtures, bake) the same way, and
 "data:crew/<name>" data/crew/<name>.json (the walk's numbers, crew-on-deck), "data:space/<name>"
 data/space/<name>.json (the outside: the sun, the planet, the dock; patrol-mission) and "data:missions/<name>"
-data/missions/<name>.json.
+data/missions/<name>.json; "data:space/<dir>/<name>" data/space/<dir>/<name>.json as
+<script id="ship-data-<dir>-<name>"> (a nebula sky in data/space/skies, a system in data/space/systems).
 "tex:<path>" copies one texture, assets/textures/<path>.png, as a data URI into a
 <script id="tex-<file name>" type="text/plain"> block (spacedock.html's O'Neill atlases; the page
 decodes it with ShipKit.decodePng so the alpha mask keeps its colour).
@@ -100,7 +101,7 @@ from panel_catalog import load_catalog
 SCREENS = os.path.join(ROOT, "assets", "textures", "screens", "screens.json")
 CACHE = os.path.join(ROOT, "docs", "mockups", "cache")
 LIGHTBAKE = os.path.join(LIB, "lightbake.js")
-MARK = re.compile(r"(<!-- INLINE (layout:[a-z0-9_-]+|lib:[a-z0-9_-]+|data:[a-z0-9_-]+/[a-z0-9_-]+|bakecache:[a-z0-9_-]+|shipkit|materials|panels(?::[a-z0-9_-]+)?|screens|repairs|decals|models:[a-z0-9_-]+|glb:[a-z0-9_/-]+|tex:[a-z0-9_/-]+|manifest:[a-z0-9_-]+|font:[a-z0-9_-]+) BEGIN -->)(.*?)(<!-- INLINE \2 END -->)", re.S)
+MARK = re.compile(r"(<!-- INLINE (layout:[a-z0-9_-]+|lib:[a-z0-9_-]+|data:[a-z0-9_-]+(?:/[a-z0-9_-]+)+|bakecache:[a-z0-9_-]+|shipkit|materials|panels(?::[a-z0-9_-]+)?|screens|repairs|decals|models:[a-z0-9_-]+|glb:[a-z0-9_/-]+|tex:[a-z0-9_/-]+|manifest:[a-z0-9_-]+|font:[a-z0-9_-]+) BEGIN -->)(.*?)(<!-- INLINE \2 END -->)", re.S)
 
 
 def png_uri(path):
@@ -297,7 +298,15 @@ def block(kind):
         with open(os.path.join(LIB, name + ".js"), encoding="utf-8") as f:
             return "\n<script>\n" + f.read().rstrip() + "\n</script>\n"
     if kind.startswith("data:"):
-        ship, name = kind.split(":", 1)[1].split("/", 1)
+        parts = kind.split(":", 1)[1].split("/")
+        if len(parts) > 2:
+            # data:space/<dir>/<name> is data/space/<dir>/<name>.json (a sky, data/space/skies; a system,
+            # data/space/systems), its script id ship-data-<dir>-<name> so a sky and a system of one name differ.
+            with open(os.path.join(ROOT, "data", *parts) + ".json", encoding="utf-8") as f:
+                data = json.load(f)
+            text = json.dumps(data, separators=(",", ":"), ensure_ascii=False).replace("</", "<\\/")
+            return f'\n<script id="ship-data-{"-".join(parts[1:])}" type="application/json">\n{text}\n</script>\n'
+        ship, name = parts
         # data:lighting/<name> is data/lighting/<name>.json (the fixture types and bake settings, light-baking
         # design 15), data:crew/<name> data/crew/<name>.json (the walk), data:space/<name> and data:missions/<name>
         # their files; any other data:<ship>/<name> a ship's file.

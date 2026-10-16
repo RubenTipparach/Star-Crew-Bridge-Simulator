@@ -18,6 +18,7 @@ mod helm;
 pub mod kit;
 mod laser;
 mod objectives;
+pub mod rig;
 pub mod schematic;
 mod science;
 mod tactical;
@@ -640,6 +641,17 @@ pub struct ConsoleView {
     #[serde(default)]
     pub chase: bool,
     pub zoom: f64,
+    /// ORBIT's goal, [heading, elevation, distance] (degrees, degrees, metres), while it is on (chase-orbit design 5).
+    /// The engine's own; the mockup's state has only `orbit_on`.
+    #[serde(skip)]
+    pub orbit: Option<[f64; 3]>,
+    /// ORBIT is on: the camera widget's button lit (the mockup's `G.orbit`).
+    #[serde(default)]
+    pub orbit_on: bool,
+    /// The viewscreen's camera this frame, from the seat's rig (chase-orbit design 7): the feed is drawn from it and
+    /// the bracket projected through it. None: a fixture, drawn with the settled camera.
+    #[serde(skip)]
+    pub cam: Option<rig::Shot>,
     pub nav_km: f64,
     pub tac_km: f64,
     pub sci_km: f64,
@@ -705,6 +717,19 @@ pub struct ConsoleView {
     pub schem: Option<schematic::SchemView>,
     #[serde(default)]
     pub objectives: Option<ObjectivesView>,
+    /// LEAVE STATION in the title band, while the player sits (leave-station 4).
+    #[serde(default)]
+    pub leave: Option<LeaveView>,
+}
+
+/// LEAVE STATION (leave-station 4): the stand key's name on its keycap, and how much of its hold has passed (0..1).
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct LeaveView {
+    /// The stand key, as `data/input/bindings.json` names it ("E").
+    pub key: String,
+    /// The hold so far, 0..1: the keycap's ring.
+    pub share: f64,
 }
 
 /// A time long past, seconds: nothing thrown yet.
@@ -859,11 +884,12 @@ pub fn ratio_col(k: f64) -> Color32 {
     }
 }
 
-/// Draw a console on egui's background, the 1280 x 720 canvas fitted and centred in the screen; returns where its
+/// Draw a console on egui's background, the 1280 x 720 canvas on the reference frame (`ui::frame_in`); returns where its
 /// controls are and its scale (egui points a layout point). `feed` is the viewscreen's camera, `pointer` the pointer in
 /// egui points (for the hover tip).
 pub fn paint(ctx: &egui::Context, v: &ConsoleView, feed: bool, pointer: Option<Pos2>) -> (kit::Hits, f32) {
-    let (o, s) = fit(ctx.content_rect());
+    let (o, s) = crate::ui::frame_in(ctx.content_rect());
+    let o = o.to_vec2();
     let painter = ctx.layer_painter(egui::LayerId::new(egui::Order::Background, egui::Id::new("console")));
     let cv = Canvas::new(painter, o, s);
     let mut hits = kit::Hits::default();
@@ -871,16 +897,10 @@ pub fn paint(ctx: &egui::Context, v: &ConsoleView, feed: bool, pointer: Option<P
     (hits, s)
 }
 
-/// Where the 1280 x 720 canvas sits on a screen of `screen` points: its origin and its scale, fitted and centred.
-pub fn fit(screen: Rect) -> (egui::Vec2, f32) {
-    let s = (screen.width() / 1280.0).min(screen.height() / 720.0);
-    (egui::Vec2::new((screen.width() - 1280.0 * s) / 2.0, (screen.height() - 720.0 * s) / 2.0), s)
-}
-
 /// The viewscreen's window in output pixels (x, y from the top left, width, height), for a screen `points` big drawn
 /// at `ppp` pixels a point: where the renderer draws the feed under the console.
 pub fn viewscreen_px(points: [f32; 2], ppp: f32) -> [i32; 4] {
-    let (o, s) = fit(Rect::from_min_size(Pos2::ZERO, egui::vec2(points[0], points[1])));
+    let (o, s) = crate::ui::frame_in(Rect::from_min_size(Pos2::ZERO, egui::vec2(points[0], points[1])));
     let [x, y, w, h] = VIEWSCREEN;
     let px = |v: f32| (v * ppp).round() as i32;
     [px(o.x + x * s), px(o.y + (32.0 + y) * s), px(w * s), px(h * s)]
@@ -1123,10 +1143,32 @@ fn title_band(cv: &Canvas, cx: &mut Ctx) {
     } else {
         "NORMAL"
     };
-    // The newest order to the station shown: at 470, or after the tabs when they reach past it, short of the condition.
-    if let Some(o) = &v.order {
+    // LEAVE STATION (leave-station 4): left of the condition, the same place at every station; the stand key on its
+    // keycap, whose ring fills while the key is held. A click or a tap stands.
+    let cond_x = 1180.0 - cond.len() as f32 * 9.4 - 22.0;
+    let leave_w = 34.0 + 13.0 * 9.4;
+    let leave_x = cond_x - 8.0 - leave_w;
+    if let Some(l) = &v.leave {
+        let held = l.share > 0.0;
+        cv.rect(leave_x, 4.0, leave_w, 24.0, 5.0, Color32::TRANSPARENT, Some(Pen::new(1.0, c.line2.0)));
+        let (kx, ky) = (leave_x + 15.0, 16.0);
+        cv.circle(kx, ky, 8.0, Color32::TRANSPARENT, Some(Pen::new(1.0, c.dim.0)));
+        cv.text(kx, ky + 4.0, 11.0, c.text.0, &l.key, T::mid().bold());
+        if held {
+            let arc = kit::arc_path(kx, ky, 8.0, 0.0, l.share.min(1.0) * 360.0);
+            cv.path(&arc, Xf::ID, None, Some(Pen::new(2.0, c.warn.0)));
+        }
+        let col = if held { c.text.0 } else { c.dim.0 };
+        cv.text(leave_x + 29.0, 21.0, 13.0, col, "LEAVE STATION", T::default().ls(1.5).bold());
+        let tip = format!("Leave the station (hold {})", l.key);
+        cx.hits.add(cv, leave_x, 4.0, leave_w, 24.0, Some(kit::Hit::Act(Act::Leave)), Some(tip));
+    }
+    // The newest order to the station shown: at 470, or after the tabs when they reach past it, short of LEAVE STATION
+    // (or the condition); left out when the tabs leave it no room.
+    let order_end = if v.leave.is_some() { leave_x } else { cond_x };
+    if let Some(o) = v.order.as_ref().filter(|_| order_end - 8.0 - x.max(470.0) >= 60.0) {
         let ox = x.max(470.0);
-        let ow = 300f32.min(1180.0 - cond.len() as f32 * 9.4 - 22.0 - 8.0 - ox);
+        let ow = 300f32.min(order_end - 8.0 - ox);
         cv.rect(ox, 4.0, ow, 24.0, 5.0, alpha(c.warn.0, 0x1f as f32 / 255.0), Some(Pen::new(1.0, c.warn.0)));
         cv.icon("command", ox + 16.0, 16.0, 14.0, c.warn.0);
         cv.text(ox + 30.0, 21.0, 13.0, c.text.0, &format!("CAPTAIN: {o}"), T::default().ls(1.5).bold());
@@ -1151,6 +1193,44 @@ fn title_band(cv: &Canvas, cx: &mut Ctx) {
 /// Where the bow camera stands, ship frame, metres: ahead of the hull's bow and a little up. The feed is drawn from
 /// here and the target bracket projected from here, so they agree however far the zoom goes (target-bracket 1).
 pub const BOW_EYE: DVec3 = DVec3::new(0.0, 3.0, 32.0);
+
+/// What a viewscreen is set to: its camera (`combat::FEEDS`), CHASE, zoom (times) and ORBIT's goal, [heading,
+/// elevation, distance] (degrees, degrees, metres; none: ORBIT off).
+#[derive(Clone, Debug, PartialEq)]
+pub struct ScreenSet {
+    pub feed: String,
+    pub chase: bool,
+    pub zoom: f64,
+    pub orbit: Option<[f64; 3]>,
+}
+
+impl ScreenSet {
+    /// The bridge's main viewscreen's settings as the snapshot carries them, the captain's (chase-camera 2,
+    /// chase-orbit 6): camera and zoom by their indices, the orbit in its three bytes.
+    pub fn main(view: u8, chase: bool, zoom: u8, orbit: Option<[u8; 3]>) -> Self {
+        let feed = sc_core::combat::FEEDS.get(usize::from(view)).copied().unwrap_or("FWD");
+        Self {
+            feed: feed.to_owned(),
+            chase,
+            zoom: sc_core::combat::ZOOMS.get(usize::from(zoom)).copied().unwrap_or(1.0),
+            orbit: orbit.filter(|_| chase).map(|q| {
+                let (y, p, d) = chase_cfg().orbit.unquantize(q);
+                [y, p, d]
+            }),
+        }
+    }
+}
+
+/// What a viewscreen shows (captains-viewscreen 1, chase-orbit 6): while the captain holds the viewscreen (`view`, an
+/// index in `FEEDS`), his camera with his CHASE, zoom and orbit (`main`, the snapshot's); otherwise `own`, the
+/// console's own (or the captain's, for the bridge's big screen). One rule for the consoles' panels and the main
+/// viewscreen.
+pub fn on_screen(view: Option<u8>, main: (bool, u8, Option<[u8; 3]>), own: ScreenSet) -> ScreenSet {
+    match view.filter(|i| usize::from(*i) < sc_core::combat::FEEDS.len()) {
+        Some(i) => ScreenSet::main(i, main.0, main.1, main.2),
+        None => own,
+    }
+}
 
 pub fn feed_basis(v: &ConsoleView) -> Basis {
     let tgt = v.target.as_ref().and_then(|id| v.contacts.iter().find(|c| &c.id == id));
@@ -1186,6 +1266,11 @@ pub fn set_chase(c: &sc_core::exterior::Chase) {
     let _ = CHASE.set(c.clone());
 }
 
+/// The chase camera's numbers: the drill's, or the shipped file's for a console drawn with no drill (a fixture, a test).
+pub fn chase_cfg() -> &'static sc_core::exterior::Chase {
+    CHASE.get_or_init(|| sc_core::exterior::ExteriorData::shipped().viewscreen.chase)
+}
+
 /// The chase camera's vertical field of view, radians, at `zoom` (the feed is 614 x 194, as every camera's).
 pub fn chase_vfov(c: &sc_core::exterior::Chase, zoom: f64) -> f64 {
     let across = (c.fov_across_deg / 2.0).to_radians().tan() / zoom.max(1.0);
@@ -1193,7 +1278,8 @@ pub fn chase_vfov(c: &sc_core::exterior::Chase, zoom: f64) -> f64 {
 }
 
 /// The chase camera (openspec/changes/chase-camera design 1): a viewscreen camera looking along `look` (ship frame),
-/// seen from behind the ship. It stands `distance_m` back from the ship's centre along that line, raised square to its
+/// seen from behind the ship. It stands `distance_m` (the chase camera's, or an orbit's: chase-orbit design 5) back
+/// from the ship's centre along that line, raised square to its
 /// look until the ship's centre sits `ship_low` of the half height below the middle of a picture `half_vfov` radians
 /// high, the ship in the middle across; it looks along `look`, or at `target` (TARGET), so the target is in the middle.
 /// Returns where it stands relative to the ship's centre and the way it looks, both in the ship's frame.
@@ -1202,6 +1288,7 @@ pub fn chase_camera(
     target: Option<DVec3>,
     c: &sc_core::exterior::Chase,
     half_vfov: f64,
+    distance_m: f64,
 ) -> (DVec3, Basis) {
     let line = look.normalize_or_zero();
     let line = if line == DVec3::ZERO { DVec3::Z } else { line };
@@ -1220,7 +1307,7 @@ pub fn chase_camera(
     // Raised until the ship sits low in the picture it finally takes. Looking at a near target turns the camera as it
     // rises, so the lift is settled on the last aim rather than the first (a few steps: each turn is small).
     let low = c.ship_low * half_vfov.tan();
-    let mut eye = -line * c.distance_m;
+    let mut eye = -line * distance_m;
     for _ in 0..12 {
         let b = frame(look_from(eye));
         let depth = (-eye).dot(b.f).max(1.0);
@@ -1249,13 +1336,26 @@ pub fn feed_view(
         // chase camera stands and looks where it does at 1x, and its picture is magnified, so the target grows and the
         // Tern, low in the 1x picture, leaves by the bottom edge.
         let b = feed_basis_for(feed, target);
-        let (eye, b) = chase_camera(b.f, target.filter(|_| feed == "TARGET"), c, chase_vfov(c, 1.0) / 2.0);
+        let (eye, b) =
+            chase_camera(b.f, target.filter(|_| feed == "TARGET"), c, chase_vfov(c, 1.0) / 2.0, c.distance_m);
         return (Some(eye), b, chase_vfov(c, zoom));
     }
     // From the bow camera: TARGET looks from where it stands at the target.
     let b = feed_basis_for(feed, target.map(|t| t - BOW_EYE));
     let foc = 307.0 / 35f64.to_radians().tan() * zoom;
     (None, b, 2.0 * (97.0 / foc).atan())
+}
+
+/// What a console's viewscreen asks of its camera rig: its camera, CHASE, zoom, the locked target and ORBIT's goal.
+pub fn feed_want(v: &ConsoleView) -> rig::Want {
+    let target = v.target.as_ref().and_then(|id| v.contacts.iter().find(|k| &k.id == id)).map(|k| v3(k.rel));
+    rig::Want { feed: v.feed.clone(), chase: v.chase, zoom: v.zoom, target, orbit: v.orbit.filter(|_| v.chase) }
+}
+
+/// The camera a console's viewscreen shows this frame: its rig's (`ConsoleView::cam`), or with no rig (a fixture) the
+/// settled one. The 3D feed is drawn from it and the bracket projected through it (chase-orbit design 7).
+pub fn feed_shot(v: &ConsoleView) -> rig::Shot {
+    v.cam.unwrap_or_else(|| rig::Shot::settled(&feed_want(v), chase_cfg()))
 }
 
 /// The viewscreen's frame on screen (look band coordinates): where the 3D feed is drawn.
@@ -1286,20 +1386,11 @@ fn look_band(cv: &Canvas, cx: &mut Ctx) {
     );
     let fill = if cx.feed { Color32::TRANSPARENT } else { rgba(0x020306, 1.0) };
     cv.rect(330.0, 18.0, 620.0, 200.0, 6.0, fill, Some(Pen::new(3.0, rgba(0x2a3442, 1.0))));
-    // The target's bracket on the feed, where the feed's camera sees it.
+    // The target's bracket on the feed, where the feed's camera sees it: through the one camera the feed is drawn
+    // from, the rig's smoothed one (chase-orbit design 7), or with no rig (a fixture) its settled pose.
     let scr = cv.at(sx, sy).clip(0.0, 0.0, sw, sh);
-    // With chase on, from where the chase camera stands and through its wider lens (chase-camera 1).
-    let (eye, b, foc) = match (v.chase, CHASE.get()) {
-        (true, Some(c)) => {
-            let tgt = v.target.as_ref().and_then(|id| v.contacts.iter().find(|k| &k.id == id)).map(|k| v3(k.rel));
-            let (eye, b, vfov) = feed_view(&v.feed, true, tgt, c, v.zoom);
-            (eye.unwrap_or(DVec3::ZERO), b, 97.0 / (vfov / 2.0).tan())
-        }
-        _ => {
-            let tgt = v.target.as_ref().and_then(|id| v.contacts.iter().find(|k| &k.id == id)).map(|k| v3(k.rel));
-            (BOW_EYE, feed_basis_for(&v.feed, tgt.map(|t| t - BOW_EYE)), (307.0 / 35f64.to_radians().tan()) * v.zoom)
-        }
-    };
+    let shot = feed_shot(v);
+    let (eye, b, foc) = (shot.eye, shot.basis(), 97.0 / (shot.vfov / 2.0).tan());
     for k in &v.contacts {
         if k.iff == "unknown" || Some(&k.id) != v.target.as_ref() {
             continue;
@@ -1311,6 +1402,11 @@ fn look_band(cv: &Canvas, cx: &mut Ctx) {
             _ => c.hostile.0,
         };
         draw_bracket(&scr, r, k, col, (v3(k.rel) - eye).length(), c.line.0);
+    }
+    // ORBIT on: the viewscreen itself is the handle that turns the camera round the ship (chase-orbit design 5).
+    if v.orbit_on {
+        let tip = "Drag to orbit the ship; scroll or pinch to move in or out";
+        cx.hits.add(cv, sx, sy, sw, sh, Some(kit::Hit::Drag(kit::Drag::Orbit)), Some(tip.into()));
     }
     cv.text(342.0, 38.0, 11.0, c.dim.0, &format!("VIEWSCREEN · {}", v.feed), T::default().ls(2.0));
     kit::feed_widget(cv, cx, 196.0, 10.0);
@@ -1475,7 +1571,7 @@ mod tests {
     use super::*;
 
     fn chase_cfg() -> sc_core::exterior::Chase {
-        sc_core::exterior::Chase { distance_m: 160.0, fov_across_deg: 100.0, ship_low: 0.45 }
+        sc_core::exterior::ExteriorData::shipped().viewscreen.chase
     }
 
     /// Where `p` (ship frame) lands on the picture of a camera at `eye` looking along `b`: right and up as a share of

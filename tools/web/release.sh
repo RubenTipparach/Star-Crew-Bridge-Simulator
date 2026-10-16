@@ -6,8 +6,8 @@
 #   1. export the deck from the deck plan (tools/deck/export_deck.mjs, headless Chromium)
 #   2. compile it (sc-tools deckc) into compiled/tern.deck
 #   3. build the client for the browser (tools/web/build.sh) into build/web/
-#   4. board it headless (tools/web/smoke.mjs): a build that cannot host single player and play into a round
-#      stops here
+#   4. board it headless (tools/web/smoke.mjs): a build that cannot host single player and play into a round,
+#      play it by touch, or follow the page's size and full screen with the mouse landing (--fit) stops here
 #   5. push build/web/ to itch.io with butler, when BUTLER_API_KEY and ITCH_TARGET are set
 #
 # Usage: tools/web/release.sh [--no-export] [--no-push]
@@ -31,6 +31,7 @@ fi
 tools/web/build.sh build/web
 node tools/web/smoke.mjs build/web
 node tools/web/smoke.mjs build/web --touch
+node tools/web/smoke.mjs build/web --fit
 if [ "$push" = 1 ]; then
   tools/web/push_itch.sh build/web
 fi

@@ -45,12 +45,6 @@ pub mod keys {
     use sdl3_sys::everything as sdl;
     /// Escape.
     pub const ESCAPE: u32 = sdl::SDLK_ESCAPE.0;
-    /// The 1 key.
-    pub const N1: u32 = sdl::SDLK_1.0;
-    /// The 2 key.
-    pub const N2: u32 = sdl::SDLK_2.0;
-    /// The 3 key.
-    pub const N3: u32 = sdl::SDLK_3.0;
     /// F1: a repair game's guide card.
     pub const F1: u32 = sdl::SDLK_F1.0;
     /// F3.
@@ -87,6 +81,8 @@ pub mod keys {
     pub const T: u32 = sdl::SDLK_T.0;
     /// K.
     pub const K: u32 = sdl::SDLK_K.0;
+    /// O: ORBIT on the viewscreen (chase-orbit design 5).
+    pub const O: u32 = sdl::SDLK_O.0;
     /// G.
     pub const G: u32 = sdl::SDLK_G.0;
     /// L.
@@ -279,6 +275,8 @@ struct State {
     app: Box<dyn App>,
     last_ns: u64,
     index: u64,
+    /// The window's size and its size in pixels as last said (`sc-client: window ...`).
+    said: (i32, i32, i32, i32),
 }
 
 thread_local! {
@@ -399,7 +397,7 @@ unsafe extern "C" fn app_init(appstate: *mut *mut c_void, _argc: c_int, _argv: *
                 // SAFETY: SDL_GetTicksNS has no preconditions once SDL is initialised.
                 let last_ns = unsafe { sdl::SDL_GetTicksNS() };
                 WINDOW.with(|c| c.set(window));
-                let state = Box::new(State { window, context, info, app, last_ns, index: 0 });
+                let state = Box::new(State { window, context, info, app, last_ns, index: 0, said: (0, 0, 0, 0) });
                 // SAFETY: appstate is SDL's slot for our state; it hands it back to every callback.
                 unsafe { *appstate = Box::into_raw(state).cast() };
                 sdl::SDL_APP_CONTINUE
@@ -447,6 +445,13 @@ fn open(cfg: &WindowConfig) -> Result<(*mut sdl::SDL_Window, sdl::SDL_GLContext,
         if cfg.fullscreen {
             flags |= sdl::SDL_WINDOW_FULLSCREEN;
         }
+        // In the browser SDL alone owns the canvas (openspec/changes/browser-page-fit design 1): resizable, so its
+        // window follows the page's size and full screen, and high pixel density, so the drawing buffer is the
+        // canvas's size times the page's pixel ratio. Without them the window kept its first size while the page
+        // grew, and the frame and the mouse were drawn and read at the old size.
+        if cfg!(target_os = "emscripten") {
+            flags |= sdl::SDL_WINDOW_RESIZABLE | sdl::SDL_WINDOW_HIGH_PIXEL_DENSITY;
+        }
         let title = CString::new(cfg.title.clone()).unwrap_or_default();
         let window = sdl::SDL_CreateWindow(title.as_ptr(), cfg.width as c_int, cfg.height as c_int, flags);
         if window.is_null() {
@@ -478,6 +483,11 @@ unsafe extern "C" fn app_iterate(appstate: *mut c_void) -> sdl::SDL_AppResult {
         sdl::SDL_GetWindowSize(s.window, &mut lw, &mut lh);
         sdl::SDL_GetTicksNS()
     };
+    // Each change of size is said once, so a test can check the frame follows the page (browser-page-fit design 3).
+    if s.said != (lw, lh, w, h) {
+        s.said = (lw, lh, w, h);
+        println!("sc-client: window {lw} x {lh}, {w} x {h} pixels");
+    }
     let elapsed_s = if s.index == 0 { 0.0 } else { (now - s.last_ns) as f64 * 1e-9 };
     s.last_ns = now;
     s.index += 1;
