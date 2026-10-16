@@ -232,6 +232,11 @@ pub fn seat_in_reach(
         .map(|x| x.0)
 }
 
+/// A path's length, metres.
+fn length(p: &[[f32; 3]]) -> f32 {
+    p.windows(2).map(|w| dist(w[0], w[1])).sum()
+}
+
 fn dist(a: [f32; 3], b: [f32; 3]) -> f32 {
     ((a[0] - b[0]).powi(2) + (a[1] - b[1]).powi(2) + (a[2] - b[2]).powi(2)).sqrt()
 }
@@ -311,6 +316,27 @@ impl CrewBody {
         if self.at == to && self.going.is_none() {
             return;
         }
+        // Sent somewhere new mid-walk (a bot relieved on its way, relieve-bots 4): on from where it is, back along the
+        // path walked and on from its start, or on to where it was going and from there, whichever is shorter. Both
+        // keep to the walk's paths.
+        if let (Posture::Walking, Some(was), false) = (self.posture, self.going, self.free()) {
+            if self.leg + 1 < self.path.len() && was != to {
+                let here = std::iter::once(self.pos);
+                let back: Vec<[f32; 3]> = here
+                    .clone()
+                    .chain(self.path[..=self.leg].iter().rev().copied())
+                    .chain(self.route(self.at, to, b).into_iter().skip(1))
+                    .collect();
+                let ahead: Vec<[f32; 3]> = here
+                    .chain(self.path[self.leg + 1..].iter().copied())
+                    .chain(self.route(was, to, b).into_iter().skip(1))
+                    .collect();
+                self.path = if length(&back) <= length(&ahead) { back } else { ahead };
+                self.leg = 0;
+                self.going = Some(to);
+                return;
+            }
+        }
         self.path = match (self.at, to) {
             (Spot::Free, _) => vec![self.pos, b.at(to, Some(self.slot))],
             (Spot::Seat(s), Spot::Free) => vec![self.pos, b.stand_point(s)],
@@ -323,6 +349,16 @@ impl CrewBody {
             self.timer = b.stand_s;
         } else {
             self.posture = Posture::Walking;
+        }
+    }
+
+    /// The walk's path from one spot to another, or straight across where the bridge has none (two muster places).
+    fn route(&self, from: Spot, to: Spot, b: &Bridge) -> Vec<[f32; 3]> {
+        let p = b.path(from, to, self.slot);
+        if p.len() >= 2 {
+            p
+        } else {
+            vec![b.at(from, Some(self.slot)), b.at(to, Some(self.slot))]
         }
     }
 
@@ -472,5 +508,30 @@ pub(crate) mod tests {
         assert_eq!(body.pos, [-1.8, 3.5, 28.2], "still in the chair while it gets up");
         body.step(&b, 0.3);
         assert_eq!(body.posture, Posture::Walking);
+    }
+
+    #[test]
+    fn a_body_sent_elsewhere_mid_walk_walks_on_from_where_it_is() {
+        // Regression (relieve-bots 4): a new walk started from the spot it set off from, so the body jumped back.
+        let b = bridge();
+        let mut body = CrewBody::at_muster(0, &b);
+        body.go(Spot::Seat(Station::Helm), &b);
+        for _ in 0..30 {
+            body.step(&b, 1.0 / 30.0);
+        }
+        let mid = body.pos;
+        assert_eq!(body.posture, Posture::Walking, "under way after a second");
+        body.go(Spot::Seat(Station::Tactical), &b);
+        let mut last = mid;
+        let mut sat = None;
+        for _ in 0..600 {
+            sat = body.step(&b, 1.0 / 30.0);
+            assert!(dist(last, body.pos) <= b.walk_m_s / 30.0 + 1e-3, "no jump: {last:?} to {:?}", body.pos);
+            last = body.pos;
+            if sat.is_some() {
+                break;
+            }
+        }
+        assert_eq!(sat, Some(Station::Tactical), "it sat where it was sent");
     }
 }

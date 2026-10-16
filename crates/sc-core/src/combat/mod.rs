@@ -14,6 +14,7 @@ pub mod damage;
 pub mod data;
 pub mod fighters;
 pub mod patrol;
+pub mod seats;
 
 use crate::power;
 use crate::replay::ReplayHash;
@@ -520,6 +521,8 @@ pub struct Player {
     pub ready: bool,
     /// A bot client.
     pub bot: bool,
+    /// The station they last got up from or walked off, for a bot they relieve to take (relieve-bots design 3).
+    pub left: Option<Station>,
 }
 
 /// A console command (bridge-stations section 7, the drill's subset).
@@ -1417,7 +1420,7 @@ impl Drill {
         }
         let slot = (0..MAX_PLAYERS as u8).find(|s| !self.players.iter().any(|p| p.slot == *s)).ok_or(Refusal::Full)?;
         let name = clean_name(name);
-        self.players.push(Player { slot, name, station: None, ready: false, bot });
+        self.players.push(Player { slot, name, station: None, ready: false, bot, left: None });
         self.players.sort_by_key(|p| p.slot);
         if let Some(b) = &self.on_foot {
             let mut body = bodies::CrewBody::at_muster(slot, b);
@@ -1491,8 +1494,8 @@ impl Drill {
     }
 
     /// A claim on foot (design 9): a walk order. The body gets up, its station goes to automation, it walks to the
-    /// seat and becomes the operator when it sits. A player relieves a bot; nobody walks into a player's seat, or one
-    /// someone is already walking to.
+    /// seat and becomes the operator when it sits. Who may take the seat is `seats::claim_rule` (relieve-bots 2): a
+    /// person relieves the bots holding it or walking to it, and each goes on to its relief post (design 3).
     fn claim_on_foot(&mut self, slot: u8, s: Station) -> Result<(), Refusal> {
         let Some(bridge) = self.on_foot.clone() else { return Err(Refusal::NoSuch) };
         if !bridge.has(s) {
@@ -1511,30 +1514,71 @@ impl Drill {
         if body.free() && bridge.seat_within_reach(body.pos) != Some(s) {
             return Err(Refusal::TooFar);
         }
-        if self.bodies.iter().any(|b| b.slot != slot && b.walking_to() == Some(s)) {
+        let holder = match self.operator(s) {
+            Operator::Player(o) if o != slot => self.occupant(o),
+            _ => None,
+        };
+        let walker = self
+            .bodies
+            .iter()
+            .find(|b| b.slot != slot && b.walking_to() == Some(s))
+            .and_then(|b| self.occupant(b.slot));
+        let rule = seats::claim_rule(me_bot, holder, walker);
+        if let seats::ClaimRule::Taken(_) = rule {
             return Err(Refusal::StationTaken);
         }
-        if let Operator::Player(other) = self.operator(s) {
-            let other_bot = self.players.iter().any(|p| p.slot == other && p.bot);
-            if !(other_bot && !me_bot) {
-                return Err(Refusal::StationTaken);
-            }
-            // Relieved (BS 6): the bot stands and goes; its own logic picks where next.
-            if let Some(p) = self.player_mut(other) {
-                p.station = None;
-            }
-            if let Some(b) = self.bodies.iter_mut().find(|b| b.slot == other) {
-                b.go(bodies::Spot::Muster, &bridge);
-            }
-            self.events.push(DrillEvent::Relieved { slot: other, station: s });
-        }
+        // Up from their own station first, so a bot relieved now can swap into it.
         if let Some(p) = self.player_mut(slot) {
+            p.left = p.station.or(p.left);
             p.station = None;
+        }
+        if rule == seats::ClaimRule::Relieve {
+            let mut bots: Vec<u8> = [holder, walker].into_iter().flatten().map(|o| o.slot).collect();
+            bots.dedup();
+            for b in bots {
+                self.relieve(b, slot, s, &bridge);
+            }
         }
         if let Some(b) = self.bodies.iter_mut().find(|b| b.slot == slot) {
             b.go(bodies::Spot::Seat(s), &bridge);
         }
         Ok(())
+    }
+
+    /// Who a slot is, for the seat rule.
+    fn occupant(&self, slot: u8) -> Option<seats::Occupant> {
+        self.players.iter().find(|p| p.slot == slot).map(|p| seats::Occupant { slot, bot: p.bot })
+    }
+
+    /// Bot `bot` relieved of seat `s` by person `by` (relieve-bots 3): it stands, or turns from its walk, and goes to
+    /// the station `by` just left when that is unmanned, else the nearest unmanned station, else its muster place.
+    fn relieve(&mut self, bot: u8, by: u8, s: Station, bridge: &bodies::Bridge) {
+        if let Some(p) = self.player_mut(bot) {
+            p.station = None;
+        }
+        let left = self.player(by).and_then(|p| p.left);
+        let from = self.body(bot).map_or([0.0; 3], |b| b.pos);
+        let candidates: Vec<Station> = self
+            .data
+            .mission
+            .stations
+            .iter()
+            .filter_map(|id| Station::from_id(id))
+            .filter(|st| *st != s && bridge.has(*st))
+            .collect();
+        let free = |st: Station| {
+            self.operator(st) == Operator::Auto
+                && !self.bodies.iter().any(|b| b.slot != bot && b.walking_to() == Some(st))
+        };
+        let dist = |st: Station| {
+            let p = bridge.at(bodies::Spot::Seat(st), None);
+            (p[0] - from[0]).hypot(p[2] - from[2]) + (p[1] - from[1]).abs()
+        };
+        let to = seats::relief_post(left, &candidates, free, dist).map_or(bodies::Spot::Muster, bodies::Spot::Seat);
+        if let Some(b) = self.bodies.iter_mut().find(|b| b.slot == bot) {
+            b.go(to, bridge);
+        }
+        self.events.push(DrillEvent::Relieved { slot: bot, station: s });
     }
 
     /// A player gets up (hold E, bridge-stations 6 and 8.6): the body stands behind the seat and is theirs to walk;
@@ -1550,6 +1594,7 @@ impl Drill {
         }
         body.go(bodies::Spot::Free, &bridge);
         if let Some(p) = self.player_mut(slot) {
+            p.left = p.station.or(p.left);
             p.station = None;
         }
         Ok(())
@@ -4836,6 +4881,76 @@ mod tests {
         assert_eq!(d.claim(other, Station::Helm), Err(Refusal::StationTaken), "a player's seat");
         walk_until(&mut d, |d| d.body(bot).is_some_and(|b| !b.busy()));
         assert_eq!(d.claim(bot, Station::Helm), Err(Refusal::StationTaken), "a bot never relieves a player");
+    }
+
+    /// A bridge with the helm, tactical and the captain's chair, straight lines between them.
+    fn command_bridge() -> bodies::Bridge {
+        bodies::Bridge::straight(
+            vec![
+                (Station::Helm, [1.8, 3.5, 28.2], 0.0),
+                (Station::Tactical, [-1.8, 3.5, 28.2], 0.0),
+                (Station::Captain, [0.0, 3.8, 24.2], 0.0),
+            ],
+            vec![[0.0, 3.5, 21.2]],
+            0.9,
+            2.4,
+            0.4,
+            0.4,
+        )
+        .with_reach(1.5, 1.0, 0.7)
+    }
+
+    #[test]
+    fn the_helmsman_takes_the_captains_chair_from_its_bot_mid_fight_and_the_bot_takes_the_helm() {
+        // The owner, 2026-10-15: "for example I'm helmsman, I should be able to sit in captains seat whenever". The
+        // person's title is the lobby's rank ("Capt."), the NPC a bot (relieve-bots 1).
+        let mut d = drill();
+        d.set_bridge(command_bridge());
+        let bot = d.join("Lt. Xa'lensha", true).expect("joins");
+        let me = d.join("Capt. Raggra of House Da", false).expect("joins");
+        d.claim(bot, Station::Captain).expect("the bot walks to the chair");
+        walk_until(&mut d, |d| d.operator(Station::Captain) == Operator::Player(bot));
+        walk_body(&mut d, me, [1.8, 3.5, 27.4]);
+        d.claim(me, Station::Helm).expect("sits at the helm");
+        walk_until(&mut d, |d| d.operator(Station::Helm) == Operator::Player(me));
+        d.set_ready(bot, true).unwrap();
+        d.set_ready(me, true).unwrap();
+        run_to_engage(&mut d);
+        d.stand(me).expect("up from the helm in the fight");
+        assert_eq!(d.operator(Station::Helm), Operator::Auto, "the helm goes to automation at once");
+        walk_until(&mut d, |d| d.body(me).is_some_and(bodies::CrewBody::free));
+        walk_body(&mut d, me, [0.0, 3.8, 23.5]);
+        d.claim(me, Station::Captain).expect("a person takes the captain's chair from a bot mid-fight");
+        walk_until(&mut d, |d| {
+            d.operator(Station::Captain) == Operator::Player(me) && d.operator(Station::Helm) == Operator::Player(bot)
+        });
+        assert_eq!(d.phase, Phase::Engage, "all in the fight");
+    }
+
+    #[test]
+    fn a_person_takes_a_seat_a_bot_is_walking_to_and_the_bot_goes_elsewhere() {
+        let mut d = on_foot();
+        let bot = d.join("Lt. Venn", true).expect("joins");
+        let me = d.join("Ens. Holt", false).expect("joins");
+        walk_body(&mut d, me, [1.8, 3.5, 27.4]);
+        d.claim(bot, Station::Helm).expect("the bot sets off");
+        d.step();
+        assert_eq!(d.body(bot).and_then(bodies::CrewBody::walking_to), Some(Station::Helm));
+        d.claim(me, Station::Helm).expect("the person wins over a bot on its way");
+        assert_ne!(d.body(bot).and_then(bodies::CrewBody::walking_to), Some(Station::Helm), "the bot turned away");
+        walk_until(&mut d, |d| d.operator(Station::Helm) == Operator::Player(me));
+        walk_until(&mut d, |d| d.operator(Station::Tactical) == Operator::Player(bot));
+    }
+
+    #[test]
+    fn a_person_never_takes_a_seat_another_person_walks_to() {
+        let mut d = on_foot();
+        let a = d.join("Ens. Holt", false).expect("joins");
+        let b = d.join("Ens. Rook", false).expect("joins");
+        walk_body(&mut d, a, [1.8, 3.5, 27.4]);
+        walk_body(&mut d, b, [1.6, 3.5, 27.4]);
+        d.claim(a, Station::Helm).expect("first");
+        assert_eq!(d.claim(b, Station::Helm), Err(Refusal::StationTaken));
     }
 
     #[test]
