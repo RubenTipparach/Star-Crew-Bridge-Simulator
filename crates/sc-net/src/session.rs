@@ -415,6 +415,11 @@ impl Session {
         self.net.send(Chan::Command, ClientMsg::Undock.encode());
     }
 
+    /// START MISSION (start-mission 2): ask the server to begin the countdown now.
+    pub fn start_mission(&self) {
+        self.net.send(Chan::Command, ClientMsg::StartMission.encode());
+    }
+
     /// Ready, or not.
     pub fn set_ready(&self, r: bool) {
         self.net.send(Chan::Command, ClientMsg::Ready(r).encode());

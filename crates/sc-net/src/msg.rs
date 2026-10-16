@@ -14,8 +14,9 @@ use sc_core::combat::{self, Command, HelmMode, Outcome, Phase, PowerCmd, Refusal
 
 /// The protocol's version; a Hello with another is refused. 13: the main viewscreen's feed, chase and zoom
 /// (chase-camera); 14: crew chat (crew-chat design 1); 15: the patrol (patrol-mission); 16: both lines merged, the
-/// main view's command moved to tag 29; 17: the main view's orbit (chase-orbit design 6).
-pub const PROTOCOL: u16 = 17;
+/// main view's command moved to tag 29; 17: the main view's orbit (chase-orbit design 6); 18: START MISSION
+/// (start-mission design 6).
+pub const PROTOCOL: u16 = 18;
 /// The longest unreliable message, so it is one SCTP chunk in one datagram (netcode-and-sessions section 2).
 pub const MAX_UNRELIABLE: usize = 1200;
 /// The longest string field, in bytes.
@@ -297,6 +298,8 @@ pub enum ClientMsg {
         /// Its text, at most [`chat::MAX_CHAT_CHARS`] characters.
         text: String,
     },
+    /// START MISSION (start-mission 2): begin the countdown now; the server takes it from whoever may start.
+    StartMission,
 }
 
 /// A client's message on the input channel: the helm's stick, newest wins.
@@ -1584,6 +1587,7 @@ impl ClientMsg {
                 w.u8(*kind as u8);
                 w.str(text);
             }
+            Self::StartMission => w.u8(14),
         }
         w.0
     }
@@ -1617,6 +1621,7 @@ impl ClientMsg {
             11 => Self::RoundDone { job: r.u8()?, round: r.u8()?, play_s: r.f32(0.0, 1e5)? as f32 },
             12 => Self::Undock,
             13 => Self::Chat { kind: read_chat_kind(&mut r)?, text: r.str(chat::MAX_CHAT_CHARS)? },
+            14 => Self::StartMission,
             _ => return Err(DecodeError("no such client message")),
         };
         r.done()?;
@@ -2580,6 +2585,7 @@ mod tests {
             },
             ClientMsg::Claim(Station::Helm),
             ClientMsg::Ready(true),
+            ClientMsg::StartMission,
             ClientMsg::Command(Command::Fire(1)),
             ClientMsg::Command(Command::Shore(false)),
             ClientMsg::Command(Command::Undock),

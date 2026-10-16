@@ -720,6 +720,8 @@ pub enum Refusal {
     NotReady = 15,
     /// A mass lock holds the jump drive (flight-and-navigation 7).
     MassLocked = 16,
+    /// Only the person in the captain's seat may start the mission (start-mission 2).
+    CaptainsCall = 17,
 }
 
 impl Refusal {
@@ -743,6 +745,7 @@ impl Refusal {
             TooFar,
             NotReady,
             MassLocked,
+            CaptainsCall,
         ]
         .into_iter()
         .find(|r| *r as u8 == v)
@@ -766,7 +769,23 @@ impl Refusal {
             Self::NotCharged => "Not charged",
             Self::NotReady => "Not ready",
             Self::MassLocked => "Mass lock",
+            Self::CaptainsCall => "Captain's call",
         }
+    }
+}
+
+/// Who may press START MISSION (start-mission 2), from the crew as (slot, station held, bot): a seated person who holds
+/// the captain's seat, or any seated person when no person holds it (single player, where an NPC has it). The server
+/// applies it in [`Drill::start_mission`]; a client asks it only to decide whether to draw the control.
+pub fn may_start(crew: &[(u8, Option<Station>, bool)], slot: u8) -> Result<(), Refusal> {
+    let &(_, station, bot) = crew.iter().find(|c| c.0 == slot).ok_or(Refusal::NotYourStation)?;
+    if bot || station.is_none() {
+        return Err(Refusal::NotYourStation);
+    }
+    let captain = crew.iter().find(|c| c.1 == Some(Station::Captain) && !c.2);
+    match captain {
+        Some(c) if c.0 != slot => Err(Refusal::CaptainsCall),
+        _ => Ok(()),
     }
 }
 
@@ -1794,6 +1813,18 @@ impl Drill {
     pub fn set_ready(&mut self, slot: u8, ready: bool) -> Result<(), Refusal> {
         let p = self.player_mut(slot).ok_or(Refusal::NotYourStation)?;
         p.ready = ready;
+        Ok(())
+    }
+
+    /// START MISSION (start-mission 2): in Muster, a seated person who may start ([`may_start`]) moves the drill to
+    /// Countdown at once, whoever else is ready or seated. Anything else is refused and changes nothing.
+    pub fn start_mission(&mut self, slot: u8) -> Result<(), Refusal> {
+        if self.phase != Phase::Muster {
+            return Err(Refusal::WrongPhase);
+        }
+        let crew: Vec<(u8, Option<Station>, bool)> = self.players.iter().map(|p| (p.slot, p.station, p.bot)).collect();
+        may_start(&crew, slot)?;
+        self.set_phase(Phase::Countdown);
         Ok(())
     }
 
@@ -4114,6 +4145,60 @@ mod tests {
         assert_eq!(d.phase, Phase::Countdown);
         run_to_engage(&mut d);
         assert!(d.ships[1].active, "the Hound appears at Engage");
+    }
+
+    #[test]
+    fn the_captain_starts_the_mission_with_nobody_else_ready() {
+        let mut d = drill();
+        let cap = d.join("Capt. A", false).unwrap();
+        let helm = d.join("Lt. B", false).unwrap();
+        d.claim(cap, Station::Captain).unwrap();
+        d.claim(helm, Station::Helm).unwrap();
+        d.step();
+        assert_eq!(d.phase, Phase::Muster, "nobody is ready");
+        d.start_mission(cap).expect("the captain's call");
+        assert_eq!(d.phase, Phase::Countdown, "START MISSION begins the countdown at once");
+        run_to_engage(&mut d);
+    }
+
+    #[test]
+    fn another_station_cannot_start_the_mission_while_a_person_is_captain() {
+        let mut d = drill();
+        let cap = d.join("Capt. A", false).unwrap();
+        let helm = d.join("Lt. B", false).unwrap();
+        let walker = d.join("Lt. C", false).unwrap();
+        d.claim(cap, Station::Captain).unwrap();
+        d.claim(helm, Station::Helm).unwrap();
+        assert_eq!(d.start_mission(helm), Err(Refusal::CaptainsCall));
+        assert_eq!(d.start_mission(walker), Err(Refusal::NotYourStation), "not seated: the control is on a console");
+        d.step();
+        assert_eq!(d.phase, Phase::Muster, "a refused start changes nothing");
+    }
+
+    #[test]
+    fn with_no_person_in_the_captains_seat_a_seated_person_starts_and_a_bot_never_does() {
+        let mut d = drill();
+        let bot = d.join("Lt. Bot", true).unwrap();
+        let me = d.join("Lt. Me", false).unwrap();
+        d.claim(bot, Station::Captain).unwrap();
+        assert_eq!(d.start_mission(bot), Err(Refusal::NotYourStation), "a bot is ready once seated, it never starts");
+        d.claim(me, Station::Helm).unwrap();
+        d.start_mission(me).expect("single player: the player starts from any seat");
+        assert_eq!(d.phase, Phase::Countdown);
+        assert_eq!(d.start_mission(me), Err(Refusal::WrongPhase), "the start is already under way");
+    }
+
+    #[test]
+    fn the_round_still_starts_by_itself_when_everyone_is_ready() {
+        let mut d = drill();
+        let cap = d.join("Capt. A", false).unwrap();
+        let helm = d.join("Lt. B", false).unwrap();
+        d.claim(cap, Station::Captain).unwrap();
+        d.claim(helm, Station::Helm).unwrap();
+        d.set_ready(cap, true).unwrap();
+        d.set_ready(helm, true).unwrap();
+        d.step();
+        assert_eq!(d.phase, Phase::Countdown, "nobody pressed START MISSION");
     }
 
     #[test]

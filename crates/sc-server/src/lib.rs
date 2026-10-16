@@ -329,6 +329,13 @@ impl DrillServer {
                 self.crew_dirty = true;
                 None
             }
+            // START MISSION (start-mission 2): the drill decides who may; anyone else hears why not.
+            (Some(s), ClientMsg::StartMission) => {
+                if let Err(r) = self.drill.start_mission(s) {
+                    self.send(p, &ServerMsg::Refused(r));
+                }
+                None
+            }
             (Some(s), ClientMsg::Command(c)) => {
                 // A person's order or ack from a console is theirs in chat too (crew-chat design 3); a bot says its own.
                 let said = self.console_said(s, &c);
