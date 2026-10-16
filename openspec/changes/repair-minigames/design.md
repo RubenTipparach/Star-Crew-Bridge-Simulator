@@ -154,11 +154,11 @@ fitted in its slot; a new bushing pressed onto the bus. The engine ports them af
 
 The owner's approval is asked in survey 2, section "Panel box repairs", with screenshots beside each:
 
-| # | Question | Recommendation |
-| --- | --- | --- |
-| RM1 | Approve the conduit box's terminal block game | Approve |
-| RM2 | Approve the distribution panel's load restore game | Approve |
-| RM3 | Approve the switchboard insulation game | Approve |
+| # | Question | Recommendation | Answer |
+| --- | --- | --- | --- |
+| RM1 | Approve the conduit box's terminal block game | Approve | Approved, the owner, 2026-10-16: "approve" |
+| RM2 | Approve the distribution panel's load restore game | Approve | Approved, the owner, 2026-10-16: "approve" |
+| RM3 | Approve the switchboard insulation game | Approve | Approved, the owner, 2026-10-16: "approve" |
 
 ### 2b. The owner's notes on them (2026-10-12)
 

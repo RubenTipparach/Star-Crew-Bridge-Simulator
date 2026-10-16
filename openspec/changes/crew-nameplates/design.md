@@ -67,6 +67,6 @@ Options has a Names row, On or Off (`game-menu` 3), on by default and kept in `s
 
 | Id | Question | Recommendation | Status |
 | --- | --- | --- | --- |
-| Z1 | Approve the mockup (`docs/mockups/game-menu.html`, states 1 and 2) | Approve | In the survey, with the shots |
+| Z1 | Approve the mockup (`docs/mockups/game-menu.html`, states 1 and 2) | Approve | Approved, the owner, 2026-10-16 (survey 2): "looks good, see previous comments on lobby Q3" (the START MISSION control, `start-mission`) |
 | Z2 | A body seen on another deck, down a ladder well: named or not | Not named (design 2) | Recommendation taken (ask only with screenshots) |
 | Z3 | Name size: 20 px, up from the drill's 17 px | 20 px | Recommendation taken (ask only with screenshots) |

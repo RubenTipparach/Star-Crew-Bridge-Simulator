@@ -17,4 +17,4 @@ The owner asked for it on 2026-10-11 ("make sure first buttons on menu are singl
   `menu-2-multi.png`, `menu-3-options.png`, `lobby-1.png`, `lobby-2-rolled.png`, `lobby-3-aboard.png`).
 - [x] 2.5 Beam aboard into a single-player game and back to the menu in one window: `--hand-over-test` and its three
   captures.
-- [ ] 2.6 The owner signs off the captures.
+- [x] 2.6 The owner signs off the captures: X1, 2026-10-16, "approve, ".

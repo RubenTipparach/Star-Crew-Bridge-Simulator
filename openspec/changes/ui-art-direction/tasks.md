@@ -6,8 +6,8 @@
 - [x] 1.2 Research of shipped games with sources (design 2): Star Trek: Bridge Crew, FTL, Artemis, Elite Dangerous, Mass Effect, Hardspace: Shipbreaker, XAG 101 and 102, Microsoft's TV safe area.
 - [x] 1.3 Proposal, design and spec delta; the bindings read from `sc-client` (design 10); every offending string with its file (design 12); the release bar (13).
 - [x] 1.4 The mockup `docs/mockups/ui-art-direction.html`: eleven screens before and after on the 1920 x 1080 reference frame, five window sizes, the accent alternative; 45 shots in `docs/screenshots/mockups/ui-art-direction/`, looked at and shrunk.
-- [x] 1.5 The owner approves the mockup and answers Q1 to Q12 (design 16). Approved, the owner, 2026-10-16: "approve"; Q1 to Q12 blank, so each is the
-  recommendation accepted (design 16).
+- [x] 1.5 The owner approves the mockup and answers Q1 to Q12 (design 16). Approved, the owner, 2026-10-16: "approve"; Q1 to Q12 (survey UI1 to UI12)
+  each "approve", the recommendation (design 16).
 
 ## 2. Style in data (after approval)
 

@@ -366,18 +366,20 @@ A failure names the screen, the size and the strings; the captures are the owner
 
 | Id | Question | Shots | Recommendation | Answer |
 | --- | --- | --- | --- | --- |
-| Q1 | Accent: ice (the livery cyan) or amber (today's title colour)? | lobby-after, lobby-after-amber | Ice: far from every state colour | (recommendation accepted), 2026-10-16 |
-| Q2 | Helm's quaternion (asked for on 2026-10-07): keep it at rest, or show it on hover or focus? | briefing-before (it shows through), pause-after (behind the scrim) | On hover and focus, with the heading, pitch and roll at rest | (recommendation accepted), 2026-10-16 |
-| Q3 | "(NPC)" after bots' names (asked for on 2026-10-10): keep the text, or a small crew-AI icon? | hud-before-2 | The faint icon the briefing uses | (recommendation accepted), 2026-10-16 |
-| Q4 | Stations not built yet (Comms, Flight ops): locked cards, or hidden until they exist? | lobby-after | Hidden: a shipped game does not show what it does not have | (recommendation accepted), 2026-10-16 |
-| Q5 | Explore the ship and its Fly key: keep in the shipped menu? | lobby-after, controls-after | Keep Explore, drop Fly from the shipped build | (recommendation accepted), 2026-10-16 |
-| Q6 | HUD: roster and mission clock off the walking HUD (roster in the Esc menu), alert chip only at alert? And the console band's clock? | hud-after, pause-after, console-after | Yes; the band's clock only when a mission has a time limit | (recommendation accepted), 2026-10-16 |
-| Q7 | Briefing as a solid full screen on the console, rather than over it? | briefing-after | Yes | (recommendation accepted), 2026-10-16 |
-| Q8 | Under 1080p text shrinks with the scale rule (Label 13 px at 720p, 8 px in the small embed). Keep it pure, or never draw text under 12 px (panels grow)? | controls-after-985x455, controls-after-1280x720 | A 12 px floor, with a Text size option later | (recommendation accepted), 2026-10-16 |
-| Q9 | Subtitle "Bridge simulator" and a version label instead of "SCS TERN"? | menu-after | Yes | (recommendation accepted), 2026-10-16 |
-| Q10 | Rebinding keys in Controls now, or read-only first? | controls-after | Read-only first | (recommendation accepted), 2026-10-16 |
-| Q11 | F3's round trip and loss (from console-parity): keep as a hidden debug overlay, off in release builds? | none (not on screen at rest) | Off in release builds | (recommendation accepted), 2026-10-16 |
-| Q12 | Track ids (T1, J1) on Tactical, Science and the gunner: keep (as a warship would) or names (Hound, Fighter 1)? | console-after (T1 1.5 km on the viewscreen) | Keep T1 style ids: they are what the crew call out | (recommendation accepted), 2026-10-16 |## 17. Not in this change
+| Q1 | Accent: ice (the livery cyan) or amber (today's title colour)? | lobby-after, lobby-after-amber | Ice: far from every state colour | Approved, the owner, 2026-10-16 (survey UI1): "approve" |
+| Q2 | Helm's quaternion (asked for on 2026-10-07): keep it at rest, or show it on hover or focus? | briefing-before (it shows through), pause-after (behind the scrim) | On hover and focus, with the heading, pitch and roll at rest | Approved, the owner, 2026-10-16 (survey UI2): "approve" |
+| Q3 | "(NPC)" after bots' names (asked for on 2026-10-10): keep the text, or a small crew-AI icon? | hud-before-2 | The faint icon the briefing uses | Approved, the owner, 2026-10-16 (survey UI3): "approve" |
+| Q4 | Stations not built yet (Comms, Flight ops): locked cards, or hidden until they exist? | lobby-after | Hidden: a shipped game does not show what it does not have | Approved, the owner, 2026-10-16 (survey UI4): "approve" |
+| Q5 | Explore the ship and its Fly key: keep in the shipped menu? | lobby-after, controls-after | Keep Explore, drop Fly from the shipped build | Approved, the owner, 2026-10-16 (survey UI5): "approve" |
+| Q6 | HUD: roster and mission clock off the walking HUD (roster in the Esc menu), alert chip only at alert? And the console band's clock? | hud-after, pause-after, console-after | Yes; the band's clock only when a mission has a time limit | Approved, the owner, 2026-10-16 (survey UI6): "approve" |
+| Q7 | Briefing as a solid full screen on the console, rather than over it? | briefing-after | Yes | Approved, the owner, 2026-10-16 (survey UI7): "approve" |
+| Q8 | Under 1080p text shrinks with the scale rule (Label 13 px at 720p, 8 px in the small embed). Keep it pure, or never draw text under 12 px (panels grow)? | controls-after-985x455, controls-after-1280x720 | A 12 px floor, with a Text size option later | Approved, the owner, 2026-10-16 (survey UI8): "approve" |
+| Q9 | Subtitle "Bridge simulator" and a version label instead of "SCS TERN"? | menu-after | Yes | Approved, the owner, 2026-10-16 (survey UI9): "approve" |
+| Q10 | Rebinding keys in Controls now, or read-only first? | controls-after | Read-only first | Approved, the owner, 2026-10-16 (survey UI10): "approve" |
+| Q11 | F3's round trip and loss (from console-parity): keep as a hidden debug overlay, off in release builds? | none (not on screen at rest) | Off in release builds | Approved, the owner, 2026-10-16 (survey UI11): "approve" |
+| Q12 | Track ids (T1, J1) on Tactical, Science and the gunner: keep (as a warship would) or names (Hound, Fighter 1)? | console-after (T1 1.5 km on the viewscreen) | Keep T1 style ids: they are what the crew call out | Approved, the owner, 2026-10-16 (survey UI12): "approve" |
+
+## 17. Not in this change
 
 The consoles' own panels (approved; `console-parity` owns them), sound assets, rebinding, gamepad prompts (the client
 reads no pads yet), and localisation.

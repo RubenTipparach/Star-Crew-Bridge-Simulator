@@ -6,7 +6,7 @@
 - [x] 1.2 Where the game stands on each step, from the engine (design 3).
 - [x] 1.3 Recording on a Pi 5 measured: the screen copy sets the rate, 30 fps at 1280 x 720 (design 6).
 - [x] 1.4 The baseline: today's whole mission recorded on Pi 1, with its shot list (design 5).
-- [ ] 1.5 The owner approves the gate and the build order.
+- [x] 1.5 The owner approves the gate and the build order: J1, 2026-10-16, "approve".
 
 ## 2. Group A: the room (steps 1-3)
 
