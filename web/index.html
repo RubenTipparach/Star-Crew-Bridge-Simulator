@@ -1,8 +1,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Star Crew</title>
 <meta name="description" content="Star Crew: walk the SCS Tern, take a station and fight the ship.">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Semi+Condensed:wght@500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
   /* The page is only the game (openspec/changes/browser-page-fit design 2): the canvas fills it edge to edge, with no
      border, margin or text around it. SDL alone sizes the canvas's drawing buffer (design 1). Single-theme by choice
@@ -11,8 +9,9 @@
     --hull: #0b0f14;        /* the page, the colour of the ship's dark */
     --dim: #7d8fa3;         /* the loading line */
     --amber: #f0a347;       /* the ship's status amber, the one accent */
-    --display: "Saira Semi Condensed", "Arial Narrow", system-ui, sans-serif;
-    --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+    /* No web fonts: the page draws one loading word, and the game draws its own type. */
+    --display: "Arial Narrow", system-ui, sans-serif;
+    --mono: ui-monospace, "SFMono-Regular", Menlo, monospace;
     color-scheme: dark;
   }
   html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; overscroll-behavior: none; }

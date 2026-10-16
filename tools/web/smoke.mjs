@@ -235,7 +235,7 @@ async function playFit() {
       if (!after(n, `sc-client: ui clicked ${label}`)) throw new Error(`${what}: a click at the centre of ${label} (${r}) did not land`);
     };
     const n0 = lines.length;
-    await pg.goto(url);
+    await pg.goto(url, { waitUntil: "domcontentloaded", timeout: 180000 });
     await wait(() => after(n0, "sc-client:"), "the client to start");
     await pg.waitForTimeout(3000);
     for (const [w, h] of SIZES) {
@@ -278,13 +278,13 @@ try {
     if (broken) throw new Error("the game came up broken");
     console.log(`smoke: ok, the game follows the page at every size, pixel ratio and full screen, and the mouse lands (${((Date.now() - t0) / 1000).toFixed(0)} s)`);
   } else if (touch) {
-    await page.goto(url);
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 180000 });
     await playByTouch();
     const broken = ["no ship (", "no bridge to walk", "no walk on foot", "pageerror:"].some(seen);
     if (broken) throw new Error("the game came up broken");
     console.log(`smoke: ok, played by touch: boarded, walked to a seat, sat, stood (${((Date.now() - t0) / 1000).toFixed(0)} s)`);
   } else {
-    await page.goto(url);
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 180000 });
     // The client is up when it has printed its GL line; give the menu a few frames to draw.
     await wait(() => seen("sc-client:"), "the client to start");
     await page.waitForTimeout(3000);
