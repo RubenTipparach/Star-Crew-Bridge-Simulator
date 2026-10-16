@@ -57,7 +57,18 @@
       "_doc": "The chase camera (openspec/changes/chase-camera design 1): CHASE is a toggle, and with it on any viewscreen camera (TARGET, FWD, PORT, AFT, STBD) is seen from behind the Tern: distance_m back along the line the camera looks (TARGET: from the target through the ship's centre), raised so the ship's centre sits ship_low of the half height below the middle of the picture and in the middle across, looking the camera's way (TARGET: at the target). fov_across_deg is its field of view across the feed at zoom 1.",
       "distance_m": 160.0,
       "fov_across_deg": 100.0,
-      "ship_low": 0.45
+      "ship_low": 0.45,
+      "_follow": "openspec/changes/chase-orbit design 3-5: follow_tau_s is the time constant of the critically damped lag with which the chase camera follows the ship's turn in the system frame (turning at a steady rate it settles follow_tau_s of the turn behind: 7.2 degrees at the Tern's 18 degrees a second); blend_s how long a change of camera, CHASE or ORBIT eases from the old picture to the new. orbit: the chase camera turned round the ship by hand, distance_m the nearest and farthest from the ship's centre, pitch_limit_deg the look line's tilt above or below the ship, drag_deg_across the heading a drag across the whole viewscreen turns (half that of elevation down it), wheel_step the distance's factor a wheel notch, smooth_tau_s the time constant the orbit drawn follows the hand's with, send_hz the most times a second the captain's orbit is sent to the main viewscreen while it changes.",
+      "follow_tau_s": 0.4,
+      "blend_s": 0.5,
+      "orbit": {
+        "distance_m": [90.0, 600.0],
+        "pitch_limit_deg": 80.0,
+        "drag_deg_across": 360.0,
+        "wheel_step": 1.15,
+        "smooth_tau_s": 0.15,
+        "send_hz": 10.0
+      }
     }
   }
 }

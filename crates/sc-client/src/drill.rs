@@ -21,7 +21,7 @@ use glam::{DQuat, DVec3, Mat4, Quat, Vec3};
 use sc_client::platform::{keys, App, Event, Flow, Frame, TouchPhase};
 use sc_core::combat::data::{DrillData, DRILL_FILES};
 use sc_core::combat::seats::{claim_rule, ClaimRule, Occupant};
-use sc_core::combat::{Command, Outcome, Phase, Station, ENEMY_ID, FEEDS, TERN_ID};
+use sc_core::combat::{Command, Outcome, Phase, Station, ENEMY_ID, TERN_ID};
 use sc_core::exterior::{normalized, ExteriorData};
 use sc_net::bot::Bot;
 use sc_net::msg::{ShipSnap, Snapshot};
@@ -76,6 +76,9 @@ pub struct DrillArgs {
     /// Single player with `--shots`: write every frame of a scripted run through the viewscreen's cameras, FWD,
     /// TARGET, CHASE round the ship and the bridge's main viewscreen, for a video (`--film`, chase-camera 3).
     pub film: bool,
+    /// With `film`: the chase camera following the ship's turn and ORBIT round it instead (`--film-orbit`,
+    /// chase-orbit).
+    pub film_orbit: bool,
     /// Single player: All hands, no damage-control teams aboard; the crew put the ship right (`--all-hands`,
     /// all-hands 1).
     pub all_hands: bool,
@@ -214,6 +217,10 @@ pub struct DrillApp {
     playtest_patrol: sc_core::combat::patrol::PatrolMemory,
     /// The cue written last, for the video's captions (chase-camera 3).
     film_cue: String,
+    /// The orbit reel's starting heading, degrees (`--film-orbit`).
+    film_orbit0: Option<f64>,
+    /// The bridge's main viewscreen's camera rig (chase-orbit design 7).
+    main_rig: console::rig::FeedRig,
     /// The bridge, when the compiled deck is there (design 9).
     bridge: Option<crate::drill_bridge::BridgeView>,
     /// The overview of the bridge is up (V).
@@ -398,6 +405,8 @@ impl DrillApp {
             shot_pending: None,
             playtest_patrol: Default::default(),
             film_cue: String::new(),
+            film_orbit0: None,
+            main_rig: console::rig::FeedRig::default(),
             bridge: None,
             overview: args_watch,
             walk_seen: (None, None),
@@ -1131,46 +1140,38 @@ impl DrillApp {
         self.booms.retain(|b| render_t - b.t0 < b.dur);
     }
 
-    /// The camera on the Tern's bow: its eye in the system frame and its attitude.
-    fn bow_eye(ships: Option<&(ShipSnap, ShipSnap, Snapshot)>, time_s: f64) -> (DVec3, DQuat) {
-        match ships {
-            Some((t, _, _)) => (t.pos + t.rot * console::BOW_EYE, t.rot),
-            None => (DVec3::ZERO, DQuat::from_rotation_y(time_s * 0.02)),
-        }
-    }
-
-    /// The viewscreen's feed: from the bow, looking where the console's feed points (the mockup's feed camera:
-    /// 70 degrees across at zoom 1), into its own target, which the console draws in the viewscreen's frame; with chase
-    /// on it stands behind the ship and draws the Tern too (chase-camera 1). With no console (on foot, the overview)
-    /// it is the bridge's main viewscreen's picture: the captain's camera while he holds the viewscreen, his console's
-    /// otherwise (chase-camera 2).
+    /// The viewscreen's feed: through the console's camera (its rig's, the one its bracket is projected through:
+    /// chase-orbit design 7), into its own target, which the console draws in the viewscreen's frame; off the bow it
+    /// draws the Tern too (chase-camera 1). With no console (on foot, the overview) it is the bridge's main
+    /// viewscreen's picture through its own rig: the captain's camera while he holds the viewscreen, his console's
+    /// otherwise (chase-camera 2, chase-orbit 6).
     fn render_feed(&mut self, ships: Option<&(ShipSnap, ShipSnap, Snapshot)>, view: Option<&console::ConsoleView>) {
-        let (bow, rot) = Self::bow_eye(ships, self.time_s);
+        let rot = ships.map_or(DQuat::from_rotation_y(self.time_s * 0.02), |(t, _, _)| t.rot);
         let chase_cfg = &self.exterior.viewscreen.chase;
-        let (stand, fwd, up, vfov) = match view {
-            Some(v) => self.seats[self.console_station() as usize].feed_camera(v, rot, chase_cfg),
+        let shot = match view {
+            Some(v) => console::feed_shot(v),
             None => {
-                // The captain's camera, CHASE and zoom, by the rule every console's panel uses (captains-viewscreen 1).
+                // The captain's camera, CHASE, zoom and orbit, by the rule every console's panel uses.
                 let br = ships.map(|(_, _, s)| &s.bridge);
-                let main = br.map_or(("FWD", false, 1.0), |b| {
-                    let feed = FEEDS.get(usize::from(b.main_view)).copied().unwrap_or("FWD");
-                    let zoom = sc_core::combat::ZOOMS.get(usize::from(b.main_zoom)).copied().unwrap_or(1.0);
-                    (feed, b.main_chase, zoom)
+                let main = br.map_or(console::ScreenSet::main(1, false, 0, None), |b| {
+                    console::ScreenSet::main(b.main_view, b.main_chase, b.main_zoom, b.main_orbit)
                 });
-                let (feed, chase, zoom) = console::on_screen(
+                let set = console::on_screen(
                     br.and_then(|b| b.view),
-                    br.is_some_and(|b| b.main_chase),
-                    br.map_or(0, |b| b.main_zoom),
+                    br.map_or((false, 0, None), |b| (b.main_chase, b.main_zoom, b.main_orbit)),
                     main,
                 );
                 let target =
                     ships.filter(|(_, h, _)| h.active && h.alive).map(|(t, h, _)| t.rot.inverse() * (h.pos - t.pos));
-                let (e, b, vfov) = console::feed_view(&feed, chase, target, chase_cfg, zoom);
-                (e.map(|e| rot * e), rot * b.f, rot * b.u, vfov)
+                let want =
+                    console::rig::Want { feed: set.feed, chase: set.chase, zoom: set.zoom, target, orbit: set.orbit };
+                self.main_rig.step(self.time_s, rot, &want, chase_cfg)
             }
         };
         let centre = ships.map_or(DVec3::ZERO, |(t, _, _)| t.pos);
-        let eye = stand.map_or(bow, |s| centre + s);
+        let eye = centre + rot * shot.eye;
+        let b = shot.basis();
+        let (fwd, up, vfov) = (rot * b.f, rot * b.u, shot.vfov);
         let proj = sc_render::depth::outside_lens(vfov as f32, FEED.0 as f32 / FEED.1 as f32);
         let view_m = glam::camera::rh::view::look_to_mat4(Vec3::ZERO, fwd.as_vec3(), up.as_vec3());
         let (ext_now, stations, roof) = self.outside_now(ships.map(|x| &x.2));
@@ -1189,9 +1190,9 @@ impl DrillApp {
         self.r.begin_3d(&self.feed, [0.0, 0.0, 0.0, 1.0]);
         world.draw(&mut self.r, &self.feed, proj, view_m, vfov as f32 / FEED.1 as f32, eye, ships);
         // CHASE sees the Tern from outside: its hull, drawn in the ship's frame from where the camera stands in it.
-        if let (Some(s), Some(h)) = (stand, self.bridge.as_ref().and_then(|b| b.hull())) {
+        if let (true, Some(h)) = (shot.hull, self.bridge.as_ref().and_then(|b| b.hull())) {
             let q = rot.as_quat();
-            let in_ship = rot.inverse() * s;
+            let in_ship = shot.eye;
             // The sky's sun from where the Tern is (one sun outside, design 11.3), or the bay's floods under a roof.
             let (light, k) = hull_light.unwrap_or((crate::outside::sun_in_ship(&ext_now, q), 1.0));
             h.draw_lit(&mut self.r, &self.feed, proj * view_m * Mat4::from_quat(q), in_ship.to_array(), light, k);
@@ -1585,6 +1586,15 @@ impl DrillApp {
             "Walking to the captain's chair, on foot"
         } else if !engaged || t < 2.0 {
             "Seated at Captain: the console comes up, the round counts down"
+        } else if self.args.film_orbit {
+            match self.orbit_reel(t, snap) {
+                Some(cue) => cue,
+                None => {
+                    self.film_screen = false;
+                    self.done = true;
+                    return;
+                }
+            }
         } else {
             let seat = &mut self.seats[st];
             // Each shot: the camera, chase on or off, the zoom, and its caption.
@@ -1629,7 +1639,12 @@ impl DrillApp {
                     if !self.film_screen {
                         // The captain's camera on the main viewscreen, as his console sends it when he presses.
                         if let Some(s) = self.session.as_mut() {
-                            s.command(sc_core::combat::Command::MainView { feed: 0, chase: true, zoom: 0 });
+                            s.command(sc_core::combat::Command::MainView {
+                                feed: 0,
+                                chase: true,
+                                zoom: 0,
+                                orbit: None,
+                            });
                         }
                         self.film_screen = true;
                     }
@@ -1651,6 +1666,62 @@ impl DrillApp {
         }
         let name = format!("film-{:05}.png", self.film_frame);
         self.capture(f, &name);
+    }
+}
+
+impl DrillApp {
+    /// The orbit reel (`--film-orbit`, chase-orbit): from 2 s into Engage, the captain's viewscreen from the bow, then
+    /// CHASE easing out behind the Tern and following its turns, TARGET easing round, ORBIT circling the ship and moving
+    /// in and out as a drag and the wheel would, ORBIT off easing back, and the bridge's main viewscreen showing his
+    /// orbit. None when it is over.
+    fn orbit_reel(&mut self, t: f64, snap: &Snapshot) -> Option<&'static str> {
+        let st = self.console_station() as usize;
+        let target = match (snap.ships.first(), snap.ships.get(1)) {
+            (Some(tn), Some(h)) if h.active && h.alive => Some(tn.rot.inverse() * (h.pos - tn.pos)),
+            _ => None,
+        };
+        // Each orbit starts afresh where the chase camera is.
+        if (23.0..26.0).contains(&t) {
+            self.film_orbit0 = None;
+        }
+        let cfg = &self.exterior.viewscreen.chase;
+        // A circle round the ship from where ORBIT starts, `turns` of it, its elevation and distance swinging.
+        let mut orbit = |from: f64, secs: f64, turns: f64| {
+            let k = ((t - from) / secs).clamp(0.0, 1.0);
+            let yaw0 = *self.film_orbit0.get_or_insert_with(|| console::rig::orbit_start("TARGET", target, cfg)[0]);
+            let tau = std::f64::consts::TAU;
+            [yaw0 - 360.0 * turns * k, -30.0 * (tau * k).sin() - 10.0, 160.0 + 120.0 * (tau * k * 1.5).sin().max(-0.5)]
+        };
+        let (feed, chase, goal, cue): (&str, bool, Option<[f64; 3]>, &'static str) = match t {
+            t if t < 3.0 => ("FWD", false, None, "FWD, chase off: the captain's viewscreen from the bow"),
+            t if t < 9.0 => {
+                ("FWD", true, None, "CHASE on: the camera eases out behind the Tern and follows its turns with a lag")
+            }
+            t if t < 13.0 => {
+                ("TARGET", true, None, "TARGET, chase on: the camera eases round to look past the Tern at the Hound")
+            }
+            t if t < 23.0 => (
+                "TARGET",
+                true,
+                Some(orbit(13.0, 10.0, 1.0)),
+                "ORBIT on: dragging turns the camera round the ship, the wheel moves it in and out",
+            ),
+            t if t < 26.0 => ("TARGET", true, None, "ORBIT off: the camera eases back to the chase position"),
+            t if t < 34.0 => {
+                let g = orbit(26.0, 8.0, 0.75);
+                if !self.film_screen {
+                    self.film_screen = true;
+                }
+                ("TARGET", true, Some(g), "The bridge's main viewscreen shows the captain's orbit")
+            }
+            _ => return None,
+        };
+        let seat = &mut self.seats[st];
+        seat.set_feed(feed);
+        seat.set_chase(chase);
+        seat.set_zoom(1.0);
+        seat.set_orbit(goal);
+        Some(cue)
     }
 }
 
@@ -1744,6 +1815,8 @@ impl App for DrillApp {
         }
         if let Some(s) = self.session.as_mut() {
             s.update();
+            // The ships are drawn on the server's clock, at this frame's own step (chase-orbit design 2).
+            s.advance(dt);
             // The server's mission is the one played: a client started with another loads it (patrol-mission).
             if !s.mission.is_empty() && s.mission != self.data.mission.id {
                 match load_data(&s.mission).and_then(|d| Ok((station_views(&self.r, &d)?, d))) {

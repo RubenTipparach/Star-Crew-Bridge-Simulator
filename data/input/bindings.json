@@ -8,5 +8,9 @@
     "roll_starboard": "C",
     "strafe_port": "Left",
     "strafe_starboard": "Right"
+  },
+  "viewscreen": {
+    "_note": "openspec/changes/chase-orbit design 5: ORBIT on or off while CHASE is on, at every console with a viewscreen. O is bound nowhere else.",
+    "orbit": "O"
   }
 }

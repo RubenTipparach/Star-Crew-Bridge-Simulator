@@ -18,6 +18,7 @@ mod helm;
 pub mod kit;
 mod laser;
 mod objectives;
+pub mod rig;
 pub mod schematic;
 mod science;
 mod tactical;
@@ -640,6 +641,17 @@ pub struct ConsoleView {
     #[serde(default)]
     pub chase: bool,
     pub zoom: f64,
+    /// ORBIT's goal, [heading, elevation, distance] (degrees, degrees, metres), while it is on (chase-orbit design 5).
+    /// The engine's own; the mockup's state has only `orbit_on`.
+    #[serde(skip)]
+    pub orbit: Option<[f64; 3]>,
+    /// ORBIT is on: the camera widget's button lit (the mockup's `G.orbit`).
+    #[serde(default)]
+    pub orbit_on: bool,
+    /// The viewscreen's camera this frame, from the seat's rig (chase-orbit design 7): the feed is drawn from it and
+    /// the bracket projected through it. None: a fixture, drawn with the settled camera.
+    #[serde(skip)]
+    pub cam: Option<rig::Shot>,
     pub nav_km: f64,
     pub tac_km: f64,
     pub sci_km: f64,
@@ -1182,17 +1194,41 @@ fn title_band(cv: &Canvas, cx: &mut Ctx) {
 /// here and the target bracket projected from here, so they agree however far the zoom goes (target-bracket 1).
 pub const BOW_EYE: DVec3 = DVec3::new(0.0, 3.0, 32.0);
 
-/// What a viewscreen shows (captains-viewscreen 1): while the captain holds the viewscreen (`view`, an index in
-/// `FEEDS`), his camera with his CHASE and zoom (`main_chase`, `main_zoom` an index in `ZOOMS`); otherwise `own`, the
-/// console's own camera, CHASE and zoom (or the captain's, for the bridge's big screen). One rule for the consoles'
-/// panels and the main viewscreen.
-pub fn on_screen(view: Option<u8>, main_chase: bool, main_zoom: u8, own: (&str, bool, f64)) -> (String, bool, f64) {
-    match view.and_then(|i| sc_core::combat::FEEDS.get(usize::from(i))) {
-        Some(f) => {
-            let zoom = sc_core::combat::ZOOMS.get(usize::from(main_zoom)).copied().unwrap_or(1.0);
-            ((*f).to_owned(), main_chase, zoom)
+/// What a viewscreen is set to: its camera (`combat::FEEDS`), CHASE, zoom (times) and ORBIT's goal, [heading,
+/// elevation, distance] (degrees, degrees, metres; none: ORBIT off).
+#[derive(Clone, Debug, PartialEq)]
+pub struct ScreenSet {
+    pub feed: String,
+    pub chase: bool,
+    pub zoom: f64,
+    pub orbit: Option<[f64; 3]>,
+}
+
+impl ScreenSet {
+    /// The bridge's main viewscreen's settings as the snapshot carries them, the captain's (chase-camera 2,
+    /// chase-orbit 6): camera and zoom by their indices, the orbit in its three bytes.
+    pub fn main(view: u8, chase: bool, zoom: u8, orbit: Option<[u8; 3]>) -> Self {
+        let feed = sc_core::combat::FEEDS.get(usize::from(view)).copied().unwrap_or("FWD");
+        Self {
+            feed: feed.to_owned(),
+            chase,
+            zoom: sc_core::combat::ZOOMS.get(usize::from(zoom)).copied().unwrap_or(1.0),
+            orbit: orbit.filter(|_| chase).map(|q| {
+                let (y, p, d) = chase_cfg().orbit.unquantize(q);
+                [y, p, d]
+            }),
         }
-        None => (own.0.to_owned(), own.1, own.2),
+    }
+}
+
+/// What a viewscreen shows (captains-viewscreen 1, chase-orbit 6): while the captain holds the viewscreen (`view`, an
+/// index in `FEEDS`), his camera with his CHASE, zoom and orbit (`main`, the snapshot's); otherwise `own`, the
+/// console's own (or the captain's, for the bridge's big screen). One rule for the consoles' panels and the main
+/// viewscreen.
+pub fn on_screen(view: Option<u8>, main: (bool, u8, Option<[u8; 3]>), own: ScreenSet) -> ScreenSet {
+    match view.filter(|i| usize::from(*i) < sc_core::combat::FEEDS.len()) {
+        Some(i) => ScreenSet::main(i, main.0, main.1, main.2),
+        None => own,
     }
 }
 
@@ -1230,6 +1266,11 @@ pub fn set_chase(c: &sc_core::exterior::Chase) {
     let _ = CHASE.set(c.clone());
 }
 
+/// The chase camera's numbers: the drill's, or the shipped file's for a console drawn with no drill (a fixture, a test).
+pub fn chase_cfg() -> &'static sc_core::exterior::Chase {
+    CHASE.get_or_init(|| sc_core::exterior::ExteriorData::shipped().viewscreen.chase)
+}
+
 /// The chase camera's vertical field of view, radians, at `zoom` (the feed is 614 x 194, as every camera's).
 pub fn chase_vfov(c: &sc_core::exterior::Chase, zoom: f64) -> f64 {
     let across = (c.fov_across_deg / 2.0).to_radians().tan() / zoom.max(1.0);
@@ -1237,7 +1278,8 @@ pub fn chase_vfov(c: &sc_core::exterior::Chase, zoom: f64) -> f64 {
 }
 
 /// The chase camera (openspec/changes/chase-camera design 1): a viewscreen camera looking along `look` (ship frame),
-/// seen from behind the ship. It stands `distance_m` back from the ship's centre along that line, raised square to its
+/// seen from behind the ship. It stands `distance_m` (the chase camera's, or an orbit's: chase-orbit design 5) back
+/// from the ship's centre along that line, raised square to its
 /// look until the ship's centre sits `ship_low` of the half height below the middle of a picture `half_vfov` radians
 /// high, the ship in the middle across; it looks along `look`, or at `target` (TARGET), so the target is in the middle.
 /// Returns where it stands relative to the ship's centre and the way it looks, both in the ship's frame.
@@ -1246,6 +1288,7 @@ pub fn chase_camera(
     target: Option<DVec3>,
     c: &sc_core::exterior::Chase,
     half_vfov: f64,
+    distance_m: f64,
 ) -> (DVec3, Basis) {
     let line = look.normalize_or_zero();
     let line = if line == DVec3::ZERO { DVec3::Z } else { line };
@@ -1264,7 +1307,7 @@ pub fn chase_camera(
     // Raised until the ship sits low in the picture it finally takes. Looking at a near target turns the camera as it
     // rises, so the lift is settled on the last aim rather than the first (a few steps: each turn is small).
     let low = c.ship_low * half_vfov.tan();
-    let mut eye = -line * c.distance_m;
+    let mut eye = -line * distance_m;
     for _ in 0..12 {
         let b = frame(look_from(eye));
         let depth = (-eye).dot(b.f).max(1.0);
@@ -1293,13 +1336,26 @@ pub fn feed_view(
         // chase camera stands and looks where it does at 1x, and its picture is magnified, so the target grows and the
         // Tern, low in the 1x picture, leaves by the bottom edge.
         let b = feed_basis_for(feed, target);
-        let (eye, b) = chase_camera(b.f, target.filter(|_| feed == "TARGET"), c, chase_vfov(c, 1.0) / 2.0);
+        let (eye, b) =
+            chase_camera(b.f, target.filter(|_| feed == "TARGET"), c, chase_vfov(c, 1.0) / 2.0, c.distance_m);
         return (Some(eye), b, chase_vfov(c, zoom));
     }
     // From the bow camera: TARGET looks from where it stands at the target.
     let b = feed_basis_for(feed, target.map(|t| t - BOW_EYE));
     let foc = 307.0 / 35f64.to_radians().tan() * zoom;
     (None, b, 2.0 * (97.0 / foc).atan())
+}
+
+/// What a console's viewscreen asks of its camera rig: its camera, CHASE, zoom, the locked target and ORBIT's goal.
+pub fn feed_want(v: &ConsoleView) -> rig::Want {
+    let target = v.target.as_ref().and_then(|id| v.contacts.iter().find(|k| &k.id == id)).map(|k| v3(k.rel));
+    rig::Want { feed: v.feed.clone(), chase: v.chase, zoom: v.zoom, target, orbit: v.orbit.filter(|_| v.chase) }
+}
+
+/// The camera a console's viewscreen shows this frame: its rig's (`ConsoleView::cam`), or with no rig (a fixture) the
+/// settled one. The 3D feed is drawn from it and the bracket projected through it (chase-orbit design 7).
+pub fn feed_shot(v: &ConsoleView) -> rig::Shot {
+    v.cam.unwrap_or_else(|| rig::Shot::settled(&feed_want(v), chase_cfg()))
 }
 
 /// The viewscreen's frame on screen (look band coordinates): where the 3D feed is drawn.
@@ -1330,20 +1386,11 @@ fn look_band(cv: &Canvas, cx: &mut Ctx) {
     );
     let fill = if cx.feed { Color32::TRANSPARENT } else { rgba(0x020306, 1.0) };
     cv.rect(330.0, 18.0, 620.0, 200.0, 6.0, fill, Some(Pen::new(3.0, rgba(0x2a3442, 1.0))));
-    // The target's bracket on the feed, where the feed's camera sees it.
+    // The target's bracket on the feed, where the feed's camera sees it: through the one camera the feed is drawn
+    // from, the rig's smoothed one (chase-orbit design 7), or with no rig (a fixture) its settled pose.
     let scr = cv.at(sx, sy).clip(0.0, 0.0, sw, sh);
-    // With chase on, from where the chase camera stands and through its wider lens (chase-camera 1).
-    let (eye, b, foc) = match (v.chase, CHASE.get()) {
-        (true, Some(c)) => {
-            let tgt = v.target.as_ref().and_then(|id| v.contacts.iter().find(|k| &k.id == id)).map(|k| v3(k.rel));
-            let (eye, b, vfov) = feed_view(&v.feed, true, tgt, c, v.zoom);
-            (eye.unwrap_or(DVec3::ZERO), b, 97.0 / (vfov / 2.0).tan())
-        }
-        _ => {
-            let tgt = v.target.as_ref().and_then(|id| v.contacts.iter().find(|k| &k.id == id)).map(|k| v3(k.rel));
-            (BOW_EYE, feed_basis_for(&v.feed, tgt.map(|t| t - BOW_EYE)), (307.0 / 35f64.to_radians().tan()) * v.zoom)
-        }
-    };
+    let shot = feed_shot(v);
+    let (eye, b, foc) = (shot.eye, shot.basis(), 97.0 / (shot.vfov / 2.0).tan());
     for k in &v.contacts {
         if k.iff == "unknown" || Some(&k.id) != v.target.as_ref() {
             continue;
@@ -1355,6 +1402,11 @@ fn look_band(cv: &Canvas, cx: &mut Ctx) {
             _ => c.hostile.0,
         };
         draw_bracket(&scr, r, k, col, (v3(k.rel) - eye).length(), c.line.0);
+    }
+    // ORBIT on: the viewscreen itself is the handle that turns the camera round the ship (chase-orbit design 5).
+    if v.orbit_on {
+        let tip = "Drag to orbit the ship; scroll or pinch to move in or out";
+        cx.hits.add(cv, sx, sy, sw, sh, Some(kit::Hit::Drag(kit::Drag::Orbit)), Some(tip.into()));
     }
     cv.text(342.0, 38.0, 11.0, c.dim.0, &format!("VIEWSCREEN · {}", v.feed), T::default().ls(2.0));
     kit::feed_widget(cv, cx, 196.0, 10.0);
@@ -1519,7 +1571,7 @@ mod tests {
     use super::*;
 
     fn chase_cfg() -> sc_core::exterior::Chase {
-        sc_core::exterior::Chase { distance_m: 160.0, fov_across_deg: 100.0, ship_low: 0.45 }
+        sc_core::exterior::ExteriorData::shipped().viewscreen.chase
     }
 
     /// Where `p` (ship frame) lands on the picture of a camera at `eye` looking along `b`: right and up as a share of

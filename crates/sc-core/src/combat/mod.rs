@@ -583,6 +583,9 @@ pub enum Command {
         chase: bool,
         /// The zoom, an index in [`ZOOMS`] (viewscreen-zoom 3).
         zoom: u8,
+        /// ORBIT on: his orbit's heading, elevation and distance as three bytes (`exterior::Orbit::quantize`,
+        /// chase-orbit design 6); none: off.
+        orbit: Option<[u8; 3]>,
     },
     /// The captain: an order to a station, the verb by its index in that station's verbs (`data/stations.json`).
     Order(Station, u8),
@@ -1133,6 +1136,8 @@ pub struct Bridge {
     pub main_chase: bool,
     /// The main viewscreen's zoom, the captain's console's: an index in [`ZOOMS`] (1x to start).
     pub main_zoom: u8,
+    /// The main viewscreen's orbit, the captain's console's (chase-orbit design 6): three bytes, or none (ORBIT off).
+    pub main_orbit: Option<[u8; 3]>,
     /// The last orders, newest first, at most [`MAX_ORDERS`].
     pub orders: Vec<Order>,
     /// How far Science's scan of the enemy has gone, 0-1.
@@ -1162,6 +1167,7 @@ impl Default for Bridge {
             main_view: 1,
             main_chase: false,
             main_zoom: 0,
+            main_orbit: None,
             orders: Vec::with_capacity(MAX_ORDERS + 1),
             scan: 0.0,
             scanning: false,
@@ -2428,10 +2434,12 @@ impl Drill {
                 b.view = v;
                 Ok(())
             }
-            Command::MainView { feed, chase, zoom } => {
+            Command::MainView { feed, chase, zoom, orbit } => {
                 b.main_view = feed;
                 b.main_chase = chase;
                 b.main_zoom = zoom;
+                // An orbit is a chase camera's: none without CHASE.
+                b.main_orbit = orbit.filter(|_| chase);
                 Ok(())
             }
             Command::Order(to, verb) => {
@@ -5534,21 +5542,24 @@ mod tests {
     fn the_bridges_main_viewscreen_shows_the_captains_camera() {
         let (mut d, s) = engaged_at(&[Station::Captain, Station::Helm]);
         assert_eq!(d.bridge.main_view, 1, "FWD until the captain picks a camera");
-        d.command(s[0], Command::MainView { feed: 0, chase: true, zoom: 3 }).unwrap();
+        d.command(s[0], Command::MainView { feed: 0, chase: true, zoom: 3, orbit: None }).unwrap();
         d.step();
         assert_eq!(
             (d.bridge.main_view, d.bridge.main_chase, d.bridge.main_zoom),
             (0, true, 3),
             "the captain's TARGET, chasing, at 10x, is on it"
         );
-        assert_eq!(d.command(s[0], Command::MainView { feed: 9, chase: false, zoom: 0 }), Err(Refusal::BadValue));
         assert_eq!(
-            d.command(s[0], Command::MainView { feed: 0, chase: false, zoom: 5 }),
+            d.command(s[0], Command::MainView { feed: 9, chase: false, zoom: 0, orbit: None }),
+            Err(Refusal::BadValue)
+        );
+        assert_eq!(
+            d.command(s[0], Command::MainView { feed: 0, chase: false, zoom: 5, orbit: None }),
             Err(Refusal::BadValue),
             "no zoom past 20x"
         );
         assert!(
-            d.command(s[1], Command::MainView { feed: 1, chase: false, zoom: 0 }).is_err(),
+            d.command(s[1], Command::MainView { feed: 1, chase: false, zoom: 0, orbit: None }).is_err(),
             "only the captain picks the main viewscreen's camera"
         );
         assert_eq!((d.bridge.main_view, d.bridge.main_chase, d.bridge.main_zoom), (0, true, 3));

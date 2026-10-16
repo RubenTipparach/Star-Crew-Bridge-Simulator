@@ -605,6 +605,8 @@ pub struct ConsoleFinger {
     /// Fingers since the last frame, UI points, and the time.
     queue: Vec<(u64, TouchPhase, Pos2, f64)>,
     press: Option<Press>,
+    /// A second finger down beside a dragging one: its id and where it is (a pinch, chase-orbit design 5).
+    second: Option<(u64, Pos2)>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -620,7 +622,7 @@ struct Press {
 impl ConsoleFinger {
     /// A console's finger from the data.
     pub fn new(d: ConsoleData) -> Self {
-        Self { d, queue: Vec::new(), press: None }
+        Self { d, queue: Vec::new(), press: None, second: None }
     }
 
     /// A finger on the console, UI points, at `now` seconds; it acts at the next [`ConsoleFinger::resolve`].
@@ -632,6 +634,7 @@ impl ConsoleFinger {
     pub fn clear(&mut self) {
         self.queue.clear();
         self.press = None;
+        self.second = None;
     }
 
     /// Where the console's tip shows: the finger of a long press.
@@ -646,6 +649,38 @@ impl ConsoleFinger {
         let mut out = Vec::new();
         for (id, phase, at, t) in std::mem::take(&mut self.queue) {
             match phase {
+                // A second finger beside one dragging (not a tap to come): the drag lets go and the two pinch.
+                TouchPhase::Down
+                    if self.second.is_none() && self.press.is_some_and(|p| p.tap.is_none() && p.id != id) =>
+                {
+                    if let Some(p) = self.press {
+                        out.push(PointerEv::Release(p.at));
+                    }
+                    self.second = Some((id, at));
+                }
+                TouchPhase::Move if self.second.is_some() => {
+                    let (Some(p), Some((sid, s_at))) = (self.press.as_mut(), self.second.as_mut()) else { continue };
+                    let before = p.at.distance(*s_at);
+                    if p.id == id {
+                        p.at = at;
+                    } else if *sid == id {
+                        *s_at = at;
+                    } else {
+                        continue;
+                    }
+                    let after = p.at.distance(*s_at);
+                    if before > 1.0 && after > 1.0 {
+                        let mid = Pos2::new((p.at.x + s_at.x) / 2.0, (p.at.y + s_at.y) / 2.0);
+                        out.push(PointerEv::Pinch(mid, after / before));
+                    }
+                }
+                TouchPhase::Up | TouchPhase::Cancel if self.second.is_some() => {
+                    // Either finger up ends the pinch; the drag it interrupted is over already.
+                    if self.press.is_some_and(|p| p.id == id) || self.second.is_some_and(|(sid, _)| sid == id) {
+                        self.press = None;
+                        self.second = None;
+                    }
+                }
                 TouchPhase::Down if self.press.is_none() => {
                     let direct = hits.at(at).and_then(|r| r.hit.as_ref());
                     let mouse = matches!(direct, Some(Hit::Drag(_) | Hit::Hold(_) | Hit::Tap(_)));
@@ -968,6 +1003,29 @@ mod tests {
                 PointerEv::Move(Pos2::new(10.0, 20.0)),
                 PointerEv::Release(Pos2::new(10.0, 20.0))
             ]
+        );
+    }
+
+    #[test]
+    fn two_fingers_on_a_drag_control_pinch() {
+        // chase-orbit design 5: a second finger beside a dragging one lets the drag go and the two pinch.
+        let rect = Rect::from_min_size(Pos2::new(0.0, 0.0), Vec2::splat(200.0));
+        let orbit = Some(Hit::Drag(crate::console::kit::Drag::Orbit));
+        let hits = Hits { regions: vec![Region { rect, hit: orbit, tip: None, track: rect, seg: None }] };
+        let mut f = ConsoleFinger::new(data().console);
+        f.take(1, TouchPhase::Down, Pos2::new(50.0, 100.0), 0.0);
+        f.take(2, TouchPhase::Down, Pos2::new(150.0, 100.0), 0.02);
+        f.take(2, TouchPhase::Move, Pos2::new(250.0, 100.0), 0.05);
+        f.take(2, TouchPhase::Up, Pos2::new(250.0, 100.0), 0.1);
+        f.take(1, TouchPhase::Up, Pos2::new(50.0, 100.0), 0.11);
+        assert_eq!(
+            f.resolve(&hits, 1.0, 0.11),
+            vec![
+                PointerEv::Press(Pos2::new(50.0, 100.0)),
+                PointerEv::Release(Pos2::new(50.0, 100.0)),
+                PointerEv::Pinch(Pos2::new(150.0, 100.0), 2.0),
+            ],
+            "the drag lets go, the spread doubles, and lifting the fingers sends nothing more"
         );
     }
 }

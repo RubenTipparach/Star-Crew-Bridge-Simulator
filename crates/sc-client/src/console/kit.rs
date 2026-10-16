@@ -31,6 +31,8 @@ pub enum Act {
     Load(usize),
     Favour(i32),
     Feed(String),
+    /// Any console: ORBIT on or off, while CHASE is on (chase-orbit design 5).
+    Orbit,
     /// Engineering: a power preset, a group's priority, a group's breaker lock, SCRAM, the reactor's and the loop's
     /// modes.
     Preset(String),
@@ -93,6 +95,8 @@ pub enum Drag {
     Wheel(char),
     ScanCam(&'static str),
     FeedView,
+    /// ORBIT on: a drag on the viewscreen turns the camera round the ship (chase-orbit design 5).
+    Orbit,
     /// Engineering: a load group's fader, one of the cooling loop's levers.
     Fader(String),
     Lever(String),
@@ -982,6 +986,24 @@ pub fn feed_widget(cv: &Canvas, cx: &mut Ctx, x: f32, y: f32) {
             },
         );
     }
+    // ORBIT (chase-orbit design 5): under CHASE, a third row of the pad, lit while on, unavailable while CHASE is off.
+    button(
+        cv,
+        cx,
+        Btn {
+            x: x + 82.0,
+            y: y + 196.0,
+            w: 38.0,
+            h: 25.0,
+            icon: Some("orbit"),
+            is: Some(15.0),
+            act: Some(Act::Orbit),
+            on: v.orbit_on,
+            off: !v.chase,
+            tip: Some("Orbit the ship".into()),
+            ..Default::default()
+        },
+    );
     // The zooms (viewscreen-zoom 1): a column of five left of the widget, the one in use lit.
     for (i, z) in sc_core::combat::ZOOMS.iter().enumerate() {
         let label = format!("{z}\u{d7}");

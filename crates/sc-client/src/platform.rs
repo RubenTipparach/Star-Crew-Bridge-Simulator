@@ -81,6 +81,8 @@ pub mod keys {
     pub const T: u32 = sdl::SDLK_T.0;
     /// K.
     pub const K: u32 = sdl::SDLK_K.0;
+    /// O: ORBIT on the viewscreen (chase-orbit design 5).
+    pub const O: u32 = sdl::SDLK_O.0;
     /// G.
     pub const G: u32 = sdl::SDLK_G.0;
     /// L.

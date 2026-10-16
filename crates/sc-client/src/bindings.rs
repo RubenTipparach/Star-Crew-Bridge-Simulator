@@ -21,6 +21,16 @@ pub struct BindingsFile {
     pub use_key: String,
     /// Helm's keys.
     pub helm: HelmKeys,
+    /// The viewscreen's keys, at every console with one.
+    pub viewscreen: ViewscreenKeys,
+}
+
+/// The viewscreen's bindings (chase-orbit design 5).
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct ViewscreenKeys {
+    /// ORBIT on or off, while CHASE is on.
+    pub orbit: String,
 }
 
 /// Helm's bindings that are data (the rest are `seat.rs`'s, as the mockup has them).
@@ -38,7 +48,7 @@ pub struct HelmKeys {
 }
 
 /// The names a binding may use and their keycodes.
-const NAMES: [(&str, u32); 36] = [
+const NAMES: [(&str, u32); 37] = [
     ("A", keys::A),
     ("C", keys::C),
     ("D", keys::D),
@@ -48,6 +58,7 @@ const NAMES: [(&str, u32); 36] = [
     ("K", keys::K),
     ("L", keys::L),
     ("M", keys::M),
+    ("O", keys::O),
     ("Q", keys::Q),
     ("R", keys::R),
     ("S", keys::S),
@@ -92,6 +103,7 @@ impl Validate for BindingsFile {
             ("helm.roll_starboard", &h.roll_starboard),
             ("helm.strafe_port", &h.strafe_port),
             ("helm.strafe_starboard", &h.strafe_starboard),
+            ("viewscreen.orbit", &self.viewscreen.orbit),
         ];
         for (field, name) in all {
             if key_of(name).is_none() {
@@ -118,6 +130,8 @@ pub struct Bindings {
     pub roll: (u32, u32),
     /// See `roll`.
     pub strafe: (u32, u32),
+    /// ORBIT on or off (chase-orbit design 5).
+    pub orbit: u32,
 }
 
 impl Bindings {
@@ -129,6 +143,7 @@ impl Bindings {
             use_label: f.use_key.clone(),
             roll: (k(&h.roll_port), k(&h.roll_starboard)),
             strafe: (k(&h.strafe_port), k(&h.strafe_starboard)),
+            orbit: k(&f.viewscreen.orbit),
         }
     }
 
@@ -169,6 +184,7 @@ mod tests {
         assert_eq!((b.use_key, b.use_label.as_str()), (keys::E, "E"));
         assert_eq!(b.roll, (keys::Z, keys::C), "the helm rolls off E (leave-station 3)");
         assert_eq!(b.strafe, (keys::LEFT, keys::RIGHT));
+        assert_eq!(b.orbit, keys::O, "ORBIT on O at every console (chase-orbit design 5)");
     }
 
     #[test]

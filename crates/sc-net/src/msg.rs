@@ -14,8 +14,8 @@ use sc_core::combat::{self, Command, HelmMode, Outcome, Phase, PowerCmd, Refusal
 
 /// The protocol's version; a Hello with another is refused. 13: the main viewscreen's feed, chase and zoom
 /// (chase-camera); 14: crew chat (crew-chat design 1); 15: the patrol (patrol-mission); 16: both lines merged, the
-/// main view's command moved to tag 29.
-pub const PROTOCOL: u16 = 16;
+/// main view's command moved to tag 29; 17: the main view's orbit (chase-orbit design 6).
+pub const PROTOCOL: u16 = 17;
 /// The longest unreliable message, so it is one SCTP chunk in one datagram (netcode-and-sessions section 2).
 pub const MAX_UNRELIABLE: usize = 1200;
 /// The longest string field, in bytes.
@@ -444,6 +444,8 @@ pub struct BridgeSnap {
     pub main_chase: bool,
     /// Its zoom, the captain's console's: an index in [`combat::ZOOMS`].
     pub main_zoom: u8,
+    /// Its orbit, the captain's console's: three bytes (`exterior::Orbit::quantize`), or none (chase-orbit design 6).
+    pub main_orbit: Option<[u8; 3]>,
     /// The last orders, newest first: to, verb index, done.
     pub orders: Vec<(Station, u8, bool)>,
     /// Science's scan of the enemy (0-1), and whether a manned scan is running.
@@ -1318,11 +1320,12 @@ fn write_command(w: &mut Writer, c: &Command) {
             w.u8(16);
             w.u8(v.unwrap_or(255));
         }
-        Command::MainView { feed, chase, zoom } => {
+        Command::MainView { feed, chase, zoom, orbit } => {
             w.u8(29);
             w.u8(feed);
             w.u8(u8::from(chase));
             w.u8(zoom);
+            write_orbit(w, orbit);
         }
         Command::Order(to, verb) => {
             w.u8(17);
@@ -1433,6 +1436,20 @@ fn write_power(w: &mut Writer, p: PowerCmd) {
     }
 }
 
+/// An orbit (chase-orbit design 6): a flag, then its three bytes when there is one.
+fn write_orbit(w: &mut Writer, orbit: Option<[u8; 3]>) {
+    w.u8(u8::from(orbit.is_some()));
+    for b in orbit.unwrap_or_default() {
+        w.u8(b);
+    }
+}
+
+fn read_orbit(r: &mut Reader) -> Result<Option<[u8; 3]>, DecodeError> {
+    let on = r.bool()?;
+    let q = [r.u8()?, r.u8()?, r.u8()?];
+    Ok(on.then_some(q))
+}
+
 fn read_power(r: &mut Reader) -> Result<PowerCmd, DecodeError> {
     Ok(match r.u8()? {
         1 => PowerCmd::Preset(r.u8()?),
@@ -1504,7 +1521,7 @@ fn read_command(r: &mut Reader) -> Result<Command, DecodeError> {
         26 => Command::Jump(r.bool()?),
         27 => Command::Sweep,
         28 => Command::Patrol(PatrolOrder::from_u8(r.u8()?).ok_or(DecodeError("no such patrol order"))?),
-        29 => Command::MainView { feed: r.u8()?, chase: r.bool()?, zoom: r.u8()? },
+        29 => Command::MainView { feed: r.u8()?, chase: r.bool()?, zoom: r.u8()?, orbit: read_orbit(r)? },
         _ => return Err(DecodeError("no such command")),
     };
     Ok(c)
@@ -1709,6 +1726,7 @@ impl Snapshot {
         w.u8(b.main_view);
         w.u8(u8::from(b.main_chase));
         w.u8(b.main_zoom);
+        write_orbit(&mut w, b.main_orbit);
         w.u8(b.orders.len() as u8);
         for (to, verb, done) in &b.orders {
             w.u8(*to as u8);
@@ -1952,6 +1970,7 @@ impl Snapshot {
         if usize::from(main_zoom) >= combat::ZOOMS.len() {
             return Err(DecodeError("no such viewscreen zoom"));
         }
+        let main_orbit = read_orbit(&mut r)?;
         let no = r.count(combat::MAX_ORDERS)?;
         let mut orders = Vec::with_capacity(no);
         for _ in 0..no {
@@ -1977,6 +1996,7 @@ impl Snapshot {
             main_view,
             main_chase,
             main_zoom,
+            main_orbit,
             orders,
             scan: f64::from(sc) / 200.0,
             ping_s,
@@ -2196,6 +2216,7 @@ impl Snapshot {
                     main_view: b.main_view,
                     main_chase: b.main_chase,
                     main_zoom: b.main_zoom,
+                    main_orbit: b.main_orbit,
                     orders: b.orders.iter().map(|o| (o.to, o.verb, o.done)).collect(),
                     scan: b.scan,
                     scanning: b.scanning,
@@ -2414,6 +2435,25 @@ mod tests {
     }
 
     #[test]
+    fn the_captains_orbit_round_trips_to_the_main_viewscreen() {
+        // chase-orbit design 6: his ORBIT's three bytes go up in MainView and come back in every snapshot.
+        let mut d = engaged();
+        let cap = d.join("Cap", false).unwrap();
+        d.claim(cap, Station::Captain).unwrap();
+        let orbit = Some([200, 17, 99]);
+        let c = ClientMsg::Command(Command::MainView { feed: 0, chase: true, zoom: 1, orbit });
+        let ClientMsg::Command(cmd) = ClientMsg::decode(&c.encode()).unwrap() else { panic!("a command") };
+        d.command(cap, cmd).unwrap();
+        d.step();
+        let back = Snapshot::decode(&Snapshot::of(&d).encode()).unwrap();
+        assert_eq!(back.bridge.main_orbit, orbit, "the orbit on the main viewscreen is his");
+        d.command(cap, Command::MainView { feed: 0, chase: false, zoom: 1, orbit }).unwrap();
+        d.step();
+        let back = Snapshot::decode(&Snapshot::of(&d).encode()).unwrap();
+        assert_eq!(back.bridge.main_orbit, None, "no orbit without CHASE");
+    }
+
+    #[test]
     fn a_patrols_snapshot_round_trips_and_fits_with_the_grid_or_the_routing() {
         let mut d = Drill::new(sc_core::combat::data::DrillData::shipped_patrol(), 3);
         let p = d.join("Tac", false).unwrap();
@@ -2547,7 +2587,9 @@ mod tests {
             ClientMsg::Command(Command::Sweep),
             ClientMsg::Command(Command::Patrol(PatrolOrder::Jump)),
             ClientMsg::Command(Command::Lock(None)),
-            ClientMsg::Command(Command::MainView { feed: 0, chase: true, zoom: 4 }),
+            ClientMsg::Command(Command::MainView { feed: 0, chase: true, zoom: 4, orbit: None }),
+            // The captain's orbit rides with his camera (chase-orbit design 6).
+            ClientMsg::Command(Command::MainView { feed: 1, chase: true, zoom: 0, orbit: Some([0, 128, 255]) }),
             ClientMsg::Command(Command::Stick { speed_set_mps: 120.0, yaw: 0.5, pitch: -0.25, roll: 0.0 }),
             ClientMsg::Ping(12345),
             ClientMsg::Command(Command::Power(PowerCmd::Preset(1))),
