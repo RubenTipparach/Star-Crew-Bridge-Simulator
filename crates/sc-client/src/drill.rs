@@ -20,6 +20,7 @@ use egui::{Align2, Color32, CornerRadius, Pos2, Rect, RichText, Stroke, Vec2};
 use glam::{DQuat, DVec3, Mat4, Quat, Vec3};
 use sc_client::platform::{keys, App, Event, Flow, Frame, TouchPhase};
 use sc_core::combat::data::{DrillData, DRILL_FILES};
+use sc_core::combat::seats::{claim_rule, ClaimRule, Occupant};
 use sc_core::combat::{Command, Outcome, Phase, Station, ENEMY_ID, FEEDS, TERN_ID};
 use sc_core::exterior::{normalized, ExteriorData};
 use sc_net::bot::Bot;
@@ -234,12 +235,17 @@ pub struct DrillApp {
     captured: bool,
     /// When the walk was last sent, local seconds.
     walk_sent: f64,
-    /// How long Stand has been held while seated, seconds.
-    stand_hold: f64,
+    /// The stand key's hold while seated (leave-station 2).
+    stand: crate::stand::StandHold,
+    /// The keys that are data (`data/input/bindings.json`).
+    bindings: crate::bindings::Bindings,
     /// Each station's seat (layout.json), for the seat in reach.
     seat_points: Vec<(Station, [f32; 3], f32)>,
     /// `--playtest`: the scripted player.
     playtest: Option<crate::playtest::Playtest>,
+    /// The script holds the stand key, and a console control it presses next frame, where a player's pointer would.
+    playtest_stand: bool,
+    playtest_press: Option<crate::playtest::Control>,
     /// When the body last sat down at a console, local seconds: the console rises from the desk from then.
     seated_at: Option<f64>,
     /// The eye the player last saw the ship from on their feet (where, facing, tilt), and the one the sit started from:
@@ -354,6 +360,7 @@ impl DrillApp {
         let bot = args.bot.then(|| Bot::new(&data, args.station));
         let args_watch = args.watch;
         let touch = crate::touch::load()?;
+        let bindings = crate::bindings::load()?;
         let mut app = Self {
             r,
             blank,
@@ -403,9 +410,12 @@ impl DrillApp {
             look: (0.0, 0.0),
             captured: false,
             walk_sent: 0.0,
-            stand_hold: 0.0,
+            stand: crate::stand::StandHold::default(),
+            bindings,
             seat_points: Vec::new(),
             playtest: None,
+            playtest_stand: false,
+            playtest_press: None,
             seated_at: None,
             last_view: None,
             rise_from: None,
@@ -533,6 +543,8 @@ impl DrillApp {
         empty: &[usize],
     ) -> Option<String> {
         let seats = &self.data.stations.seats;
+        // The use key sits (the same key stands, leave-station 2), takes and repairs.
+        let use_key = self.bindings.use_key;
         let (reach, reach_dy) = (seats.reach_m as f32, seats.reach_dy_m as f32);
         // Where the server put the body as it became the player's: the newest snapshot's, not the interpolated one (which
         // trails it, and would stand the body in the chair it just got up from).
@@ -551,8 +563,8 @@ impl DrillApp {
         let (held, mut pressed) =
             if menu { (HashSet::new(), HashSet::new()) } else { (self.held.clone(), self.pressed.clone()) };
         let mut sit = None;
-        if let (Some(st), true) = (seat, pressed.contains(&keys::E)) {
-            pressed.remove(&keys::E);
+        if let (Some(st), true) = (seat, pressed.contains(&use_key)) {
+            pressed.remove(&use_key);
             sit = Some(st);
         }
         // The damage-control locker or a full bracket in reach: E takes an extinguisher (all-hands 4, safety-points
@@ -569,8 +581,8 @@ impl DrillApp {
         let at_locker = layout.lockers.iter().any(near) || bracket_near(true);
         let emptied = !at_locker && bracket_near(false);
         let mut take = false;
-        if at_locker && seat.is_none() && pressed.contains(&keys::E) {
-            pressed.remove(&keys::E);
+        if at_locker && seat.is_none() && pressed.contains(&use_key) {
+            pressed.remove(&use_key);
             take = true;
         }
         // A damaged machine in reach (all-hands 5): E docks at it and its repair game opens.
@@ -592,8 +604,8 @@ impl DrillApp {
                 })
         });
         let mut dock = None;
-        if let (Some((k, _)), true, None) = (&reach_job, pressed.contains(&keys::E), seat) {
-            pressed.remove(&keys::E);
+        if let (Some((k, _)), true, None) = (&reach_job, pressed.contains(&use_key), seat) {
+            pressed.remove(&use_key);
             dock = Some(*k as u8);
         }
         let repairing = self.deck.is_some();
@@ -698,37 +710,51 @@ impl DrillApp {
         }
     }
 
-    /// Seated, hold Stand to get up: E or Backspace, held `stand_hold_s` (a tap does nothing); at Helm, whose console
-    /// rolls on E, Backspace.
+    /// Seated, hold the use key (E) to get up, at every station (leave-station 2): `stand_hold_s`, counted from a
+    /// press made in the seat (a tap does nothing).
     fn stand_up(&mut self, dt: f64, station: Option<Station>, posture: Option<sc_core::combat::bodies::Posture>) {
-        let seated = posture == Some(sc_core::combat::bodies::Posture::Seated);
-        let keys_held =
-            self.held.contains(&keys::BACKSPACE) || (station != Some(Station::Helm) && self.held.contains(&keys::E));
-        if !(seated && station.is_some() && self.bot.is_none() && !self.menu.open() && keys_held) {
-            self.stand_hold = 0.0;
-            return;
-        }
-        self.stand_hold += dt;
-        if self.stand_hold >= self.data.stations.seats.stand_hold_s {
-            if let Some(s) = self.session.as_ref() {
-                s.stand();
-            }
-            self.stand_hold = f64::NEG_INFINITY;
+        let down = self.held.contains(&self.bindings.use_key);
+        if self.stand.step(self.can_stand(station, posture), down, dt, self.data.stations.seats.stand_hold_s) {
+            self.stand_now();
         }
     }
 
-    /// `--playtest`, seated: the script works the console (Engineering's schematic), marks READY in the briefing, and
-    /// gets up when its beat says.
+    /// Seated in a station of this player's own, the menu shut: LEAVE STATION and the stand key work.
+    fn can_stand(&self, station: Option<Station>, posture: Option<sc_core::combat::bodies::Posture>) -> bool {
+        posture == Some(sc_core::combat::bodies::Posture::Seated)
+            && station.is_some()
+            && self.bot.is_none()
+            && !self.menu.open()
+    }
+
+    /// Up from the seat now: the server stands the body behind it and the station passes to automation.
+    fn stand_now(&mut self) {
+        if let Some(s) = self.session.as_ref() {
+            s.stand();
+        }
+    }
+
+    /// `--playtest`, seated: the script works the console (Engineering's schematic, the controls its beats press),
+    /// marks READY in the briefing, and gets up when its beat says, holding the stand key as a player does.
     fn playtest_seated(
         &mut self,
         dt: f64,
         station: Option<Station>,
         posture: Option<sc_core::combat::bodies::Posture>,
     ) {
+        if self.playtest_stand {
+            self.held.remove(&self.bindings.use_key);
+            self.playtest_stand = false;
+        }
         let (Some(st), Some(sc_core::combat::bodies::Posture::Seated)) = (station, posture) else { return };
-        let fire = self.session.as_ref().and_then(|s| s.latest()).is_some_and(|s| !s.damage.fires.is_empty());
+        let latest = self.session.as_ref().and_then(|s| s.latest());
+        let fire = latest.is_some_and(|s| !s.damage.fires.is_empty());
+        let engaged = latest.is_some_and(|s| s.phase == Phase::Engage);
         let Some(p) = self.playtest.as_mut() else { return };
-        let at = p.at_console(st, fire, dt);
+        let at = p.at_console(st, fire, engaged, dt);
+        if at.press.is_some() {
+            self.playtest_press = at.press;
+        }
         if st == Station::Engineering {
             match at.schematic {
                 Some((three_d, turn)) => self.seats[st as usize].show_schematic(true, three_d, turn),
@@ -762,9 +788,8 @@ impl DrillApp {
             if st == Station::Engineering {
                 self.seats[st as usize].show_schematic(false, false, 0.0);
             }
-            if let Some(s) = self.session.as_ref() {
-                s.stand();
-            }
+            self.held.insert(self.bindings.use_key);
+            self.playtest_stand = true;
         }
     }
 
@@ -1126,19 +1151,22 @@ impl DrillApp {
         let (stand, fwd, up, vfov) = match view {
             Some(v) => self.seats[self.console_station() as usize].feed_camera(v, rot, chase_cfg),
             None => {
-                let feed = ships
-                    .and_then(|(_, _, s)| s.bridge.view.or(Some(s.bridge.main_view)))
-                    .and_then(|i| FEEDS.get(usize::from(i)))
-                    .copied()
-                    .unwrap_or("FWD");
-                let chase = ships.is_some_and(|(_, _, s)| s.bridge.main_chase);
+                // The captain's camera, CHASE and zoom, by the rule every console's panel uses (captains-viewscreen 1).
+                let br = ships.map(|(_, _, s)| &s.bridge);
+                let main = br.map_or(("FWD", false, 1.0), |b| {
+                    let feed = FEEDS.get(usize::from(b.main_view)).copied().unwrap_or("FWD");
+                    let zoom = sc_core::combat::ZOOMS.get(usize::from(b.main_zoom)).copied().unwrap_or(1.0);
+                    (feed, b.main_chase, zoom)
+                });
+                let (feed, chase, zoom) = console::on_screen(
+                    br.and_then(|b| b.view),
+                    br.is_some_and(|b| b.main_chase),
+                    br.map_or(0, |b| b.main_zoom),
+                    main,
+                );
                 let target =
                     ships.filter(|(_, h, _)| h.active && h.alive).map(|(t, h, _)| t.rot.inverse() * (h.pos - t.pos));
-                let zoom = ships
-                    .and_then(|(_, _, s)| sc_core::combat::ZOOMS.get(usize::from(s.bridge.main_zoom)))
-                    .copied()
-                    .unwrap_or(1.0);
-                let (e, b, vfov) = console::feed_view(feed, chase, target, chase_cfg, zoom);
+                let (e, b, vfov) = console::feed_view(&feed, chase, target, chase_cfg, zoom);
                 (e.map(|e| rot * e), rot * b.f, rot * b.u, vfov)
             }
         };
@@ -1746,6 +1774,14 @@ impl App for DrillApp {
             }
         }
         let station = self.session.as_ref().and_then(|s| s.station());
+        // Single player: the player's own chip follows the seat they sit at (relieve-bots 5), and a crewed console shown
+        // that has become theirs is simply theirs.
+        if let Some(h) = self.solo.as_mut() {
+            h.follow(station);
+            if self.shown == Some(h.seat) {
+                self.shown = None;
+            }
+        }
         let aspect = f.width as f32 / f.height.max(1) as f32;
         // On foot (design 9): while this player's body is up and walking, or with the overview (V), the bridge.
         let bodies = self.bodies_now();
@@ -1972,7 +2008,13 @@ impl App for DrillApp {
                 .iter()
                 .filter_map(|c| Some((c.station?, if c.bot && !solo { "Bot".to_owned() } else { c.name.clone() })))
                 .collect();
-            self.seats[st as usize].view(st, t, h, snap, &self.data, &ops, self.time_s)
+            let mut v = self.seats[st as usize].view(st, t, h, snap, &self.data, &ops, self.time_s);
+            // LEAVE STATION while this player sits (leave-station 4): the stand key on its keycap, the hold's ring.
+            v.leave = seated_body.then(|| console::LeaveView {
+                key: self.bindings.use_label.clone(),
+                share: self.stand.share(self.data.stations.seats.stand_hold_s),
+            });
+            v
         });
         if let (Some(v), Some(host)) = (console_view.as_mut(), self.solo.as_ref()) {
             v.open.clear();
@@ -2007,7 +2049,7 @@ impl App for DrillApp {
         let deck = self.deck.as_ref();
         let (touch, pt) = (&self.touch, self.ui.win_to_pt());
         let finger_hover = self.console_finger.hover();
-        let stand_share = (self.stand_hold / self.data.stations.seats.stand_hold_s).clamp(0.0, 1.0);
+        let stand_share = self.stand.share(self.data.stations.seats.stand_hold_s);
         let frame = self.ui.run(&mut self.r, f, self.time_s, |ctx| {
             if let Some(v) = console_view.as_ref() {
                 // A long press's finger is the hover on a touch screen (touch-controls 4): the tip shows there.
@@ -2053,6 +2095,34 @@ impl App for DrillApp {
             }
             None => self.console_finger.clear(),
         }
+        // LEAVE STATION pressed, by the mouse or a finger (leave-station 4): up at once, in any phase. The press is the
+        // button's, so it is not a touch that takes a crewed station MANUAL.
+        if let Some((hits, _)) = painted.as_ref() {
+            if crate::seat::leave_pressed(hits, &self.pointer) {
+                self.pointer.clear();
+                if self.can_stand(station, mine.map(|b| b.posture)) {
+                    println!("sc-client: LEAVE STATION");
+                    self.stand_now();
+                }
+            }
+        }
+        // The script's press: the middle of the control as drawn, pressed and let go, as a player's pointer would.
+        if let (Some(c), Some((hits, _))) = (self.playtest_press.take(), painted.as_ref()) {
+            use crate::console::kit::{Act, Hit};
+            let want = Hit::Act(match c {
+                crate::playtest::Control::Screen => Act::ViewTake,
+                crate::playtest::Control::Target => Act::Feed("TARGET".into()),
+                crate::playtest::Control::Chase => Act::Feed("CHASE".into()),
+            });
+            match hits.regions.iter().rev().find(|r| r.hit.as_ref() == Some(&want)) {
+                Some(r) => {
+                    let p = r.rect.center();
+                    println!("sc-client: playtest: pressed {c:?}");
+                    self.pointer.extend([PointerEv::Press(p), PointerEv::Release(p)]);
+                }
+                None => println!("sc-client: playtest: no {c:?} on the console"),
+            }
+        }
         if let Some(b) = self.bridge.as_mut() {
             b.fov_deg = self.options.fov_deg as f32;
         }
@@ -2071,7 +2141,12 @@ impl App for DrillApp {
             (engage, station, self.bot.as_ref(), painted.as_ref(), console_view.as_ref(), ships.as_ref())
         {
             self.solo_keys(&pressed);
-            let input = Input { events: std::mem::take(&mut self.pointer), held: self.held.clone(), pressed };
+            let input = Input {
+                events: std::mem::take(&mut self.pointer),
+                held: self.held.clone(),
+                pressed,
+                keys: self.bindings.clone(),
+            };
             let seat = &mut self.seats[st as usize];
             let asks = seat.input(&input, hits, *scale, v, t, h, &self.data, st, self.time_s);
             // A crewed station's console in single player: on AUTO its NPC plays it, and a touch takes it MANUAL
@@ -2191,18 +2266,34 @@ impl App for DrillApp {
     }
 }
 
-/// What E offers at seat `st` for the body in `slot`, by the server's claim rule (sc-core's `claim_on_foot`): a seat
-/// another body walks to is theirs, so it is not offered; an NPC's is taken from it; a player's is held; a free one is
-/// sat in. The prompt never promises a seat the server would refuse (CLAUDE.md 6.1: the preview is the outcome).
+/// Who is in the way of seat `st` for the body in `slot`, and what the one seat rule makes of it (relieve-bots 2,
+/// `sc-core`'s `seats::claim_rule`, which the server's claim also runs): its holder and the body walking to it.
+fn seat_rule(
+    st: Station,
+    slot: Option<u8>,
+    crew: &[sc_net::msg::CrewEntry],
+    bodies: &[sc_net::msg::BodySnap],
+) -> (ClaimRule, Option<Occupant>, Option<Occupant>) {
+    let who = |s: u8| Occupant { slot: s, bot: crew.iter().any(|c| c.slot == s && c.bot) };
+    let holder = crew.iter().find(|c| Some(c.slot) != slot && c.station == Some(st)).map(|c| who(c.slot));
+    let walker = bodies.iter().find(|b| Some(b.slot) != slot && b.going == Some(st)).map(|b| who(b.slot));
+    (claim_rule(false, holder, walker), holder, walker)
+}
+
+/// What E offers at seat `st` for the body in `slot`, by the server's rule: a free seat is sat in, a bot's (in it or
+/// walking to it) is taken from it, a person's is theirs. The prompt never promises a seat the server would refuse
+/// (CLAUDE.md 6.1: the preview is the outcome).
 fn seat_prompt(st: Station, slot: u8, crew: &[sc_net::msg::CrewEntry], bodies: &[sc_net::msg::BodySnap]) -> String {
-    if let Some(b) = bodies.iter().find(|b| b.slot != slot && b.going == Some(st)) {
-        let name = crew.iter().find(|c| c.slot == b.slot).map_or("Someone", |c| c.name.as_str());
-        return format!("{name} is on the way to {}", st.name());
-    }
-    match crew.iter().find(|c| c.station == Some(st)) {
-        Some(c) if c.bot => format!("E  Take {} from {}", st.name(), c.name),
-        Some(c) => format!("{} holds {}", c.name, st.name()),
-        None => format!("E  Sit at {}", st.name()),
+    let name = |s: u8| crew.iter().find(|c| c.slot == s).map_or("Someone", |c| c.name.as_str());
+    match seat_rule(st, Some(slot), crew, bodies) {
+        (ClaimRule::Sit, _, _) => format!("E  Sit at {}", st.name()),
+        (ClaimRule::Relieve, holder, walker) => {
+            format!("E  Take {} from {}", st.name(), holder.or(walker).map_or("Someone", |o| name(o.slot)))
+        }
+        (ClaimRule::Taken(s), holder, _) if holder.is_some_and(|h| h.slot == s) => {
+            format!("{} holds {}", name(s), st.name())
+        }
+        (ClaimRule::Taken(s), _, _) => format!("{} is on the way to {}", name(s), st.name()),
     }
 }
 
@@ -2222,6 +2313,8 @@ struct UiView {
     stage: Option<Stage>,
     server: String,
     station: Option<Station>,
+    /// This player's slot.
+    slot: Option<u8>,
     want: Station,
     bot: bool,
     ready: bool,
@@ -2268,6 +2361,7 @@ impl UiView {
             stage: s.map(|s| s.stage),
             server: app.args.server.clone(),
             station: s.and_then(|s| s.station()),
+            slot: s.and_then(|s| s.slot),
             want: app.args.station,
             bot: app.bot.is_some(),
             ready: s.is_some_and(|s| s.ready()),
@@ -2550,7 +2644,10 @@ fn briefing(ctx: &egui::Context, v: &UiView, phase: Phase, phase_s: f64, ask: &m
         let claim_w = ((inner.x - (n - 1.0) * ui.spacing().item_spacing.x) / n).floor();
         ui.horizontal(|ui| {
             for s in Station::ALL {
-                let held_by_other = v.crew.iter().any(|c| c.station == Some(s)) && v.station != Some(s);
+                // Off for a person's seat only: a bot's is taken from it (relieve-bots 6).
+                let bodies = v.snap.as_ref().map_or(&[][..], |x| x.bodies.as_slice());
+                let held_by_other =
+                    v.station != Some(s) && matches!(seat_rule(s, v.slot, &v.crew, bodies).0, ClaimRule::Taken(_));
                 let fill =
                     if v.station == Some(s) { Color32::from_rgb(30, 90, 120) } else { Color32::from_rgb(34, 44, 58) };
                 let button = big_button(s.name(), Vec2::new(claim_w, claim_h), 17.0, fill);
@@ -2647,12 +2744,14 @@ mod tests {
     }
 
     #[test]
-    fn a_seat_someone_walks_to_is_not_offered() {
-        // The server refuses a claim on a seat another body walks to (Station taken): the prompt must not promise it.
-        let crew = [crew(1, "Me", None, false), crew(2, "Lt. Vor", None, true)];
-        let bodies = [body(1, None), body(2, Some(Station::Captain))];
-        let p = seat_prompt(Station::Captain, 1, &crew, &bodies);
-        assert_eq!(p, "Lt. Vor is on the way to Captain");
+    fn a_seat_a_person_walks_to_is_not_offered_and_one_a_bot_walks_to_is() {
+        // The server refuses a claim on a seat a person walks to (Station taken): the prompt must not promise it. A bot
+        // on its way loses the seat to a person (relieve-bots 2), so the prompt offers it.
+        let crew = [crew(1, "Me", None, false), crew(2, "Lt. Vor", None, true), crew(3, "Ana", None, false)];
+        let bodies = [body(1, None), body(2, Some(Station::Captain)), body(3, Some(Station::Helm))];
+        assert_eq!(seat_prompt(Station::Captain, 1, &crew, &bodies), "E  Take Captain from Lt. Vor");
+        let p = seat_prompt(Station::Helm, 1, &crew, &bodies);
+        assert_eq!(p, "Ana is on the way to Helm");
         assert!(!p.starts_with("E  "), "nothing for E to do, so USE stays dark");
     }
 
@@ -2714,6 +2813,7 @@ mod tests {
             stage: None,
             server: String::new(),
             station: Some(me),
+            slot: Some(0),
             want: me,
             bot: false,
             ready: false,

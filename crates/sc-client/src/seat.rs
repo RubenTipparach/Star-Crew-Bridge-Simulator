@@ -412,8 +412,9 @@ impl Seat {
         let verb_of = |to: Station, i: u8| data.order_verbs(to).get(usize::from(i)).map(|v| v[0].clone());
         let order =
             br.orders.iter().find(|(to, _, done)| *to == station && !done).and_then(|(to, v, _)| verb_of(*to, *v));
-        // The captain's camera on every viewscreen while it is taken.
-        let feed = br.view.and_then(|i| FEEDS.get(usize::from(i))).map_or(self.feed.clone(), |f| (*f).to_owned());
+        // The captain's camera, CHASE and zoom on every viewscreen while it is taken (captains-viewscreen 1).
+        let (feed, chase, zoom) =
+            console::on_screen(br.view, br.main_chase, br.main_zoom, (&self.feed, self.chase, self.zoom));
         let sci = SciView {
             sel: self.sci_sel.clone(),
             scanning: br.scanning,
@@ -541,8 +542,8 @@ impl Seat {
                 .collect(),
             flash_age_s: std::array::from_fn(|f| now - self.face_hit[f]),
             feed,
-            chase: self.chase,
-            zoom: self.zoom,
+            chase,
+            zoom,
             nav_km: self.nav_km,
             tac_km: self.tac_km,
             sci_km: self.sci_km,
@@ -581,6 +582,7 @@ impl Seat {
             gun_locked: gun_snap.is_some_and(|t| t.cooling),
             objectives_open: self.obj_open,
             objectives,
+            leave: None,
             // Engineering's schematic, while open: it waits for the first snapshots with the grid and the routing.
             schem: if self.schem_open {
                 snap.power.as_ref().zip(snap.route.as_ref()).map(|(p, r)| self.schem(p, r, snap, data))
@@ -906,7 +908,7 @@ impl Seat {
         chase: &sc_core::exterior::Chase,
     ) -> (Option<DVec3>, DVec3, DVec3, f64) {
         let tgt = v.target.as_ref().and_then(|id| v.contacts.iter().find(|c| &c.id == id));
-        let (eye, b, vfov) = console::feed_view(&v.feed, self.chase, tgt.map(|c| console::v3(c.rel)), chase, v.zoom);
+        let (eye, b, vfov) = console::feed_view(&v.feed, v.chase, tgt.map(|c| console::v3(c.rel)), chase, v.zoom);
         (eye.map(|e| tern_rot * e), tern_rot * b.f, tern_rot * b.u, vfov)
     }
 
@@ -949,6 +951,8 @@ impl Seat {
         let cmd = |c| SeatAsk::Command(c);
         let presets = &data.tern_shields.presets;
         match a {
+            // The drill stands the player up before the console sees the press (leave-station 4).
+            Act::Leave => {}
             Act::Swap(id) => {
                 self.obj_open = false;
                 if let Some(st) = Station::from_id(&id) {
@@ -1082,8 +1086,13 @@ impl Seat {
                 out.push(cmd(Command::Brace(!braced)));
             }
             Act::ViewTake => {
+                // On screen: his camera, CHASE and zoom first, so the big screen and every panel show his whole
+                // picture the moment he takes it (captains-viewscreen 2).
                 let taken = v.captain.as_ref().is_some_and(|c| c.view_override);
                 let feed = FEEDS.iter().position(|f| *f == self.feed).unwrap_or(1) as u8;
+                if !taken {
+                    self.send_main_view(v, out);
+                }
                 out.push(cmd(Command::Viewscreen((!taken).then_some(feed))));
             }
             Act::Room(id) => self.ship_sel = id,
@@ -1317,7 +1326,8 @@ impl Seat {
         // drag, a hold or a key: the player's hands on this console (the mockup's soloTakeOver).
         let band =
             |h: &Option<Hit>| matches!(h, Some(Hit::Act(Act::View(_) | Act::Mode(_) | Act::Tab(_) | Act::Swap(_))));
-        let quiet = [keys::TAB, keys::M, keys::LSHIFT, keys::RSHIFT];
+        // The stand key is the player's own, not a hand on the console shown.
+        let quiet = [keys::TAB, keys::M, keys::LSHIFT, keys::RSHIFT, ctx_input.keys.use_key];
         self.touched = ctx_input.pressed.iter().any(|k| !quiet.contains(k));
         for e in &ctx_input.events {
             match *e {
@@ -1535,11 +1545,15 @@ impl Seat {
                 }
                 let axis =
                     |p: u32, n: u32| f64::from(u8::from(held.contains(&p))) - f64::from(u8::from(held.contains(&n)));
-                // The mockup's keys: A and D yaw to port and starboard, R and F pitch up and down, Q and E roll.
-                let stick_keys = [axis(keys::D, keys::A), axis(keys::R, keys::F), axis(keys::E, keys::Q)];
+                // A and D yaw to port and starboard, R and F pitch up and down, the bound roll keys (Z and C) roll: E is
+                // the stand key at every station (leave-station 3).
+                let (rp, rs) = ctx_input.keys.roll;
+                let stick_keys = [axis(keys::D, keys::A), axis(keys::R, keys::F), axis(rs, rp)];
                 let stick: [f64; 3] = std::array::from_fn(|i| (stick_keys[i] + self.stick_drag[i]).clamp(-1.0, 1.0));
-                // Z and C strafe to port and starboard, Space and Ctrl up and down, while held; the pad otherwise.
-                let (lat, ver) = (axis(keys::C, keys::Z), axis(keys::SPACE, keys::LCTRL));
+                // The bound strafe keys (the Left and Right arrows) strafe to port and starboard, Space and Ctrl up and
+                // down, while held; the pad otherwise.
+                let (sp, ss) = ctx_input.keys.strafe;
+                let (lat, ver) = (axis(ss, sp), axis(keys::SPACE, keys::LCTRL));
                 let m = fl.strafe_max_mps;
                 let want = [
                     if lat != 0.0 { lat * m } else { self.strafe[0] },
@@ -1648,12 +1662,22 @@ pub enum PointerEv {
     Scroll(Pos2, bool),
 }
 
+/// Whether this frame's pointer pressed LEAVE STATION (leave-station 4): a press whose topmost control is it. The
+/// drill asks before the console's own input, in any phase, and stands the player up.
+pub fn leave_pressed(hits: &console::kit::Hits, events: &[PointerEv]) -> bool {
+    events
+        .iter()
+        .any(|e| matches!(e, PointerEv::Press(p) if hits.at(*p).is_some_and(|r| r.hit == Some(Hit::Act(Act::Leave)))))
+}
+
 /// This frame's input for the seat.
 #[derive(Default)]
 pub struct Input {
     pub events: Vec<PointerEv>,
     pub held: HashSet<u32>,
     pub pressed: HashSet<u32>,
+    /// The keys that are data (`data/input/bindings.json`).
+    pub keys: crate::bindings::Bindings,
 }
 
 #[cfg(test)]
@@ -1824,7 +1848,11 @@ mod tests {
         b.press(Hit::Act(Act::Verb("HOLD FIRE".into())), 1.1);
         let verb = b.data.order_verbs(Station::Tactical).iter().position(|v| v[0] == "HOLD FIRE").unwrap() as u8;
         assert_eq!(b.press(Hit::Act(Act::Send), 1.2), vec![Command::Order(Station::Tactical, verb)]);
-        assert_eq!(b.press(Hit::Act(Act::ViewTake), 1.3), vec![Command::Viewscreen(Some(1))], "the seat's FWD camera");
+        assert_eq!(
+            b.press(Hit::Act(Act::ViewTake), 1.3),
+            vec![Command::MainView { feed: 1, chase: false, zoom: 0 }, Command::Viewscreen(Some(1))],
+            "the seat's FWD camera, with his CHASE and zoom first (captains-viewscreen 2)"
+        );
         assert_eq!(b.press(Hit::Act(Act::Brace), 1.4), vec![Command::Brace(true)]);
     }
 
@@ -1852,6 +1880,88 @@ mod tests {
         );
         let mut h = Bench::new(Station::Helm);
         assert!(h.press(Hit::Act(Act::Feed("CHASE".into())), 1.0).is_empty(), "another station's camera is its own");
+    }
+
+    #[test]
+    fn while_the_captain_holds_the_viewscreen_every_panel_shows_his_camera_chase_and_zoom() {
+        // Regression (captains-viewscreen 1): the panels took his camera but kept their own CHASE and zoom.
+        let mut h = Bench::new(Station::Helm);
+        h.snap.bridge.view = Some(0);
+        h.snap.bridge.main_chase = true;
+        h.snap.bridge.main_zoom = 3;
+        let v = h.view(1.0);
+        assert_eq!((v.feed.as_str(), v.chase, v.zoom), ("TARGET", true, 10.0), "his TARGET, on CHASE, at 10x");
+        h.snap.bridge.view = None;
+        let v = h.view(1.1);
+        assert_eq!((v.feed.as_str(), v.chase, v.zoom), ("FWD", false, 1.0), "given back: the helm's own camera");
+    }
+
+    #[test]
+    fn the_helm_rolls_on_z_and_c_strafes_on_the_arrows_and_e_does_neither() {
+        // E is the stand key at every station (leave-station 3): the helm's roll moved to Z and C.
+        let mut b = Bench::new(Station::Helm);
+        let m = b.data.tern_flight.strafe_max_mps;
+        let mut sent = |held: &[u32], now: f64| {
+            let v = b.view(now);
+            let hits = paint(&v);
+            let (t, h) = (b.snap.ships[0].clone(), b.snap.ships[1].clone());
+            let input = Input { held: held.iter().copied().collect(), ..Default::default() };
+            b.seat
+                .input(&input, &hits, 1.0, &v, &t, &h, &b.data, Station::Helm, now)
+                .into_iter()
+                .filter_map(|a| match a {
+                    SeatAsk::Command(c) => Some(c),
+                    _ => None,
+                })
+                .collect::<Vec<_>>()
+        };
+        let roll = |cmds: &[Command]| {
+            cmds.iter().find_map(|c| match c {
+                Command::Stick { roll, .. } => Some(*roll),
+                _ => None,
+            })
+        };
+        assert_eq!(roll(&sent(&[keys::C], 1.0)), Some(1.0), "C rolls to starboard");
+        assert_eq!(roll(&sent(&[keys::Z], 1.1)), Some(-1.0), "Z rolls to port");
+        assert_eq!(roll(&sent(&[keys::E], 1.2)), Some(0.0), "E rolls nothing");
+        let strafe = sent(&[keys::RIGHT], 1.3);
+        assert!(strafe.iter().any(|c| matches!(c, Command::Strafe { lat_mps, .. } if *lat_mps == m)), "{strafe:?}");
+    }
+
+    #[test]
+    fn leave_station_is_in_every_consoles_title_band_and_the_order_ends_before_it() {
+        for st in Station::ALL {
+            let mut b = Bench::new(st);
+            let mut v = b.view(1.0);
+            v.leave = Some(console::LeaveView { key: "E".into(), share: 0.4 });
+            v.order = Some("CLOSE ON THE HOUND".into());
+            let hits = paint(&v);
+            let p = centre(&hits, &Hit::Act(Act::Leave));
+            assert!(p.y < 32.0, "{st:?}: LEAVE STATION is in the title band");
+            let leave = hits.regions.iter().find(|r| r.hit == Some(Hit::Act(Act::Leave))).unwrap().rect;
+            if let Some(order) = hits.regions.iter().find(|r| r.hit == Some(Hit::Act(Act::Ack))) {
+                assert!(order.rect.max.x <= leave.min.x, "{st:?}: the order chip runs into LEAVE STATION");
+            }
+            let click = vec![PointerEv::Press(p), PointerEv::Release(p)];
+            assert!(leave_pressed(&hits, &click), "{st:?}: a click on it is LEAVE STATION's");
+            let (t, h) = (b.snap.ships[0].clone(), b.snap.ships[1].clone());
+            let input = Input { events: click, ..Default::default() };
+            let asks = b.seat.input(&input, &hits, 1.0, &v, &t, &h, &b.data, st, 1.1);
+            // What a console sends every frame of its own (the stick, the barrel) is not the press's.
+            let steady = |c: &Command| {
+                matches!(
+                    c,
+                    Command::Stick { .. }
+                        | Command::Strafe { .. }
+                        | Command::GunnerAim { .. }
+                        | Command::GunnerTrigger(_)
+                )
+            };
+            let sent = asks.iter().any(|a| matches!(a, SeatAsk::Command(c) if !steady(c)));
+            assert!(!sent, "{st:?}: the console sends nothing for it; the drill stands the player up");
+            let elsewhere = vec![PointerEv::Press(Pos2::new(640.0, 400.0))];
+            assert!(!leave_pressed(&hits, &elsewhere), "{st:?}: a press on the panels is not LEAVE STATION");
+        }
     }
 
     #[test]

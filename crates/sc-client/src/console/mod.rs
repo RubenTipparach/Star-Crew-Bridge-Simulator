@@ -705,6 +705,19 @@ pub struct ConsoleView {
     pub schem: Option<schematic::SchemView>,
     #[serde(default)]
     pub objectives: Option<ObjectivesView>,
+    /// LEAVE STATION in the title band, while the player sits (leave-station 4).
+    #[serde(default)]
+    pub leave: Option<LeaveView>,
+}
+
+/// LEAVE STATION (leave-station 4): the stand key's name on its keycap, and how much of its hold has passed (0..1).
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct LeaveView {
+    /// The stand key, as `data/input/bindings.json` names it ("E").
+    pub key: String,
+    /// The hold so far, 0..1: the keycap's ring.
+    pub share: f64,
 }
 
 /// A time long past, seconds: nothing thrown yet.
@@ -1123,10 +1136,32 @@ fn title_band(cv: &Canvas, cx: &mut Ctx) {
     } else {
         "NORMAL"
     };
-    // The newest order to the station shown: at 470, or after the tabs when they reach past it, short of the condition.
-    if let Some(o) = &v.order {
+    // LEAVE STATION (leave-station 4): left of the condition, the same place at every station; the stand key on its
+    // keycap, whose ring fills while the key is held. A click or a tap stands.
+    let cond_x = 1180.0 - cond.len() as f32 * 9.4 - 22.0;
+    let leave_w = 34.0 + 13.0 * 9.4;
+    let leave_x = cond_x - 8.0 - leave_w;
+    if let Some(l) = &v.leave {
+        let held = l.share > 0.0;
+        cv.rect(leave_x, 4.0, leave_w, 24.0, 5.0, Color32::TRANSPARENT, Some(Pen::new(1.0, c.line2.0)));
+        let (kx, ky) = (leave_x + 15.0, 16.0);
+        cv.circle(kx, ky, 8.0, Color32::TRANSPARENT, Some(Pen::new(1.0, c.dim.0)));
+        cv.text(kx, ky + 4.0, 11.0, c.text.0, &l.key, T::mid().bold());
+        if held {
+            let arc = kit::arc_path(kx, ky, 8.0, 0.0, l.share.min(1.0) * 360.0);
+            cv.path(&arc, Xf::ID, None, Some(Pen::new(2.0, c.warn.0)));
+        }
+        let col = if held { c.text.0 } else { c.dim.0 };
+        cv.text(leave_x + 29.0, 21.0, 13.0, col, "LEAVE STATION", T::default().ls(1.5).bold());
+        let tip = format!("Leave the station (hold {})", l.key);
+        cx.hits.add(cv, leave_x, 4.0, leave_w, 24.0, Some(kit::Hit::Act(Act::Leave)), Some(tip));
+    }
+    // The newest order to the station shown: at 470, or after the tabs when they reach past it, short of LEAVE STATION
+    // (or the condition); left out when the tabs leave it no room.
+    let order_end = if v.leave.is_some() { leave_x } else { cond_x };
+    if let Some(o) = v.order.as_ref().filter(|_| order_end - 8.0 - x.max(470.0) >= 60.0) {
         let ox = x.max(470.0);
-        let ow = 300f32.min(1180.0 - cond.len() as f32 * 9.4 - 22.0 - 8.0 - ox);
+        let ow = 300f32.min(order_end - 8.0 - ox);
         cv.rect(ox, 4.0, ow, 24.0, 5.0, alpha(c.warn.0, 0x1f as f32 / 255.0), Some(Pen::new(1.0, c.warn.0)));
         cv.icon("command", ox + 16.0, 16.0, 14.0, c.warn.0);
         cv.text(ox + 30.0, 21.0, 13.0, c.text.0, &format!("CAPTAIN: {o}"), T::default().ls(1.5).bold());
@@ -1151,6 +1186,20 @@ fn title_band(cv: &Canvas, cx: &mut Ctx) {
 /// Where the bow camera stands, ship frame, metres: ahead of the hull's bow and a little up. The feed is drawn from
 /// here and the target bracket projected from here, so they agree however far the zoom goes (target-bracket 1).
 pub const BOW_EYE: DVec3 = DVec3::new(0.0, 3.0, 32.0);
+
+/// What a viewscreen shows (captains-viewscreen 1): while the captain holds the viewscreen (`view`, an index in
+/// `FEEDS`), his camera with his CHASE and zoom (`main_chase`, `main_zoom` an index in `ZOOMS`); otherwise `own`, the
+/// console's own camera, CHASE and zoom (or the captain's, for the bridge's big screen). One rule for the consoles'
+/// panels and the main viewscreen.
+pub fn on_screen(view: Option<u8>, main_chase: bool, main_zoom: u8, own: (&str, bool, f64)) -> (String, bool, f64) {
+    match view.and_then(|i| sc_core::combat::FEEDS.get(usize::from(i))) {
+        Some(f) => {
+            let zoom = sc_core::combat::ZOOMS.get(usize::from(main_zoom)).copied().unwrap_or(1.0);
+            ((*f).to_owned(), main_chase, zoom)
+        }
+        None => (own.0.to_owned(), own.1, own.2),
+    }
+}
 
 pub fn feed_basis(v: &ConsoleView) -> Basis {
     let tgt = v.target.as_ref().and_then(|id| v.contacts.iter().find(|c| &c.id == id));

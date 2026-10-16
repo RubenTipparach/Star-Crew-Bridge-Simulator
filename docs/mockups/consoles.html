@@ -5307,7 +5307,7 @@ function slewPlan(qt) {
 /** The stick: keys (design section 6) and the drag controls, yaw to starboard, pitch up, roll right, each -1..1. */
 function stick() {
   const k = F.keys, ax = (a, b) => (k.has(a) ? -1 : 0) + (k.has(b) ? 1 : 0);
-  return [clamp(ax("a", "d") + F.stickDrag[0], -1, 1), clamp(ax("f", "r") + F.stickDrag[1], -1, 1), clamp(ax("q", "e") + F.stickDrag[2], -1, 1)];
+  return [clamp(ax("a", "d") + F.stickDrag[0], -1, 1), clamp(ax("f", "r") + F.stickDrag[1], -1, 1), clamp(ax("z", "c") + F.stickDrag[2], -1, 1)];
 }
 function stepFlight(dt) {
   const sk = stick(), pw = rcsPower();
@@ -5327,7 +5327,7 @@ function stepFlight(dt) {
   F.q = quat.norm(F.q.map((x, i) => x + 0.5 * dt * dq[i]));
   // Linear, full assist: forward, lateral and vertical speed set points in ship axes.
   if (G.ap === "EVADE") { const k = Math.floor(G.t / 4); F.strafe = [(hash("jinkx", k) - 0.5) * 80, (hash("jinky", k) - 0.5) * 80]; }
-  const kk = F.keys, lat = (kk.has("c") ? 1 : 0) - (kk.has("z") ? 1 : 0), ver = (kk.has(" ") ? 1 : 0) - (kk.has("control") ? 1 : 0);
+  const kk = F.keys, lat = (kk.has("arrowright") ? 1 : 0) - (kk.has("arrowleft") ? 1 : 0), ver = (kk.has(" ") ? 1 : 0) - (kk.has("control") ? 1 : 0);
   const strafe = [lat ? lat * FL.strafe_max_ms : F.strafe[0], ver ? ver * FL.strafe_max_ms : F.strafe[1]];
   if (G.ap === "MATCH") { const tgt = contact(G.target); if (tgt) F.speedSet = clamp(tgt.v, FL.speed_min_ms, FL.speed_max_ms); }
   const vt = quat.rot(F.q, [-strafe[0], strafe[1], F.speedSet]);
@@ -5577,10 +5577,22 @@ function titleBand() {
   }
   const cond = emerg ? "EMERGENCY POWER" : red ? "RED ALERT" : "NORMAL";
   const cc = emerg ? C.emergency : red ? C.alert : C.ok;
-  // The newest order to the station shown: at 470, or after the tabs when they reach past it, and short of the condition.
+  // LEAVE STATION (leave-station 4): left of the condition, the same place at every station; the stand key on its
+  // keycap, whose ring fills while the key is held. A click or a tap stands.
+  const condX = 1180 - cond.length * 9.4 - 22, leaveW = 34 + 13 * 9.4, leaveX = condX - 8 - leaveW;
+  {
+    const share = leaveShare(), held = share > 0, kx = leaveX + 15, ky = 16;
+    s += `<g data-act="leave"${tipAttr(`Leave the station (hold ${LEAVE_KEY})`)}>`;
+    s += `<rect x="${leaveX}" y="4" width="${leaveW}" height="24" rx="5" fill="transparent" stroke="${C.line2}"/>`;
+    s += `<circle cx="${kx}" cy="${ky}" r="8" fill="none" stroke="${C.dim}"/>` + text(kx, ky + 4, 11, C.text, LEAVE_KEY, { a: "middle", w: 700 });
+    if (held) s += `<path d="${arcPath(kx, ky, 8, 0, Math.min(share, 1) * 360)}" fill="none" stroke="${C.warn}" stroke-width="2"/>`;
+    s += text(leaveX + 29, 21, 13, held ? C.text : C.dim, "LEAVE STATION", { ls: 1.5, w: 700 }) + "</g>";
+  }
+  // The newest order to the station shown: at 470, or after the tabs when they reach past it, short of LEAVE STATION;
+  // left out when the tabs leave it no room.
   const o = newestOrderFor(S.id);
-  if (o) {
-    const ox = Math.max(470, x), ow = Math.min(300, 1180 - cond.length * 9.4 - 22 - 8 - ox);
+  if (o && leaveX - 8 - Math.max(470, x) >= 60) {
+    const ox = Math.max(470, x), ow = Math.min(300, leaveX - 8 - ox);
     s += `<g data-act="ack"${tipAttr("Acknowledge (Y)")}><rect x="${ox}" y="4" width="${ow}" height="24" rx="5" fill="${C.warn}1f" stroke="${C.warn}"/>`;
     s += icon("command", ox + 16, 16, 14, C.warn) + text(ox + 30, 21, 13, C.text, `CAPTAIN: ${o.verb}`, { ls: 1.5, w: 700 });
     s += icon("check", ox + ow - 16, 16, 14, C.warn) + "</g>";
@@ -5591,6 +5603,13 @@ function titleBand() {
   s += text(1268, 21, 14, C.dim, `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`, { a: "end" });
   return s + "</svg>";
 }
+/**
+ * The stand key (leave-station 2 and 6: data/input/bindings.json's "use"), the hold that stands (stations.json's
+ * seats.stand_hold_s) and when the key went down; LEAVE STATION's ring is the hold so far.
+ */
+const LEAVE_KEY = "E", STAND_HOLD_S = 0.5;
+let leaveDown = null;
+function leaveShare() { return leaveDown == null ? 0 : clamp((now() - leaveDown) / STAND_HOLD_S, 0, 1); }
 /** Stars: fixed directions in reference axes (seeded), so they wheel past as the ship yaws, pitches and rolls. */
 const STARS = Array.from({ length: 1400 }, (_, i) => {
   const z = hash("starz", i) * 2 - 1, a = hash("stara", i) * Math.PI * 2, r = Math.sqrt(1 - z * z);
@@ -6180,7 +6199,7 @@ function joystick(cx, h, yaw, pitch) {
  * +1 is roll right (starboard down). Press a side, or drag; it springs back to centre.
  */
 function flipper(cx, h, roll) {
-  let s = `<g data-drag="flip"${tipAttr("Flipper: roll left or right (Q, E)")}><rect x="${cx - 40}" y="0" width="80" height="${h}" fill="transparent"/>`;
+  let s = `<g data-drag="flip"${tipAttr("Flipper: roll left or right (Z, C)")}><rect x="${cx - 40}" y="0" width="80" height="${h}" fill="transparent"/>`;
   // Roll left and roll right: arrows curving out over the bat's tip, lit while the switch is held that way.
   const y0 = h - 140, lc = roll < -0.05 ? accent() : C.dim, rc = roll > 0.05 ? accent() : C.dim;
   s += `<path d="M${cx - 6} ${y0}Q${cx - 24} ${y0 - 4} ${cx - 30} ${y0 + 10}" fill="none" stroke="${lc}" stroke-width="2.5"/><path d="M${cx - 35} ${y0 + 6}l5 9 5 -7z" fill="${lc}"/>`;
@@ -6226,7 +6245,7 @@ function helm() {
     b += `<defs><pattern id="hatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="4" height="8" fill="#2a3442"/></pattern></defs>`;
     // The strafe pad: the puck is the lateral and vertical set point, the dot the drift now.
     const px = 150, py = 74, ps = w - px - 14, pc = [px + ps / 2, py + ps / 2], k = ps / 2 / FL.strafe_max_ms;
-    b += `<g data-drag="strafe"${tipAttr(`Strafe: drag (Z, C, Space, Ctrl). Now ${(-vb[0]).toFixed(0)} m/s to starboard, ${vb[1].toFixed(0)} m/s up`)}>`;
+    b += `<g data-drag="strafe"${tipAttr(`Strafe: drag (Left, Right, Space, Ctrl). Now ${(-vb[0]).toFixed(0)} m/s to starboard, ${vb[1].toFixed(0)} m/s up`)}>`;
     b += `<rect x="${px}" y="${py}" width="${ps}" height="${ps}" rx="10" fill="#101822" stroke="${C.line2}"/>`;
     b += `<path d="M${pc[0]} ${py + 8}V${py + ps - 8}M${px + 8} ${pc[1]}H${px + ps - 8}" stroke="${C.line2}"/>`;
     b += `<path d="M${pc[0]} ${py + 4}l-5 7h10zM${pc[0]} ${py + ps - 4}l-5 -7h10zM${px + 4} ${pc[1]}l7 -5v10zM${px + ps - 4} ${pc[1]}l-7 -5v10z" fill="${C.dim}"/>`;
@@ -7217,6 +7236,7 @@ function act(a, ev) {
   if (k === "swap") { station = v; G.objOpen = false; }
   if (k === "view") { station = v; G.objOpen = false; }
   if (k === "mode") { const c = soloCrew(station); if (c) c.mode = v; }
+  if (k === "leave") leaveDown = null;
   if (k === "obj") G.objOpen = !G.objOpen;
   if (k === "objclose") G.objOpen = false;
   if (k === "gnext") { const l = gunTargets(); if (l.length) G.gun.chosen = (Math.min(G.gun.chosen, l.length - 1) + 1) % l.length; }
@@ -7360,10 +7380,13 @@ window.addEventListener("pointerup", (e) => {
   F.stickDrag = [0, 0, 0];
   DRAG = null; PREVIEW = null; HOLD.key = null; render();
 });
-// Helm's keys (flight-and-navigation section 6): held keys fly the ship; W and S step the speed set point.
-const HELD_KEYS = new Set(["a", "d", "r", "f", "q", "e", "z", "c", " ", "control"]);
+// Helm's keys (flight-and-navigation section 6): held keys fly the ship; W and S step the speed set point. Z and C roll
+// and the Left and Right arrows strafe: E is the stand key at every station (leave-station 3).
+const HELD_KEYS = new Set(["a", "d", "r", "f", "z", "c", "arrowleft", "arrowright", " ", "control"]);
 window.addEventListener("keydown", (e) => {
   const k = e.key.toLowerCase();
+  // The stand key, held, fills LEAVE STATION's ring (leave-station 2): the player's own, not a hand on the console.
+  if (k === LEAVE_KEY.toLowerCase()) { if (!e.repeat && leaveDown == null) leaveDown = now(); render(); return; }
   if (SOLO) {
     // Tab and Shift+Tab step through the consoles (the player's own first), M changes the shown station's mode, and
     // any other key on an AUTO station's console takes it MANUAL.
@@ -7391,7 +7414,7 @@ window.addEventListener("keydown", (e) => {
   if (k === "y") act("ack");
   render();
 });
-window.addEventListener("keyup", (e) => { const k = e.key.toLowerCase(); F.keys.delete(k); if (k === " ") G.gun.trigger = false; });
+window.addEventListener("keyup", (e) => { const k = e.key.toLowerCase(); F.keys.delete(k); if (k === " ") G.gun.trigger = false; if (k === LEAVE_KEY.toLowerCase()) leaveDown = null; });
 // The scroll wheel: a notch turns a thumbwheel one degree, or steps a scanner's range.
 CONSOLE.addEventListener("wheel", (e) => {
   const el = e.target.closest && e.target.closest("[data-wheel]");
@@ -7481,6 +7504,7 @@ window.consoleState = function () {
     decoys: G.decoys, decoys_max: DECOYS, decoy_age_s: G.t - G.decoyT, next_inbound_s: nextInbound(),
     lasers: { port: laserView("port"), stbd: laserView("stbd") }, laser_beam_age_s: { port: G.t - G.lasers.port.beam, stbd: G.t - G.lasers.stbd.beam },
     gunner: gunnerView(), gun_locked: G.gun.locked, objectives_open: G.objOpen, objectives: objectiveView(),
+    leave: { key: LEAVE_KEY, share: leaveShare() },
     fire_ring: missileHit(tgt), fire_note: `${Math.round(missileHit(tgt) * 100)}% HIT`, fire_ok: missileHit(tgt) > 0.5, tube_cone_deg: 5,
     charge: G.charge, cap: FACES.map((_, f) => shieldCap(f)), preset: G.preset,
     hold: HOLD.key ? { key: HOLD.key, k: clamp((now() - HOLD.t0) / HOLD_S, 0, 1) } : null,

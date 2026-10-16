@@ -23,6 +23,7 @@
 //! `--walk-test DIR` walks a scripted route from the bridge down both ladders to deck C, captures along it, and
 //! fails if the body does not arrive where the route ends.
 
+mod bindings;
 mod console;
 mod deckrepair;
 mod drill;
@@ -42,6 +43,7 @@ mod repairs;
 mod seat;
 mod ships3d;
 mod solo;
+mod stand;
 mod stations;
 mod touch;
 mod ui;

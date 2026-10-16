@@ -60,6 +60,8 @@ pub enum Act {
     /// true).
     View(String),
     Mode(bool),
+    /// Every station: get up from the seat (LEAVE STATION, leave-station 4).
+    Leave,
     /// Every station: open OBJECTIVES, or go back to the console (objectives-tab 1).
     Obj,
     ObjClose,

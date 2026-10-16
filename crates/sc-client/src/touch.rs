@@ -236,7 +236,7 @@ impl Hands {
             Btn::Use => Some(keys::E),
             Btn::Down => Some(keys::Q),
             Btn::Jump => Some(keys::SPACE),
-            Btn::Stand => Some(keys::BACKSPACE),
+            Btn::Stand => Some(keys::E),
             Btn::Map | Btn::Menu => None,
         };
         let pressed = self.taps.iter().filter_map(key).collect();
@@ -780,8 +780,8 @@ mod tests {
         l.set([844.0, 390.0], Mode::Seated);
         let (c, _) = l.place(Btn::Stand);
         l.touch(3, TouchPhase::Down, c.x, c.y);
-        assert!(l.frame(0.016).keys().1.contains(&keys::BACKSPACE));
-        assert!(l.frame(0.3).keys().1.contains(&keys::BACKSPACE), "held until the finger lifts");
+        assert!(l.frame(0.016).keys().1.contains(&keys::E));
+        assert!(l.frame(0.3).keys().1.contains(&keys::E), "held until the finger lifts");
         l.touch(3, TouchPhase::Up, c.x, c.y);
         assert!(l.frame(0.016).keys().1.is_empty());
     }
