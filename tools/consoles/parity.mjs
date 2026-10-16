@@ -32,7 +32,8 @@ const SHOTS = ["helm", "helm-stick", "helm-orient", "tactical", "engineering", "
   "laser-port", "laser-stbd", "gunner", "objectives-helm",
   "red-helm-evading", "red-tactical", "red-science-target-feed", "red-science-shields", "red-engineering",
   "red-captain", "red-captain-ship", "red-laser", "red-gunner-firing", "red-tactical-decoy", "red-objectives-gunner",
-  "scram-engineering", "red-tactical-turned", "solo-helm", "solo-tactical-manual", "red-solo-engineering"];
+  "scram-engineering", "red-tactical-turned", "solo-helm", "solo-tactical-manual", "red-solo-engineering",
+  "start-captain", "solo-start"];
 const only = opt("--only", null);
 const shots = only ? SHOTS.filter((s) => only.split(",").includes(s)) : SHOTS;
 

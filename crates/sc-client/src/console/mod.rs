@@ -720,6 +720,21 @@ pub struct ConsoleView {
     /// LEAVE STATION in the title band, while the player sits (leave-station 4).
     #[serde(default)]
     pub leave: Option<LeaveView>,
+    /// START MISSION in the title band, while the round waits and this player may start it (start-mission 4).
+    #[serde(default)]
+    pub start: Option<StartView>,
+}
+
+/// START MISSION (start-mission 4): the start key's name on its keycap, and how many of those aboard are ready.
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct StartView {
+    /// The start key, as `data/input/bindings.json` names it ("Return").
+    pub key: String,
+    /// Seated and ready.
+    pub ready: u32,
+    /// Everyone aboard, people and NPCs.
+    pub aboard: u32,
 }
 
 /// LEAVE STATION (leave-station 4): the stand key's name on its keycap, and how much of its hold has passed (0..1).
@@ -1108,6 +1123,20 @@ fn title_band(cv: &Canvas, cx: &mut Ctx) {
     }
     // The laser banks took the comms and flight-ops seats (laser-banks 3), so only the open stations are left to swap
     // to; single player crews every station, so it has none.
+    let cond = if emerg {
+        "EMERGENCY POWER"
+    } else if red {
+        "RED ALERT"
+    } else {
+        "NORMAL"
+    };
+    let cond_x = 1180.0 - cond.len() as f32 * 9.4 - 22.0;
+    let leave_w = 34.0 + 13.0 * 9.4;
+    let leave_x = cond_x - 8.0 - leave_w;
+    let order_end = if v.leave.is_some() { leave_x } else { cond_x };
+    // START MISSION's place (start-mission 4), right against LEAVE STATION: the swap chips stop short of it.
+    let start_w = 34.0 + 13.0 * 9.4 + 46.0;
+    let start_x = order_end - 8.0 - start_w;
     let open: Vec<(String, String, Option<String>)> = if solo.is_some() {
         Vec::new()
     } else {
@@ -1121,6 +1150,9 @@ fn title_band(cv: &Canvas, cx: &mut Ctx) {
     };
     for (w, r, id) in open {
         let tw = 44.0 + w.chars().count() as f32 * 8.6;
+        if v.start.is_some() && x + tw > start_x - 6.0 {
+            break;
+        }
         let on = id.is_some();
         cv.rect(x, 4.0, tw, 24.0, 5.0, Color32::TRANSPARENT, Some(Pen::new(1.0, c.line2.0).dash(4.0, 3.0, 0.0)));
         cv.icon(&r, x + 13.0, 16.0, 13.0, if on { role.of(&r) } else { c.faint.0 });
@@ -1136,18 +1168,8 @@ fn title_band(cv: &Canvas, cx: &mut Ctx) {
         cx.hits.add(cv, x, 4.0, tw, 24.0, hit.map(kit::Hit::Act), Some(tip));
         x += tw + 6.0;
     }
-    let cond = if emerg {
-        "EMERGENCY POWER"
-    } else if red {
-        "RED ALERT"
-    } else {
-        "NORMAL"
-    };
     // LEAVE STATION (leave-station 4): left of the condition, the same place at every station; the stand key on its
     // keycap, whose ring fills while the key is held. A click or a tap stands.
-    let cond_x = 1180.0 - cond.len() as f32 * 9.4 - 22.0;
-    let leave_w = 34.0 + 13.0 * 9.4;
-    let leave_x = cond_x - 8.0 - leave_w;
     if let Some(l) = &v.leave {
         let held = l.share > 0.0;
         cv.rect(leave_x, 4.0, leave_w, 24.0, 5.0, Color32::TRANSPARENT, Some(Pen::new(1.0, c.line2.0)));
@@ -1163,10 +1185,26 @@ fn title_band(cv: &Canvas, cx: &mut Ctx) {
         let tip = format!("Leave the station (hold {})", l.key);
         cx.hits.add(cv, leave_x, 4.0, leave_w, 24.0, Some(kit::Hit::Act(Act::Leave)), Some(tip));
     }
+    // START MISSION (start-mission 4): while the round waits, on the console of a player who may start it, in the
+    // order's place right against LEAVE STATION; the start key on its keycap, then how many of those aboard are
+    // ready. Not drawn when the station's own tabs leave it no room (its key still works).
+    let sx = start_x;
+    let start = v.start.as_ref().filter(|_| x <= sx);
+    if let Some(sv) = start {
+        cv.rect(sx, 4.0, start_w, 24.0, 5.0, alpha(c.ok.0, 0x26 as f32 / 255.0), Some(Pen::new(1.0, c.ok.0)));
+        let kw = 10.0 + sv.key.chars().count() as f32 * 6.5;
+        let kx = sx + 6.0;
+        cv.rect(kx, 8.0, kw, 16.0, 4.0, Color32::TRANSPARENT, Some(Pen::new(1.0, c.dim.0)));
+        cv.text(kx + kw / 2.0, 20.0, 10.0, c.text.0, &sv.key, T::mid().bold());
+        cv.text(kx + kw + 7.0, 21.0, 13.0, c.text.0, "START MISSION", T::default().ls(1.5).bold());
+        let count = format!("{}/{}", sv.ready, sv.aboard);
+        cv.text(sx + start_w - 10.0, 21.0, 13.0, c.dim.0, &count, T::end());
+        let tip = format!("Start now: {} of {} ready", sv.ready, sv.aboard);
+        cx.hits.add(cv, sx, 4.0, start_w, 24.0, Some(kit::Hit::Act(Act::Start)), Some(tip));
+    }
     // The newest order to the station shown: at 470, or after the tabs when they reach past it, short of LEAVE STATION
-    // (or the condition); left out when the tabs leave it no room.
-    let order_end = if v.leave.is_some() { leave_x } else { cond_x };
-    if let Some(o) = v.order.as_ref().filter(|_| order_end - 8.0 - x.max(470.0) >= 60.0) {
+    // (or the condition); left out when the tabs leave it no room, or START MISSION has its place.
+    if let Some(o) = v.order.as_ref().filter(|_| start.is_none() && order_end - 8.0 - x.max(470.0) >= 60.0) {
         let ox = x.max(470.0);
         let ow = 300f32.min(order_end - 8.0 - ox);
         cv.rect(ox, 4.0, ow, 24.0, 5.0, alpha(c.warn.0, 0x1f as f32 / 255.0), Some(Pen::new(1.0, c.warn.0)));

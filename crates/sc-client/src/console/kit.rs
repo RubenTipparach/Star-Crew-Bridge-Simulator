@@ -64,6 +64,8 @@ pub enum Act {
     Mode(bool),
     /// Every station: get up from the seat (LEAVE STATION, leave-station 4).
     Leave,
+    /// START MISSION while the round waits (start-mission 4).
+    Start,
     /// Every station: open OBJECTIVES, or go back to the console (objectives-tab 1).
     Obj,
     ObjClose,

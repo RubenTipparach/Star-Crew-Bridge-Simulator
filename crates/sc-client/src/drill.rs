@@ -198,6 +198,9 @@ pub struct DrillApp {
     shown: Option<Station>,
     /// Single player: READY pressed while the crew still walk to their seats; sent once they sit (design 4).
     ready_held: bool,
+    /// START MISSION on this frame's console, and the drill clock (`phase_s`) it was first seen at (start-mission 4):
+    /// the scripted shots capture it and press it.
+    start_seen: Option<f64>,
     /// The pointer's events since the last frame, for the console.
     pointer: Vec<PointerEv>,
     /// F3: the link's round trip and loss in a corner (debug numbers are not console content).
@@ -398,6 +401,7 @@ impl DrillApp {
             solo,
             shown: None,
             ready_held: false,
+            start_seen: None,
             pointer: Vec::new(),
             show_net: false,
             shots_taken: HashSet::new(),
@@ -732,6 +736,15 @@ impl DrillApp {
     }
 
     /// Seated in a station of this player's own, the menu shut: LEAVE STATION and the stand key work.
+    /// Whether this player may press START MISSION now (start-mission 2): `combat::may_start` on the crew the server
+    /// sent, the rule the server applies to the request.
+    fn may_start(&self) -> bool {
+        let Some(s) = self.session.as_ref() else { return false };
+        let Some(me) = s.slot else { return false };
+        let crew: Vec<(u8, Option<Station>, bool)> = s.crew.iter().map(|c| (c.slot, c.station, c.bot)).collect();
+        self.bot.is_none() && sc_core::combat::may_start(&crew, me).is_ok()
+    }
+
     fn can_stand(&self, station: Option<Station>, posture: Option<sc_core::combat::bodies::Posture>) -> bool {
         posture == Some(sc_core::combat::bodies::Posture::Seated)
             && station.is_some()
@@ -1437,6 +1450,23 @@ impl DrillApp {
         if self.solo.is_some() && snap.phase == Phase::Muster && t >= 2.0 {
             self.ready_held = true;
         }
+        // START MISSION (start-mission 4): a scripted run seated while the round waits shoots the band with the
+        // control, then presses it a second later, as the player would (again each second while it is still up: a
+        // press lost to a reconnect), and shoots the countdown.
+        if let Some(seen) = self.start_seen {
+            self.capture(f, &format!("1-start-mission-{st}.png"));
+            if t - seen >= 1.0 {
+                self.shots_taken.insert("start-pressed".into());
+                self.start_seen = Some(t);
+                if let Some(s) = self.session.as_ref() {
+                    println!("sc-client: START MISSION (scripted)");
+                    s.start_mission();
+                }
+            }
+        }
+        if snap.phase == Phase::Countdown && self.shots_taken.contains("start-pressed") && t >= 0.5 {
+            self.capture(f, &format!("2-countdown-started-{st}.png"));
+        }
         if self.args.film {
             self.film(f, &snap);
             return;
@@ -2098,6 +2128,13 @@ impl App for DrillApp {
                 key: self.bindings.use_label.clone(),
                 share: self.stand.share(self.data.stations.seats.stand_hold_s),
             });
+            // START MISSION while the round waits and this player may start it (start-mission 4): the server's own
+            // rule, asked of the crew list it sends.
+            v.start = (snap.phase == Phase::Muster && self.may_start()).then(|| console::StartView {
+                key: self.bindings.start_label.clone(),
+                ready: crew.iter().filter(|c| c.ready && c.station.is_some()).count() as u32,
+                aboard: crew.len() as u32,
+            });
             v
         });
         if let (Some(v), Some(host)) = (console_view.as_mut(), self.solo.as_ref()) {
@@ -2188,6 +2225,24 @@ impl App for DrillApp {
                     println!("sc-client: LEAVE STATION");
                     self.stand_now();
                 }
+            }
+        }
+        // START MISSION, by the mouse, a finger or its key (start-mission 4): the request goes to the server, which
+        // decides; the press is the button's, not a touch that takes a crewed station MANUAL.
+        let start_shown = console_view.as_ref().is_some_and(|v| v.start.is_some());
+        let phase_s = ships.as_ref().map_or(0.0, |x| x.2.phase_s);
+        self.start_seen = if start_shown { self.start_seen.or(Some(phase_s)) } else { None };
+        let mut start_now = start_shown && !self.menu.open() && self.pressed.contains(&self.bindings.start_key);
+        if let Some((hits, _)) = painted.as_ref().filter(|_| start_shown) {
+            if crate::seat::band_pressed(hits, &self.pointer, &crate::console::kit::Act::Start) {
+                self.pointer.clear();
+                start_now = true;
+            }
+        }
+        if start_now {
+            if let Some(s) = self.session.as_ref() {
+                println!("sc-client: START MISSION");
+                s.start_mission();
             }
         }
         // The script's press: the middle of the control as drawn, pressed and let go, as a player's pointer would.

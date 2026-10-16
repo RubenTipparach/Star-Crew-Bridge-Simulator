@@ -49,8 +49,9 @@ control and listen for its key; the server's answer is the one that counts (CLAU
 ## 4. The control
 
 In the title band, while the drill is in Muster and `may_start` passes for this client, on whatever console is shown
-(single player's crewed consoles too). It takes the order's place: at 470 lp, or after the tabs when they reach past
-it, ending at least 8 lp before LEAVE STATION. No order is ever pending in Muster, since commands are taken only in
+(single player's crewed consoles too). It takes the order's place, right aligned 8 lp before LEAVE STATION, so it
+stands in the same place on every console; the dashed swap chips of open stations stop short of it (a crew in Muster
+has many open stations, and the start matters more than a swap there). No order is ever pending in Muster, since commands are taken only in
 Engage and the patrol, so the two never meet; START wins if they did.
 
 - a chip 24 lp high, `34 + 13 x 9.4 + 46` lp wide (202 lp), 5 lp corners, filled with the ok colour at 0x26 alpha and
@@ -63,7 +64,7 @@ Engage and the patrol, so the two never meet; START wins if they did.
   number the captain acts on (wait, or go);
 - tip: "Start now: 3 of 8 ready".
 
-When the tabs leave it less than its width it is not drawn; its key still works. A click or a tap on it, or the key,
+When the station's own tabs reach past its left edge it is not drawn; its key still works. A click or a tap on it, or the key,
 sends the request once; the server's refusal, if any, shows as every refusal does.
 
 `ConsoleView` carries it as `start: { key: "Return", ready: 3, aboard: 8 }` (the mockup's `consoleState().start`, none
@@ -91,7 +92,20 @@ and sends `ServerMsg::Refused` on an error, as `Claim` does. `Refusal::CaptainsC
 - `sc-client`: in single player the player seated at Helm, a bot in the captain's seat and the crew still walking,
   presses Return and the round counts down; the chip's hit area starts it; the parity states `start-captain` and
   `solo-start` within the limits.
-- Captures in `docs/screenshots/engine/start-mission/`.
+- Captures in `docs/screenshots/engine/start-mission/`: `sc-client --headless --solo --shots DIR` shoots the band the
+  first frame START MISSION is on the console, presses it a second later as a player would, and shoots the countdown
+  (`1-start-mission-<station>.png`, `2-countdown-started-<station>.png`); the parity pairs beside the mockup.
+
+## 7a. As built (2026-10-16)
+
+- The rule, the message and the chip as above; `may_start` is called by the server and by the client's title band.
+- On foot in single player the round already starts once the player sits, if every seated NPC has said READY:
+  NPCs still walking do not hold it (`coop-drill`'s Muster counts people, and seated players). START MISSION shows
+  there while a seated NPC is still reading its briefing (`bot_ready_s`), or a person in a crew is not yet seated.
+  In a crew of people it is what lets the captain go without the last one: the capture is a captain and a helmsman,
+  both still reading, and the captain's start.
+- The scripted shots (`--shots`) press it a second after it first shows, and again each second while it stays up (a
+  client that loads slowly can lose its first press to a reconnect).
 
 ## 8. Pi 5 budget
 

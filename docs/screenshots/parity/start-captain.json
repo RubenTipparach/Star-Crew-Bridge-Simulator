@@ -1,0 +1,1001 @@
+{
+ "station": "captain",
+ "word": "CAPTAIN",
+ "role": "command",
+ "op": "You",
+ "open": [
+  "science",
+  "laser_stbd"
+ ],
+ "solo": null,
+ "order": null,
+ "alert": "normal",
+ "red_alert": false,
+ "clock_s": 754,
+ "hull_pct": 100,
+ "shield_ratio": [
+  0.9097916666666661,
+  0.9097916666666661,
+  0.9097916666666661,
+  0.9097916666666661,
+  0.9097916666666661,
+  0.9097916666666661
+ ],
+ "power_mw": 27.535767041592923,
+ "reactor_up": true,
+ "speed_mps": 140.00000000000003,
+ "fires": 0,
+ "breaches": 0,
+ "q": [
+  0.9848077530122081,
+  0,
+  -0.17364817766693036,
+  0
+ ],
+ "w": [
+  0,
+  0,
+  0
+ ],
+ "wset": [
+  0,
+  0,
+  0
+ ],
+ "v_body": [
+  7.105427357601002e-15,
+  0,
+  140.00000000000003
+ ],
+ "speed_set": 140,
+ "strafe": [
+  0,
+  0
+ ],
+ "stick": [
+  0,
+  0,
+  0
+ ],
+ "oe": {
+  "h": 45,
+  "p": 10,
+  "r": -30
+ },
+ "order_active": false,
+ "plan": null,
+ "preview": {
+  "time": 2.9989258684961793,
+  "angle": 41.68607856729581
+ },
+ "goal": null,
+ "ap": "HOLD",
+ "flight": {
+  "rate_dps": [
+   18,
+   18,
+   36
+  ],
+  "speed_min_mps": -100,
+  "speed_max_mps": 400,
+  "strafe_max_mps": 50
+ },
+ "contacts": [
+  {
+   "id": "T1",
+   "cls": "corvette",
+   "iff": "hostile",
+   "rel": [
+    -1872.1614096751432,
+    888.888054040138,
+    9183.0622321456
+   ],
+   "dir": [
+    0.1988695296538588,
+    -0.09442174606759451,
+    -0.975466782645519
+   ],
+   "hull": 100,
+   "scan": 0.35,
+   "up": [
+    0,
+    1.0000000000000002,
+    0
+   ],
+   "box_m": [
+    [
+     -13,
+     -2.1,
+     -18.5
+    ],
+    [
+     13,
+     4.6,
+     19.5
+    ]
+   ]
+  },
+  {
+   "id": "T2",
+   "cls": "fighter",
+   "iff": "hostile",
+   "rel": [
+    8457.082877679237,
+    -1755.8956932631447,
+    4595.750321365385
+   ],
+   "dir": [
+    -0.8643802912984994,
+    0.17946633050486036,
+    -0.46972177747028243
+   ],
+   "hull": 100,
+   "scan": 0,
+   "up": [
+    0,
+    1.0000000000000002,
+    0
+   ],
+   "box_m": [
+    [
+     -4,
+     -0.6,
+     -3.6
+    ],
+    [
+     4,
+     1.8,
+     4
+    ]
+   ]
+  },
+  {
+   "id": "N1",
+   "cls": "freighter",
+   "iff": "neutral",
+   "rel": [
+    -11992.719253483207,
+    300.00000000000006,
+    -1036.3864856051184
+   ],
+   "dir": [
+    0.9848077530122082,
+    0,
+    0.17364817766693047
+   ],
+   "hull": 100,
+   "scan": 1,
+   "up": [
+    0,
+    1.0000000000000002,
+    0
+   ],
+   "box_m": null
+  },
+  {
+   "id": "U1",
+   "cls": "corvette",
+   "iff": "unknown",
+   "rel": [
+    10894.47451210348,
+    2495.4903851037393,
+    -16780.313912781665
+   ],
+   "dir": [
+    -0.4220390781009013,
+    -0.05233595624294384,
+    0.9050657237128572
+   ],
+   "hull": 100,
+   "scan": 0,
+   "up": [
+    0,
+    1.0000000000000002,
+    0
+   ],
+   "box_m": [
+    [
+     -13,
+     -2.1,
+     -18.5
+    ],
+    [
+     13,
+     4.6,
+     19.5
+    ]
+   ]
+  }
+ ],
+ "waypoint": [
+  13929.555880283879,
+  1500.0000000000002,
+  11847.233975976851
+ ],
+ "target": "T1",
+ "tubes_bear": false,
+ "missiles": [],
+ "inbound": [],
+ "hits": [],
+ "flash_age_s": [
+  9.783333333333335,
+  9.783333333333335,
+  9.783333333333335,
+  9.783333333333335,
+  9.783333333333335,
+  9.783333333333335
+ ],
+ "feed": "FWD",
+ "zoom": 1,
+ "orbit_on": false,
+ "nav_km": 20,
+ "tac_km": 5,
+ "sci_km": 20,
+ "scan_cam": {
+  "nav": {
+   "yaw": 0,
+   "dEl": 0
+  },
+  "tac": {
+   "yaw": 0,
+   "dEl": 0
+  },
+  "sci": {
+   "yaw": 0,
+   "dEl": 0
+  }
+ },
+ "feed_cam": {
+  "yaw": 40,
+  "el": 30
+ },
+ "turrets": [
+  {
+   "short": "D",
+   "mode": "AUTO",
+   "op": "Kai",
+   "heat": 0.16083333333333374,
+   "aim_deg": 0,
+   "firing": false,
+   "cooling": false,
+   "ok": 1
+  },
+  {
+   "short": "V",
+   "mode": "AUTO",
+   "op": null,
+   "heat": 0.06083333333333311,
+   "aim_deg": 180,
+   "firing": false,
+   "cooling": false,
+   "ok": 1
+  },
+  {
+   "short": "P",
+   "mode": "PD",
+   "op": null,
+   "heat": 0,
+   "aim_deg": 270,
+   "firing": false,
+   "cooling": false,
+   "ok": 1
+  },
+  {
+   "short": "S",
+   "mode": "AUTO",
+   "op": null,
+   "heat": 0.36083333333333245,
+   "aim_deg": 90,
+   "firing": false,
+   "cooling": false,
+   "ok": 1
+  }
+ ],
+ "tubes": [
+  {
+   "state": "READY",
+   "t": 0
+  },
+  {
+   "state": "LOADING",
+   "t": 31.78333333333329
+  }
+ ],
+ "tube_load_s": 63,
+ "magazine": 18,
+ "magazine_slots": 20,
+ "decoys": 5,
+ "decoys_max": 5,
+ "decoy_age_s": 9.783333333333335,
+ "next_inbound_s": null,
+ "lasers": {
+  "port": {
+   "bank": "port",
+   "charge": 0.6661111111111097,
+   "secs_to_full": 10.016666666666712,
+   "min_charge": 0.4,
+   "bearing": false,
+   "hit_chance": 0.3551588965085637,
+   "spot_face": "bow",
+   "spot_shield": 0.8,
+   "spot_armour": 1,
+   "capability": 1
+  },
+  "stbd": {
+   "bank": "stbd",
+   "charge": 0.30611111111111183,
+   "secs_to_full": 20.816666666666645,
+   "min_charge": 0.4,
+   "bearing": false,
+   "hit_chance": 0.3551588965085637,
+   "spot_face": "bow",
+   "spot_shield": 0.8,
+   "spot_armour": 1,
+   "capability": 1
+  }
+ },
+ "laser_beam_age_s": {
+  "port": 9.783333333333335,
+  "stbd": 9.783333333333335
+ },
+ "gunner": {
+  "aim": [
+   0,
+   20
+  ],
+  "chosen": null,
+  "capacitor": 1,
+  "heat": 0.0373333333333332,
+  "trigger": false,
+  "targets": []
+ },
+ "gun_locked": false,
+ "objectives_open": false,
+ "objectives": {
+  "title": "Drill 1: Hound at the Shoals",
+  "clock_s": 134.78333333333333,
+  "rows": [
+   {
+    "words": "Destroy the Hound",
+    "state": "progress",
+    "k": 0,
+    "number": "100%"
+   },
+   {
+    "words": "Keep the Tern's hull above zero",
+    "state": "progress",
+    "k": 1,
+    "number": "100%"
+   },
+   {
+    "words": "Shoot down both fighters",
+    "state": "progress",
+    "k": 0,
+    "number": "0 / 2"
+   }
+  ]
+ },
+ "leave": {
+  "key": "E",
+  "share": 0
+ },
+ "start": {
+  "key": "Return",
+  "ready": 3,
+  "aboard": 8
+ },
+ "fire_ring": 0.6675794482542818,
+ "fire_note": "67% HIT",
+ "fire_ok": true,
+ "tube_cone_deg": 5,
+ "charge": [
+  36.391666666666644,
+  36.391666666666644,
+  36.391666666666644,
+  36.391666666666644,
+  36.391666666666644,
+  36.391666666666644
+ ],
+ "cap": [
+  40,
+  40,
+  40,
+  40,
+  40,
+  40
+ ],
+ "preset": -1,
+ "hold": null,
+ "t": 0.7833333333333341,
+ "sci": {
+  "sel": "T1",
+  "scanning": false,
+  "ping": 0,
+  "cam": {
+   "yaw": 62,
+   "el": 24
+  },
+  "freq": "A",
+  "by": "Science"
+ },
+ "captain": {
+  "tab": "CMD",
+  "ship_sel": "engineering",
+  "braced": false,
+  "view_override": false,
+  "composer": {
+   "to": "helm",
+   "verb": null
+  },
+  "orders": [
+   {
+    "to": "helm",
+    "verb": "CHASE",
+    "state": "sent"
+   },
+   {
+    "to": "engineering",
+    "verb": "COMBAT",
+    "state": "done"
+   }
+  ],
+  "crew": [
+   {
+    "role": "helm",
+    "op": "Ana",
+    "order": true
+   },
+   {
+    "role": "tactical",
+    "op": "Ben",
+    "order": false
+   },
+   {
+    "role": "engineering",
+    "op": "Cleo",
+    "order": false
+   },
+   {
+    "role": "science",
+    "op": null,
+    "order": false
+   },
+   {
+    "role": "laser_port",
+    "op": "Dev",
+    "order": false
+   },
+   {
+    "role": "laser_stbd",
+    "op": null,
+    "order": false
+   },
+   {
+    "role": "gunner",
+    "op": "Kai",
+    "order": false
+   }
+  ],
+  "rooms": [
+   {
+    "id": "bridge",
+    "word": "OK"
+   },
+   {
+    "id": "ready_room",
+    "word": "OK"
+   },
+   {
+    "id": "computer_core",
+    "word": "OK"
+   },
+   {
+    "id": "a_corridor",
+    "word": "OK"
+   },
+   {
+    "id": "dorsal_turret",
+    "word": "OK"
+   },
+   {
+    "id": "a_aft_passage",
+    "word": "OK"
+   },
+   {
+    "id": "torpedo_room",
+    "word": "OK"
+   },
+   {
+    "id": "medbay",
+    "word": "OK"
+   },
+   {
+    "id": "damage_control",
+    "word": "OK"
+   },
+   {
+    "id": "quarters",
+    "word": "OK"
+   },
+   {
+    "id": "mess",
+    "word": "OK"
+   },
+   {
+    "id": "port_turret",
+    "word": "OK"
+   },
+   {
+    "id": "stbd_turret",
+    "word": "OK"
+   },
+   {
+    "id": "b_spine",
+    "word": "OK"
+   },
+   {
+    "id": "hangar",
+    "word": "OK"
+   },
+   {
+    "id": "launch_bay_p",
+    "word": "OK"
+   },
+   {
+    "id": "launch_bay_s",
+    "word": "OK"
+   },
+   {
+    "id": "engineering",
+    "word": "OK"
+   },
+   {
+    "id": "drive",
+    "word": "OK"
+   },
+   {
+    "id": "c_spine",
+    "word": "OK"
+   },
+   {
+    "id": "magazine",
+    "word": "OK"
+   },
+   {
+    "id": "life_support",
+    "word": "OK"
+   },
+   {
+    "id": "cargo",
+    "word": "OK"
+   },
+   {
+    "id": "airlock",
+    "word": "OK"
+   },
+   {
+    "id": "shield_room",
+    "word": "OK"
+   },
+   {
+    "id": "switchboard",
+    "word": "OK"
+   },
+   {
+    "id": "pod_dorsal",
+    "word": "OK"
+   },
+   {
+    "id": "pod_ventral",
+    "word": "OK"
+   },
+   {
+    "id": "pod_port",
+    "word": "OK"
+   },
+   {
+    "id": "pod_stbd",
+    "word": "OK"
+   }
+  ],
+  "crew_at": [
+   {
+    "comp": "bridge",
+    "ok": true
+   },
+   {
+    "comp": "bridge",
+    "ok": true
+   },
+   {
+    "comp": "bridge",
+    "ok": true
+   },
+   {
+    "comp": "bridge",
+    "ok": true
+   },
+   {
+    "comp": "damage_control",
+    "ok": true
+   },
+   {
+    "comp": "damage_control",
+    "ok": true
+   }
+  ],
+  "room": {
+   "p_kpa": 101.38162757865247,
+   "po2_kpa": 21.19101585921427,
+   "t_k": 294.7634462157291,
+   "crew": 0
+  }
+ },
+ "eng": {
+  "rated_mw": 57.599999999999994,
+  "rx_out_mw": 27.535767041592923,
+  "bat_out_mw": 0,
+  "want_mw": 27.535767041592926,
+  "preset": "cruise",
+  "groups": [
+   {
+    "id": "drive",
+    "name": "Impulse drive and RCS",
+    "want": 1.58,
+    "got": 1.58,
+    "sp": 1,
+    "prio": 3,
+    "max": 1.5,
+    "want_k": 0.06583333333333334,
+    "got_k": 0.06583333333333334,
+    "breaker": null
+   },
+   {
+    "id": "shields",
+    "name": "Shields",
+    "want": 12,
+    "got": 12,
+    "sp": 1,
+    "prio": 2,
+    "max": 1.5,
+    "want_k": 1,
+    "got_k": 1,
+    "breaker": null
+   },
+   {
+    "id": "turrets",
+    "name": "Turrets",
+    "want": 0.4,
+    "got": 0.4,
+    "sp": 1,
+    "prio": 2,
+    "max": 1.5,
+    "want_k": 0.025,
+    "got_k": 0.025,
+    "breaker": null
+   },
+   {
+    "id": "tubes",
+    "name": "Tubes and hoist",
+    "want": 0.039999999999999994,
+    "got": 0.039999999999999994,
+    "sp": 1,
+    "prio": 3,
+    "max": 1.5,
+    "want_k": 0.30769230769230765,
+    "got_k": 0.30769230769230765,
+    "breaker": null
+   },
+   {
+    "id": "sensors",
+    "name": "Sensors",
+    "want": 0.5,
+    "got": 0.5,
+    "sp": 1,
+    "prio": 2,
+    "max": 1.5,
+    "want_k": 0.16666666666666666,
+    "got_k": 0.16666666666666666,
+    "breaker": null
+   },
+   {
+    "id": "comms",
+    "name": "Comms",
+    "want": 0.18000000000000002,
+    "got": 0.18000000000000002,
+    "sp": 1,
+    "prio": 3,
+    "max": 1.5,
+    "want_k": 0.36000000000000004,
+    "got_k": 0.36000000000000004,
+    "breaker": null
+   },
+   {
+    "id": "life_support",
+    "name": "Life support",
+    "want": 0.4865211806969074,
+    "got": 0.4865211806969074,
+    "sp": 1,
+    "prio": 1,
+    "max": 1.5,
+    "want_k": 0.2339044137965901,
+    "got_k": 0.2339044137965901,
+    "breaker": null
+   },
+   {
+    "id": "gravity_dampers",
+    "name": "Gravity and dampers",
+    "want": 6.6,
+    "got": 6.6,
+    "sp": 1,
+    "prio": 2,
+    "max": 1.5,
+    "want_k": 0.5499999999999999,
+    "got_k": 0.5499999999999999,
+    "breaker": null
+   },
+   {
+    "id": "computer",
+    "name": "Computer core",
+    "want": 1.507,
+    "got": 1.507,
+    "sp": 1,
+    "prio": 1,
+    "max": 1.5,
+    "want_k": 1,
+    "got_k": 1,
+    "breaker": null
+   },
+   {
+    "id": "bays",
+    "name": "Bays and craft charging",
+    "want": 0.1,
+    "got": 0.1,
+    "sp": 1,
+    "prio": 3,
+    "max": 1.5,
+    "want_k": 0.013513513513513516,
+    "got_k": 0.013513513513513516,
+    "breaker": null
+   },
+   {
+    "id": "medbay",
+    "name": "Medbay",
+    "want": 0.008,
+    "got": 0.008,
+    "sp": 1,
+    "prio": 1,
+    "max": 1.5,
+    "want_k": 1,
+    "got_k": 1,
+    "breaker": null
+   },
+   {
+    "id": "cooling",
+    "name": "Cooling",
+    "want": 2,
+    "got": 2,
+    "sp": 1,
+    "prio": 0,
+    "max": 1.2,
+    "want_k": 0.9877295966495897,
+    "got_k": 0.9877295966495897,
+    "breaker": "closed"
+   }
+  ],
+  "preview": null,
+  "reactor": {
+   "up": true,
+   "throttle": 0.5736618133665192,
+   "target": 0.5736618133665192,
+   "p_e_mw": 27.535767041592923,
+   "mode": "auto",
+   "scram_cause": null,
+   "t_k": 499.63860936916296,
+   "warn_k": 750,
+   "scram_k": 820,
+   "throttle_max": 1.2
+  },
+  "armed_scram": false,
+  "cool": {
+   "mode": "auto",
+   "flow": 1,
+   "flow_kg_s": 740,
+   "chiller": 0.823417883790637,
+   "hot_k": 341.3460595581836,
+   "cold_k": 329.11707038566647,
+   "pumps": [
+    {
+     "name": "Coolant pump A",
+     "speed": 1,
+     "capability": 1,
+     "alloc_mw": 0.4,
+     "setpoint": 1
+    },
+    {
+     "name": "Coolant pump B",
+     "speed": 1,
+     "capability": 1,
+     "alloc_mw": 0.4,
+     "setpoint": 1
+    }
+   ],
+   "radiator_pumps": [
+    {
+     "name": "Radiator pump, port",
+     "speed": 1,
+     "capability": 1,
+     "alloc_mw": 0.6,
+     "setpoint": 1
+    },
+    {
+     "name": "Radiator pump, starboard",
+     "speed": 1,
+     "capability": 1,
+     "alloc_mw": 0.6,
+     "setpoint": 1
+    }
+   ],
+   "makeup_valve": 0,
+   "makeup_kg_s": 0,
+   "tanks": [
+    {
+     "name": "Coolant tank, port",
+     "kg": 2000,
+     "frac": 1
+    },
+    {
+     "name": "Coolant tank, starboard",
+     "kg": 2000,
+     "frac": 1
+    }
+   ],
+   "inventory": 1,
+   "exchanger": 1,
+   "rad_mw": 32.58564047027701,
+   "rad_cap_mw": 39.573637045952566,
+   "rad_flow": 1,
+   "hot_band_k": [
+    335,
+    350
+   ],
+   "hot_warn_k": 370,
+   "limit_k": 380,
+   "heat_mw": 32.57802715558554,
+   "carry_mw": 39.96,
+   "pump_max": 1.2,
+   "rad_max": 1.2,
+   "makeup_max_kg_s": 10
+  },
+  "buses": {
+   "gen_p": true,
+   "gen_s": true,
+   "tie": true,
+   "eb_p": true,
+   "eb_s": true,
+   "np": true,
+   "ns": true,
+   "soc": 1,
+   "cut": 0,
+   "live": 39,
+   "limit": 42,
+   "trip_s": 0,
+   "thumb": {
+    "edges": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     2,
+     0,
+     0,
+     2,
+     0,
+     0,
+     0,
+     0,
+     0,
+     2,
+     2,
+     0,
+     0,
+     2,
+     2,
+     2,
+     2,
+     0,
+     0,
+     0,
+     2,
+     0,
+     0,
+     0,
+     0,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2,
+     2
+    ],
+    "nodes": [
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ]
+   }
+  },
+  "air": {
+   "status": [
+    0,
+    0,
+    0
+   ],
+   "worst": null
+  }
+ }
+}

@@ -19,6 +19,8 @@ pub struct BindingsFile {
     /// On foot: sit at a seat in reach (and take, repair, climb); seated, held `seats.stand_hold_s`: stand up.
     #[serde(rename = "use")]
     pub use_key: String,
+    /// START MISSION while the round waits (start-mission 5).
+    pub start: String,
     /// Helm's keys.
     pub helm: HelmKeys,
     /// The viewscreen's keys, at every console with one.
@@ -99,6 +101,7 @@ impl Validate for BindingsFile {
         let h = &self.helm;
         let all = [
             ("use", &self.use_key),
+            ("start", &self.start),
             ("helm.roll_port", &h.roll_port),
             ("helm.roll_starboard", &h.roll_starboard),
             ("helm.strafe_port", &h.strafe_port),
@@ -126,6 +129,10 @@ pub struct Bindings {
     pub use_key: u32,
     /// Its name, drawn on LEAVE STATION's keycap.
     pub use_label: String,
+    /// START MISSION (start-mission 5).
+    pub start_key: u32,
+    /// Its name, drawn on START MISSION's keycap.
+    pub start_label: String,
     /// Helm: roll to port and to starboard, strafe to port and to starboard.
     pub roll: (u32, u32),
     /// See `roll`.
@@ -141,6 +148,8 @@ impl Bindings {
         Self {
             use_key: k(&f.use_key),
             use_label: f.use_key.clone(),
+            start_key: k(&f.start),
+            start_label: f.start.clone(),
             roll: (k(&h.roll_port), k(&h.roll_starboard)),
             strafe: (k(&h.strafe_port), k(&h.strafe_starboard)),
             orbit: k(&f.viewscreen.orbit),
@@ -185,6 +194,7 @@ mod tests {
         assert_eq!(b.roll, (keys::Z, keys::C), "the helm rolls off E (leave-station 3)");
         assert_eq!(b.strafe, (keys::LEFT, keys::RIGHT));
         assert_eq!(b.orbit, keys::O, "ORBIT on O at every console (chase-orbit design 5)");
+        assert_eq!((b.start_key, b.start_label.as_str()), (keys::RETURN, "Return"), "START MISSION on Return");
     }
 
     #[test]

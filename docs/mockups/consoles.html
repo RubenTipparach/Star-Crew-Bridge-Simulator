@@ -5568,8 +5568,12 @@ function titleBand() {
   }
   // The laser banks took the comms and flight-ops seats (laser-banks 3), so only the open stations are left to swap to.
   const open = SOLO ? [] : STATIONS.filter((o) => !o.op && o.id !== S.id).map((o) => [o.word, o.role, o.id]);
+  // START MISSION's place (start-mission 4), right against LEAVE STATION: the swap chips stop short of it.
+  const cond0 = emerg ? "EMERGENCY POWER" : red ? "RED ALERT" : "NORMAL";
+  const startW = 34 + 13 * 9.4 + 46, startX = 1180 - cond0.length * 9.4 - 22 - 8 - (34 + 13 * 9.4) - 8 - startW;
   for (const [w, r, id] of open) {
     const tw = 44 + w.length * 8.6;
+    if (START && x + tw > startX - 6) break;
     s += `<g ${id ? `data-act="swap:${id}"` : ""}${tipAttr(id ? `${w.toLowerCase()} is open: swap to it` : `${w.toLowerCase()} is open (its console is not in this mockup yet)`)}>`;
     s += `<rect x="${x}" y="4" width="${tw}" height="24" rx="5" fill="transparent" stroke="${C.line2}" stroke-dasharray="4 3"/>`;
     s += icon(r, x + 13, 16, 13, id ? ROLE[r] : C.faint) + text(x + 24, 21, 12, id ? C.text : C.faint, w, { ls: 1.5, w: 700 });
@@ -5589,10 +5593,23 @@ function titleBand() {
     if (held) s += `<path d="${arcPath(kx, ky, 8, 0, Math.min(share, 1) * 360)}" fill="none" stroke="${C.warn}" stroke-width="2"/>`;
     s += text(leaveX + 29, 21, 13, held ? C.text : C.dim, "LEAVE STATION", { ls: 1.5, w: 700 }) + "</g>";
   }
+  // START MISSION (start-mission 4): while the round waits, on the console of a player who may start it, in the order's
+  // place right against LEAVE STATION; the start key on its keycap, then how many of those aboard are ready. Not drawn
+  // when the station's own tabs leave it no room.
+  const sx = leaveX - 8 - startW;
+  const starting = START && x <= sx;
+  if (starting) {
+    const kw = 10 + START_KEY.length * 6.5, kx = sx + 6;
+    s += `<g data-act="start"${tipAttr(`Start now: ${START.ready} of ${START.aboard} ready`)}>`;
+    s += `<rect x="${sx}" y="4" width="${startW}" height="24" rx="5" fill="${C.ok}26" stroke="${C.ok}"/>`;
+    s += `<rect x="${kx}" y="8" width="${kw}" height="16" rx="4" fill="none" stroke="${C.dim}"/>` + text(kx + kw / 2, 20, 10, C.text, START_KEY, { a: "middle", w: 700 });
+    s += text(kx + kw + 7, 21, 13, C.text, "START MISSION", { ls: 1.5, w: 700 });
+    s += text(sx + startW - 10, 21, 13, C.dim, `${START.ready}/${START.aboard}`, { a: "end" }) + "</g>";
+  }
   // The newest order to the station shown: at 470, or after the tabs when they reach past it, short of LEAVE STATION;
-  // left out when the tabs leave it no room.
+  // left out when the tabs leave it no room (or START MISSION has its place).
   const o = newestOrderFor(S.id);
-  if (o && leaveX - 8 - Math.max(470, x) >= 60) {
+  if (o && !starting && leaveX - 8 - Math.max(470, x) >= 60) {
     const ox = Math.max(470, x), ow = Math.min(300, leaveX - 8 - ox);
     s += `<g data-act="ack"${tipAttr("Acknowledge (Y)")}><rect x="${ox}" y="4" width="${ow}" height="24" rx="5" fill="${C.warn}1f" stroke="${C.warn}"/>`;
     s += icon("command", ox + 16, 16, 14, C.warn) + text(ox + 30, 21, 13, C.text, `CAPTAIN: ${o.verb}`, { ls: 1.5, w: 700 });
@@ -5610,6 +5627,12 @@ function titleBand() {
  */
 const LEAVE_KEY = "E", STAND_HOLD_S = 0.5;
 let leaveDown = null;
+/**
+ * START MISSION (start-mission 4 and 5: data/input/bindings.json's "start"): null, or the round waiting in Muster with
+ * this player allowed to start it, and how many of those aboard are ready.
+ */
+const START_KEY = "Return";
+let START = null;
 function leaveShare() { return leaveDown == null ? 0 : clamp((now() - leaveDown) / STAND_HOLD_S, 0, 1); }
 /** Stars: fixed directions in reference axes (seeded), so they wheel past as the ship yaws, pitches and rolls. */
 const STARS = Array.from({ length: 1400 }, (_, i) => {
@@ -7244,6 +7267,8 @@ function act(a, ev) {
   if (k === "view") { station = v; G.objOpen = false; }
   if (k === "mode") { const c = soloCrew(station); if (c) c.mode = v; }
   if (k === "leave") leaveDown = null;
+  // The countdown begins: the round no longer waits, so the control goes.
+  if (k === "start") START = null;
   if (k === "obj") G.objOpen = !G.objOpen;
   if (k === "objclose") G.objOpen = false;
   if (k === "gnext") { const l = gunTargets(); if (l.length) G.gun.chosen = (Math.min(G.gun.chosen, l.length - 1) + 1) % l.length; }
@@ -7356,7 +7381,7 @@ function dragTo(e) {
 }
 CONSOLE.addEventListener("pointerdown", (e) => {
   const a = e.target.closest("[data-act]"), d = e.target.closest("[data-drag]"), h = e.target.closest("[data-hold]");
-  if ((d || h || (a && !/^(view|mode|tab|swap):/.test(a.dataset.act))) && SOLO) soloTakeOver();
+  if ((d || h || (a && !/^(view|mode|tab|swap|start)(:|$)/.test(a.dataset.act))) && SOLO) soloTakeOver();
   // A press on a face inside the shield view favours it; a drag that starts there turns the view.
   if (d && !(a && d.contains(a) && d.dataset.drag !== "shieldcam")) {
     const [kind, arg] = d.dataset.drag.split(":");
@@ -7395,6 +7420,8 @@ window.addEventListener("keydown", (e) => {
   const k = e.key.toLowerCase();
   // The stand key, held, fills LEAVE STATION's ring (leave-station 2): the player's own, not a hand on the console.
   if (k === LEAVE_KEY.toLowerCase()) { if (!e.repeat && leaveDown == null) leaveDown = now(); render(); return; }
+  // The start key (Return, the browser's "Enter"): START MISSION while the round waits.
+  if (k === "enter" && START) { act("start"); render(); return; }
   if (SOLO) {
     // Tab and Shift+Tab step through the consoles (the player's own first), M changes the shown station's mode, and
     // any other key on an AUTO station's console takes it MANUAL.
@@ -7515,6 +7542,7 @@ window.consoleState = function () {
     lasers: { port: laserView("port"), stbd: laserView("stbd") }, laser_beam_age_s: { port: G.t - G.lasers.port.beam, stbd: G.t - G.lasers.stbd.beam },
     gunner: gunnerView(), gun_locked: G.gun.locked, objectives_open: G.objOpen, objectives: objectiveView(),
     leave: { key: LEAVE_KEY, share: leaveShare() },
+    start: START ? { key: START_KEY, ready: START.ready, aboard: START.aboard } : null,
     fire_ring: missileHit(tgt), fire_note: `${Math.round(missileHit(tgt) * 100)}% HIT`, fire_ok: missileHit(tgt) > 0.5, tube_cone_deg: 5,
     charge: G.charge, cap: FACES.map((_, f) => shieldCap(f)), preset: G.preset,
     hold: HOLD.key ? { key: HOLD.key, k: clamp((now() - HOLD.t0) / HOLD_S, 0, 1) } : null,
@@ -7613,7 +7641,11 @@ window.MOCKUP_SHOTS = [
   { name: "solo-helm", setup: () => { soloOn("helm"); render(); } },
   { name: "solo-tactical-manual", setup: () => { soloOn("helm"); station = "tactical"; soloCrew("tactical").mode = "manual"; soloCrew("science").seated = false; HOLD.key = null; render(); } },
   { name: "red-solo-engineering", setup: () => { scenario("combat"); soloOn("helm"); station = "engineering"; render(); } },
-].map((shot) => ({ name: shot.name, setup: () => { PAUSED = true; undoCoolingShot(); SOLO = null; G.objOpen = false; G.gun.trigger = false; retireFighters(); shot.setup(); render(); } }));
+  // START MISSION (start-mission 4): the captain in Muster with three of eight aboard ready; then single player at Helm,
+  // Science's NPC still walking to the seat.
+  { name: "start-captain", setup: () => { station = "captain"; captainTab = "CMD"; START = { ready: 3, aboard: 8 }; render(); } },
+  { name: "solo-start", setup: () => { soloOn("helm"); soloCrew("science").seated = false; START = { ready: 4, aboard: 5 }; render(); } },
+].map((shot) => ({ name: shot.name, setup: () => { PAUSED = true; undoCoolingShot(); SOLO = null; START = null; G.objOpen = false; G.gun.trigger = false; retireFighters(); shot.setup(); render(); } }));
 
 fit(); render();
 requestAnimationFrame(frame);
