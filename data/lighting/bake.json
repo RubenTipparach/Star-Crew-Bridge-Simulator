@@ -31,7 +31,7 @@
   "adaptive": { "base_m": 2.0, "min_m": 0.25, "max_error_levels": 5 },
   "max_added_triangles": { "default": 2000, "bridge": 7500 },
   "mockup": { "cell_m": 1.0, "uncapped_triangles": 60000 },
-  "station": { "wall_cell_m": 16.0, "rib_cell_m": 30.0, "berth_cell_m": 8.0, "cheap_area_m2": 12.0, "albedo_scale": 0.55,
+  "station": { "wall_cell_m": 10.0, "rib_cell_m": 30.0, "berth_cell_m": 8.0, "cheap_area_m2": 12.0, "albedo_scale": 0.55,
     "probe_coarse_m": 20.0, "probe_fine_m": 5.0, "berth_probe_x_m": 32.0, "berth_probe_down_m": 16.0, "berth_probe_up_m": 30.0, "berth_probe_z_m": 50.0 },
   "probes": { "spacing_m": 1.0, "wall_offset_m": 0.5, "invalid_backface_fraction": 0.5 },
   "lightmap_texel_m": 0.25,
