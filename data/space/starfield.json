@@ -1,7 +1,7 @@
 {
   "schema": "starcrew.starfield/1",
   "status": "Proposed (2026-10-15): openspec/changes/nebula-skies design 5, docs/mockups/nebula-skies.html. Read by tools/space/nebula_skies.py (the classes and colours) and the mockup; the engine reads it once the change is applied.",
-  "_doc": "The vector stars drawn over a nebula sky, and how they streak (nebula-skies design 5). Each star is a direction at infinity; every frame it is drawn as a line from where it is on screen now back toward where it was tail_s ago, so a turning view smears the stars into short lines (FreeSpace's way: the star's last position kept, a line drawn to it, its length capped and its brightness dimmed as it grows). A star's class sets its brightness range (the sky file holds each star's own) and its head's size at rest; its colour is a tint. streak: tail_s the seconds of turning a tail shows, max_deg the longest tail (angle), min_px the least line drawn (a star at rest is a point), dim_per_deg the brightness lost per degree of tail and dim_floor the least kept (FreeSpace 2's 7,800 per unit and 75 of 255), tail_fade the tail end's share of the head's brightness, cut_deg_s a turn faster than this is a camera cut (no tail that frame). motes: patrol-mission 11.4's dust round the eye, drawn by the same streak rule from eye-space points, so moving forward fast shows. Colours sRGB 0-1.",
+  "_doc": "The vector stars drawn over a nebula sky, and how they streak (nebula-skies design 5). Each star is a direction at infinity; every frame it is drawn as a line from where it is on screen now back toward where it was tail_s ago, so a turning view smears the stars into short lines (FreeSpace's way: the star's last position kept, a line drawn to it, its length capped and its brightness dimmed as it grows). A star's class sets its brightness range (the sky file holds each star's own) and its head's size at rest; its colour is a tint. streak: tail_s the seconds of turning a tail shows, max_deg the longest tail (angle), min_px the least line drawn (a star at rest is a point), dim_per_deg the brightness lost per degree of tail (FreeSpace 2's 7,800 per unit) and dim_floor the least kept (FreeSpace 2 kept 75 of 255 over black space; 0.5 here so a streak still reads over a bright cloud), tail_fade the tail end's share of the head's opacity, alpha_min and whiten: a star is alpha-blended (FreeSpace's alpha-blended lines) toward its colour mixed whiten of the way to white, at an opacity of alpha_min + (1 - alpha_min) x its brightness, times the dim, cut_deg_s a turn faster than this is a camera cut (no tail that frame). motes: patrol-mission 11.4's dust round the eye, drawn by the same streak rule from eye-space points, so moving forward fast shows. Colours sRGB 0-1.",
   "_owner": "2026-10-15: \"and drawing stars and simulating motion blur with gl lines\", \"like old school games\", \"freespace 1 did fake motion blur with vector graphics stars\"",
   "classes": [
     { "name": "faint", "share": 0.56, "brightness": [0.10, 0.28], "size_px": 1.0 },
@@ -21,8 +21,10 @@
     "max_deg": 1.7,
     "min_px": 1.0,
     "dim_per_deg": 0.534,
-    "dim_floor": 0.29,
-    "tail_fade": 0.2,
+    "dim_floor": 0.5,
+    "tail_fade": 0.45,
+    "alpha_min": 0.3,
+    "whiten": 0.4,
     "cut_deg_s": 720
   },
   "motes": {

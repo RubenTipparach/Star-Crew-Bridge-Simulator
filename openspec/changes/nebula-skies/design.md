@@ -101,7 +101,7 @@ FreeSpace 2's engine source was released in 2002 and is the root of the FreeSpac
 | From | We take | We change |
 | --- | --- | --- |
 | Homeworld | A sphere of vertex colours, Gouraud shaded, no texture, one draw, depth off, drawn first; a base colour; stars on top; ambient light authored to match the sky (at most 40%) | Painted by a generator from a recipe, not by hand; refined where the colour changes (Homeworld 2's builder); about 8,000 vertices, not 900 |
-| FreeSpace | Stars as directions, drawn as lines from now to last frame; tail capped; dimmed as it grows, with a floor; a point at rest; cuts reset; debris streaks for forward motion | The tail is scaled to a fixed time (`tail_s`) so it does not depend on the frame rate; the tail end fades; the faint hashed stars fade during a fast turn |
+| FreeSpace | Stars as directions, drawn as alpha-blended lines from now to last frame; tail capped; dimmed as it grows, with a floor; a point at rest; cuts reset; debris streaks for forward motion | The tail is scaled to a fixed time (`tail_s`) so it does not depend on the frame rate; the floor is 0.5, not 0.29, and a streak whitens, so it reads over a bright cloud; the tail end fades; the faint hashed stars fade during a fast turn |
 
 ## 2. The sky, as the player sees it
 
@@ -127,8 +127,16 @@ points. Moving fast, motes stream past. Ships, stations, fighters and the bridge
   sky), and a fourth byte: how much of the stars behind that point the nebula hides (0-255).
 - **Prefiltered.** A vertex's colour is the mean of the painting at it and at six points 0.4 degrees round it, so no
   feature is finer than the mesh can carry: no speckle between vertices.
-- **Shading**: Gouraud, then a half-step hash dither in the fragment shader so slow gradients over near-black never
-  band (no texture: `hash13(gl_FragCoord)`).
+- **Shading**: Gouraud, then a 4 x 4 ordered (Bayer) dither of one 8-bit step in the fragment shader, computed from
+  `gl_FragCoord` with no texture, so a slow gradient over near-black never bands on an 8-bit target.
+- **Banding, found 2026-10-16.** The first shots showed terraced contours, like a topographic map, round C's core and
+  across A's cloud. The cause was not the sky: rendered in full colour the gradients are smooth even at three times the
+  contrast. The bands were made by `tools/mockups/shrink_png.py`, which re-saves shots as 256-colour palettes; it now
+  leaves the nebula shots in full colour. The causes it could have been, checked: the vertex colours are 8-bit, but the
+  GPU interpolates them in floating point, so steps appear only at the output's own 8 bits (the dither covers that);
+  the prefilter and the refinement keep neighbouring vertices within 2 sRGB steps of the painting; the noise is
+  continuous (quintic-faded gradient noise). The engine draws the same way: 8-bit vertex colour, float interpolation,
+  the same ordered dither.
 - **Counts** (the generated files): 7,992 to 7,993 vertices, 15,980 to 15,982 triangles a sky.
 
 ## 4. The generator and the recipes
@@ -187,16 +195,27 @@ tail   = min(moved x tail_s / dt, max_deg)                    (tail_s 0.025 s, m
 head   = project(R d)                                          (pixels)
 end    = head + (project(R' d) - head) x (tail / moved)        (toward where it was)
 if |end - head| < min_px: end = head + min_px along the motion (a point at rest: FreeSpace's one-pixel fudge)
-dim    = max(dim_floor, 1 - dim_per_deg x tail_in_degrees)    (0.534 a degree, floor 0.29: FreeSpace 2's 7,800 and 75/255)
-head colour = colour x brightness x dim;  end colour = head colour x tail_fade (0.2, once the line is over 3 px)
+dim    = max(dim_floor, 1 - dim_per_deg x tail_in_degrees)    (0.534 a degree: FreeSpace 2's 7,800; floor 0.5)
+s      = smoothstep(0, 0.25 degrees, tail)                     (0 at rest, 1 streaking)
+colour = mix(star colour, mix(star colour, white, whiten), s)  (whiten 0.4)
+alpha  = mix(brightness, alpha_min + (1 - alpha_min) x brightness, s) x dim   (alpha_min 0.3)
+blend  = source alpha over the sky (not added); the tail end's alpha x tail_fade (0.45, once the line is over 3 px)
+length = never more than 1.5 x the cap's length in pixels at the view's centre (the projection stretches near the edge)
 ```
+
+- **Blended, not added** (changed 2026-10-16 after the first shots). FreeSpace drew its streaks as alpha-blended lines,
+  in its code's words "so that dark stars don't look bad on top of nebulas". The first mockup added them, and with
+  FreeSpace 2's floor of 75/255 (0.29) a streak over the bright cloud was a faint grey dash. Blended toward a whitened
+  colour, with an opacity of at least `alpha_min`, and the floor raised to 0.5, a streak reads as a pale white or
+  blue-white line on the cloud and a bright one on black (`A-turn`, `A-turn-dark`). At rest nothing changes: `s` is 0,
+  so a star over black is its colour at its brightness, as before.
 
 - `tail_s` makes a turn of a given speed draw the same tail at 30 or 60 frames a second (FreeSpace's tail was one
   frame's motion, so it changed with the frame rate). 0.025 s and the 1.7-degree cap are FreeSpace 2's 0.75 x 0.04 rad
   at about 30 frames a second.
 - **What a turn looks like.** At the 70 degrees a second of the `*-turn` shots a star's tail is 1.7 degrees (the cap),
-  about 30 px at 1080 lines and a 50-degree view, at 29% of its brightness. The Tern turning at 10 degrees a second
-  draws 0.25-degree tails, 4 px, at 87%.
+  about 30 px at 1080 lines and a 50-degree view, at half its opacity. The Tern turning at 10 degrees a second draws
+  0.25-degree tails, 4 px, at 87%.
 - **A cut** (the camera jumps: sitting down, standing up, switching to the feed, a jump's end) resets `R'` to `R`; so
   does any turn faster than `cut_deg_s` (720 degrees a second).
 - **Lines, not quads.** One `GL_LINES` draw, two vertices a star, as the owner asked. OpenGL ES 3.0 only promises a
@@ -301,8 +320,8 @@ Questions (to the survey, with these shots):
   `B-tern`, `B-station`. Recommendation: A, with B kept for a later system.
 - **Q2. Do the stars streak when the player turns their head on the bridge, or only when the ship turns?** Shots
   `A-turn`, `A-turn-streaks-off`. Recommendation: any turn of the view, as FreeSpace did; cuts never streak.
-- **Q3. How strong the streaks: FreeSpace 2's numbers (a 1.7-degree cap, dimmed to 29%) or longer and brighter?** Shots
-  `A-turn` to `D-turn`. Recommendation: FreeSpace 2's.
+- **Q3. How strong the streaks: FreeSpace 2's length (a 1.7-degree cap) dimmed to half and whitened, as shown, or
+  longer and brighter?** Shots `A-turn`, `A-turn-dark`, `B-turn` to `D-turn`. Recommendation: as shown.
 - **Q4. The sky's colour on the hulls: on, at about a quarter of full strength on the display?** Shots `A-tern`,
   `A-ambient-off`. Recommendation: on.
 - **Q5. The mesh budget: 8,000 vertices a sky, or 4,000 for the 1 GB Pi?** Shot `A-mesh`. Recommendation: 8,000 until

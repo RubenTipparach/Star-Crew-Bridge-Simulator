@@ -33,7 +33,7 @@ a star at rest drawn as a 1 px point, and no tail drawn across a camera cut.
 
 #### Scenario: A fast turn
 - **WHEN** the view turns at 70 degrees a second
-- **THEN** every star's tail is 1.7 degrees long and the star is drawn at 29% of its brightness
+- **THEN** every star's tail is 1.7 degrees long and the star is drawn at half its opacity, blended toward white
 
 #### Scenario: Sitting down
 - **WHEN** the player sits at a station and the camera moves to the seated view

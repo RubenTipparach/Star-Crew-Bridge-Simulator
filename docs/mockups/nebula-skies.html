@@ -67,7 +67,7 @@
 <!-- INLINE data:space/spacedock END -->
 <!-- INLINE data:space/starfield BEGIN -->
 <script id="ship-data-starfield" type="application/json">
-{"schema":"starcrew.starfield/1","status":"Proposed (2026-10-15): openspec/changes/nebula-skies design 5, docs/mockups/nebula-skies.html. Read by tools/space/nebula_skies.py (the classes and colours) and the mockup; the engine reads it once the change is applied.","_doc":"The vector stars drawn over a nebula sky, and how they streak (nebula-skies design 5). Each star is a direction at infinity; every frame it is drawn as a line from where it is on screen now back toward where it was tail_s ago, so a turning view smears the stars into short lines (FreeSpace's way: the star's last position kept, a line drawn to it, its length capped and its brightness dimmed as it grows). A star's class sets its brightness range (the sky file holds each star's own) and its head's size at rest; its colour is a tint. streak: tail_s the seconds of turning a tail shows, max_deg the longest tail (angle), min_px the least line drawn (a star at rest is a point), dim_per_deg the brightness lost per degree of tail and dim_floor the least kept (FreeSpace 2's 7,800 per unit and 75 of 255), tail_fade the tail end's share of the head's brightness, cut_deg_s a turn faster than this is a camera cut (no tail that frame). motes: patrol-mission 11.4's dust round the eye, drawn by the same streak rule from eye-space points, so moving forward fast shows. Colours sRGB 0-1.","_owner":"2026-10-15: \"and drawing stars and simulating motion blur with gl lines\", \"like old school games\", \"freespace 1 did fake motion blur with vector graphics stars\"","classes":[{"name":"faint","share":0.56,"brightness":[0.1,0.28],"size_px":1.0},{"name":"plain","share":0.29,"brightness":[0.28,0.52],"size_px":1.0},{"name":"bright","share":0.12,"brightness":[0.52,0.82],"size_px":2.0},{"name":"brilliant","share":0.03,"brightness":[0.82,1.0],"size_px":3.0}],"colours":[{"name":"blue-white","share":0.16,"srgb":[0.74,0.84,1.0]},{"name":"white","share":0.34,"srgb":[1.0,1.0,1.0]},{"name":"cream","share":0.28,"srgb":[1.0,0.95,0.85]},{"name":"gold","share":0.15,"srgb":[1.0,0.85,0.62]},{"name":"red","share":0.07,"srgb":[1.0,0.7,0.56]}],"streak":{"tail_s":0.025,"max_deg":1.7,"min_px":1.0,"dim_per_deg":0.534,"dim_floor":0.29,"tail_fade":0.2,"cut_deg_s":720},"motes":{"count":200,"cube_m":300,"tail_s":0.033,"fade_from_m":150,"brightness":0.35}}
+{"schema":"starcrew.starfield/1","status":"Proposed (2026-10-15): openspec/changes/nebula-skies design 5, docs/mockups/nebula-skies.html. Read by tools/space/nebula_skies.py (the classes and colours) and the mockup; the engine reads it once the change is applied.","_doc":"The vector stars drawn over a nebula sky, and how they streak (nebula-skies design 5). Each star is a direction at infinity; every frame it is drawn as a line from where it is on screen now back toward where it was tail_s ago, so a turning view smears the stars into short lines (FreeSpace's way: the star's last position kept, a line drawn to it, its length capped and its brightness dimmed as it grows). A star's class sets its brightness range (the sky file holds each star's own) and its head's size at rest; its colour is a tint. streak: tail_s the seconds of turning a tail shows, max_deg the longest tail (angle), min_px the least line drawn (a star at rest is a point), dim_per_deg the brightness lost per degree of tail (FreeSpace 2's 7,800 per unit) and dim_floor the least kept (FreeSpace 2 kept 75 of 255 over black space; 0.5 here so a streak still reads over a bright cloud), tail_fade the tail end's share of the head's opacity, alpha_min and whiten: a star is alpha-blended (FreeSpace's alpha-blended lines) toward its colour mixed whiten of the way to white, at an opacity of alpha_min + (1 - alpha_min) x its brightness, times the dim, cut_deg_s a turn faster than this is a camera cut (no tail that frame). motes: patrol-mission 11.4's dust round the eye, drawn by the same streak rule from eye-space points, so moving forward fast shows. Colours sRGB 0-1.","_owner":"2026-10-15: \"and drawing stars and simulating motion blur with gl lines\", \"like old school games\", \"freespace 1 did fake motion blur with vector graphics stars\"","classes":[{"name":"faint","share":0.56,"brightness":[0.1,0.28],"size_px":1.0},{"name":"plain","share":0.29,"brightness":[0.28,0.52],"size_px":1.0},{"name":"bright","share":0.12,"brightness":[0.52,0.82],"size_px":2.0},{"name":"brilliant","share":0.03,"brightness":[0.82,1.0],"size_px":3.0}],"colours":[{"name":"blue-white","share":0.16,"srgb":[0.74,0.84,1.0]},{"name":"white","share":0.34,"srgb":[1.0,1.0,1.0]},{"name":"cream","share":0.28,"srgb":[1.0,0.95,0.85]},{"name":"gold","share":0.15,"srgb":[1.0,0.85,0.62]},{"name":"red","share":0.07,"srgb":[1.0,0.7,0.56]}],"streak":{"tail_s":0.025,"max_deg":1.7,"min_px":1.0,"dim_per_deg":0.534,"dim_floor":0.5,"tail_fade":0.45,"alpha_min":0.3,"whiten":0.4,"cut_deg_s":720},"motes":{"count":200,"cube_m":300,"tail_s":0.033,"fade_from_m":150,"brightness":0.35}}
 </script>
 <!-- INLINE data:space/starfield END -->
 <!-- INLINE data:space/systems/shoals BEGIN -->
@@ -3785,8 +3785,11 @@ const nebulaMat = new THREE.ShaderMaterial({
           c += uAtm.rgb * glow * day * 0.9;
         }
       }
-      // A dither of half a step, so a slow gradient over a dark sky never shows bands (no texture: a hash).
-      c += (hash13(vec3(gl_FragCoord.xy, 7.0)) - 0.5) / 255.0;
+      // A 4 x 4 ordered (Bayer) dither of one 8-bit step, so a slow gradient never shows bands (no texture: arithmetic).
+      vec2 px = floor(gl_FragCoord.xy);
+      vec2 h2 = floor(px * 0.5);
+      float bayer = fract(h2.x * 0.5 + h2.y * h2.y * 0.75) * 0.25 + fract(px.x * 0.5 + px.y * px.y * 0.75);
+      c += (bayer - 0.47) / 255.0;
       gl_FragColor = vec4(c, 1.0);
     }`,
   depthTest: false, depthWrite: false, side: THREE.DoubleSide,
@@ -3814,12 +3817,19 @@ const starUniforms = {
   uViewport: { value: new THREE.Vector2(1, 1) }, uTailScale: { value: 0 },
   uMaxRad: { value: ST.max_deg * DEG }, uMinPx: { value: ST.min_px }, uDimPerRad: { value: ST.dim_per_deg / DEG },
   uDimFloor: { value: ST.dim_floor }, uTailFade: { value: ST.tail_fade }, uPlanet: { value: new THREE.Vector4(0, -1, 0, 2) },
+  uAlphaMin: { value: ST.alpha_min }, uWhiten: { value: ST.whiten }, uPxRad: { value: 0.001 },
   uPxRatio: { value: 1 },
 };
 const STAR_COMMON = `
   uniform mat4 uVP, uPrevVP; uniform mat3 uRot, uPrevRot; uniform vec2 uViewport;
-  uniform float uTailScale, uMaxRad, uMinPx, uDimPerRad, uDimFloor, uTailFade, uPxRatio; uniform vec4 uPlanet;
+  uniform float uTailScale, uMaxRad, uMinPx, uDimPerRad, uDimFloor, uTailFade, uPxRatio, uAlphaMin, uWhiten, uPxRad; uniform vec4 uPlanet;
   attribute vec3 aDir; attribute float aBright; attribute vec3 aColor;
+  // At rest a star is its colour at its brightness (as over black before); as its tail grows past a quarter degree the
+  // streak lifts toward alpha_min and whitens, so it reads on a bright cloud.
+  vec4 starColour(float dim, float tail) {
+    float s = smoothstep(0.0, 0.0044, tail);
+    return vec4(mix(aColor, mix(aColor, vec3(1.0), uWhiten), s), mix(aBright, uAlphaMin + (1.0 - uAlphaMin) * aBright, s) * dim);
+  }
   // The tail's angle this frame and the brightness it leaves.
   float tailOf(out float moved) {
     vec3 a = uRot * aDir, b = uPrevRot * aDir;
@@ -3848,10 +3858,13 @@ function starGeometry(S, heads) {
   g.setAttribute("aSize", new THREE.BufferAttribute(size.slice(0, k), 1));
   return g;
 }
+// The lines and heads are alpha-blended toward the star's colour, whitened (FreeSpace: "use alphablended line so that
+// dark stars don't look bad on top of nebulas"), not added: an added faint line vanishes on a bright cloud, a blended one
+// reads as a pale line on it and as a bright one on black. Streaking, alpha is alpha_min + (1 - alpha_min) x brightness, times dim; at rest the brightness.
 const lineMat = new THREE.ShaderMaterial({
-  uniforms: starUniforms, transparent: true, depthTest: false, depthWrite: false, blending: THREE.AdditiveBlending,
+  uniforms: starUniforms, transparent: true, depthTest: false, depthWrite: false, blending: THREE.NormalBlending,
   vertexShader: `${STAR_COMMON}
-    attribute float aEnd; varying vec3 vCol;
+    attribute float aEnd; varying vec4 vCol;
     void main() {
       float moved; float tail = tailOf(moved);
       float ratio = moved > 1e-7 ? tail / moved : 0.0;
@@ -3859,27 +3872,30 @@ const lineMat = new THREE.ShaderMaterial({
       vec2 hp = p.xy / p.w * 0.5 * uViewport, qp = q.xy / q.w * 0.5 * uViewport;
       vec2 tp = q.w > 0.0 ? hp + (qp - hp) * ratio : hp;
       vec2 dv = tp - hp; float len = length(dv);
+      // Near the edge of the view the projection stretches: never longer than the cap's length at the centre, with room.
+      float maxPx = uMaxRad / uPxRad * 1.5;
+      if (len > maxPx) { tp = hp + dv * (maxPx / len); dv = tp - hp; len = maxPx; }
       if (len < uMinPx * uPxRatio) tp = hp + (len > 1e-4 ? dv / len : vec2(1.0, 0.0)) * uMinPx * uPxRatio;
       vec2 o = aEnd < 0.5 ? hp : tp;
       gl_Position = hidden() > 0.5 ? vec4(0.0, 0.0, 2.0, 1.0) : vec4(o / (0.5 * uViewport) * p.w, 0.0, p.w);
       float dim = max(uDimFloor, 1.0 - uDimPerRad * tail);
-      vCol = aColor * aBright * dim * (aEnd < 0.5 ? 1.0 : mix(1.0, uTailFade, smoothstep(0.0, 3.0 * uPxRatio, len)));
+      vCol = starColour(dim, tail); vCol.a *= aEnd < 0.5 ? 1.0 : mix(1.0, uTailFade, smoothstep(0.0, 3.0 * uPxRatio, len));
     }`,
-  fragmentShader: `varying vec3 vCol; void main() { gl_FragColor = vec4(vCol, 1.0); }`,
+  fragmentShader: `varying vec4 vCol; void main() { gl_FragColor = vCol; }`,
 });
 const headMat = new THREE.ShaderMaterial({
-  uniforms: starUniforms, transparent: true, depthTest: false, depthWrite: false, blending: THREE.AdditiveBlending,
+  uniforms: starUniforms, transparent: true, depthTest: false, depthWrite: false, blending: THREE.NormalBlending,
   vertexShader: `${STAR_COMMON}
-    attribute float aSize; varying vec3 vCol;
+    attribute float aSize; varying vec4 vCol;
     void main() {
       float moved; float tail = tailOf(moved);
       vec4 p = uVP * vec4(aDir, 1.0);
       gl_Position = hidden() > 0.5 ? vec4(0.0, 0.0, 2.0, 1.0) : vec4(p.xy, 0.0, p.w);
       float dim = max(uDimFloor, 1.0 - uDimPerRad * tail);
       gl_PointSize = (aSize + 1.0) * uPxRatio;
-      vCol = aColor * aBright * dim;
+      vCol = starColour(dim, tail);
     }`,
-  fragmentShader: `varying vec3 vCol; void main() { vec2 q = gl_PointCoord * 2.0 - 1.0; float r = dot(q, q); if (r > 1.0) discard; gl_FragColor = vec4(vCol * (1.0 - r) * (1.0 - r), 1.0); }`,
+  fragmentShader: `varying vec4 vCol; void main() { vec2 q = gl_PointCoord * 2.0 - 1.0; float r = dot(q, q); if (r > 1.0) discard; gl_FragColor = vec4(vCol.rgb, vCol.a * (1.0 - r) * (1.0 - r)); }`,
 });
 const STARS = {};
 for (const id of SKY_IDS) {
@@ -4174,6 +4190,7 @@ function drawView(cam, target, w, h, dt) {
   starUniforms.uViewport.value.set(w, h); starUniforms.uTailScale.value = tailScale;
   const tail = Math.min(turned * tailScale, ST.max_deg * DEG);
   nebulaMat.uniforms.uStars.value.z = (2 * Math.tan(cam.fov * DEG / 2)) / h;
+  starUniforms.uPxRad.value = nebulaMat.uniforms.uStars.value.z;
   nebulaMat.uniforms.uStars.value.w = Math.max(ST.dim_floor, 1 - (ST.dim_per_deg / DEG) * tail) * (1 - Math.min(1, tail / (ST.max_deg * DEG)) * 0.7);
   renderer.setRenderTarget(target);
   renderer.clear();
@@ -4225,6 +4242,7 @@ for (const id of SKY_IDS) {
   SHOTS.push(shot(`${L}-sky`, id, "sky"), shot(`${L}-tern`, id, "tern"), shot(`${L}-station`, id, "station"), shot(`${L}-bridge`, id, "bridge"), shot(`${L}-turn`, id, "turn", { title: "turning at 70 degrees a second, streaks on" }));
 }
 SHOTS.push(
+  shot("A-turn-dark", "bloom", "turn", { title: "the same turn, over a dark patch of sky", after: () => { const d = dirDeg(-150, -35); camera.lookAt(camera.position.clone().add(d)); FC.setLook(); } }),
   shot("A-turn-streaks-off", "bloom", "turn", { title: "the same turn, streaks off", before: () => {}, after: () => { state.streaks = false; } }),
   shot("A-mesh", "bloom", "tern", { title: "the mesh: denser where the colour changes", after: () => { state.wire = true; applySky(); } }),
   shot("A-ambient-off", "bloom", "tern", { title: "sky ambient off: a flat grey fill instead", after: () => { state.ambient = false; applySky(); } }),

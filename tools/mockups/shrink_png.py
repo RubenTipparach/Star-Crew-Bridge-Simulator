@@ -21,9 +21,16 @@ from PIL import Image
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
+# Shots of smooth gradients a palette would cut into contour bands: the nebula skies (openspec/changes/nebula-skies
+# design 3) are left in full colour.
+KEEP_FULL_COLOUR = ("nebula-skies",)
+
+
 def shrink(path):
     """Re-save one PNG as a dithered 256-colour palette image; returns (bytes before, bytes after)."""
     before = os.path.getsize(path)
+    if os.path.basename(path).startswith(KEEP_FULL_COLOUR):
+        return before, before
     with Image.open(path) as im:
         if im.mode == "P":
             return before, before
