@@ -49,7 +49,7 @@ impl App for FixtureApp {
         });
         let meshes = frame.meshes();
         if self.frames == 3 {
-            // The console's cost against the Pi 5 budget (CLAUDE.md 2): UI draw calls (one a clipped mesh), vertices
+            // What the console costs (CLAUDE.md 2, information): UI draw calls (one a clipped mesh), vertices
             // and indices a frame.
             let (v, i): (usize, usize) =
                 meshes.iter().fold((0, 0), |a, m| (a.0 + m.vertices.len(), a.1 + m.indices.len()));

@@ -18,7 +18,7 @@ shifted crop.
 The canvas is first resampled to one pixel per logical pixel (lp, design section 8.1) by area
 averaging, so every crop below is in the design's own units.
 
-The budget HUD that every mockup shows (CLAUDE.md 11) sits over the canvas's bottom-right corner.
+The draw meter that every mockup shows (CLAUDE.md 11) sits over the canvas's bottom-right corner.
 It is found in each shot (its left border column and its top), and the pixels under it are
 rebuilt from the console's own grid: a panel's plain fill with its border lines redrawn, the rest
 console background (whatever the panel showed there, the lower half of a footer button, is lost).
@@ -137,7 +137,7 @@ def near(a, b, tol):
 
 
 def find_hud(px):
-    """The budget HUD's box in the shot (shipkit budgetHud: fixed 12 px from the bottom right, a
+    """The draw meter's box in the shot (shipkit drawHud: fixed 12 px from the bottom right, a
     #2b3540 border, 8 px padding, 6 px corners). Along the row 20 px above the shot's bottom, in the
     HUD's padding, walk left from its right edge over the HUD's dark fill to its left border; the
     top is where that border column ends, less the corner. Returns (x, y) or None."""
@@ -305,7 +305,7 @@ def build():
             "canvas": ("derived from bridge.html layoutConsole() (its numbers read from the page), confirmed on each shot "
                        "(the gap at y 272-280 lp and the margins at x 0-20 and 1260-1280 lp are plain background), resampled to "
                        "1 px per lp by area averaging"),
-            "hud": "the budget HUD's corner is found in each shot and rebuilt from the panel grid (hud_masked_from_lp: x, y)",
+            "hud": "the draw meter's corner is found in each shot and rebuilt from the panel grid (hud_masked_from_lp: x, y)",
         },
         "image_px": list(IMAGE_PX),
         "palette_colours": PALETTE,

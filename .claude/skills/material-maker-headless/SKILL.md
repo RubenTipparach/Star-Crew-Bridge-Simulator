@@ -151,7 +151,7 @@ A render that "worked" can still be wrong. Before trusting maps, in this order:
 ## In this repository: Star Crew Bridge Simulator
 
 The texture rules are CLAUDE.md section 9 and the `material-maker` skill: one texture array of
-128 px RGBA layers, relief baked into the colour (the Pi 5 does no per-pixel lighting), emission
+128 px RGBA layers, relief baked into the colour (the look does no per-pixel lighting), emission
 in alpha, 64 px per metre inside and 32 on the hull, the contact sheet read before anything is
 done. This skill only gets Material Maker running; that skill says what to do with what it renders.
 
@@ -177,5 +177,5 @@ MATERIAL_MAKER_DIR=$MM_DIR tools/materials/export_materials.sh
 - `--from-fps` stays as the fallback for a machine that cannot fetch Material Maker at all.
 - Walls, ceilings, floors and trims are not Material Maker: they are panels modelled and baked in
   Blender (`panel-textures`). Material Maker makes the tiling materials and the hull.
-- A new material costs 87,380 bytes of texture memory on the Pi 5. Say so in the change that adds
+- A new material costs 87,380 bytes of texture memory. Say so in the change that adds
   it (CLAUDE.md 2).

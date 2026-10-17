@@ -20,8 +20,8 @@ recipe section looks, not commands for this repository.
 - A cloud session cannot run OBS. It makes screenshots of mockups with
   `tools/mockups/shoot.mjs` instead (CLAUDE.md section 11); videos of the running game are the
   owner's to record with this skill.
-- Smoothness is judged on the Pi 5 itself (CLAUDE.md section 2). A desktop recording shows what
-  the game looks like, not how it runs on the floor hardware.
+- Smoothness is judged on the most powerful connected machine (CLAUDE.md section 12), never a Pi
+  (section 2: the Pis test multiplayer).
 
 # Record a window with OBS
 

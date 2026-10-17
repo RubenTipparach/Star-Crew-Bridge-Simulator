@@ -15,7 +15,7 @@
     // Rooms bake for real (lib/roombake.js) when the page carries the baker; its cache is the page's bake-cache block.
     const cacheEl=document.querySelector('script[id^="bake-cache-"]');
     if(window.RoomBake&&window.LightBake&&cacheEl)window.ShipConcepts.bakePage=RoomBake.page({name:cacheEl.id.replace(/^bake-cache-/,'').replace(/-bake$/,''),THREE,K,LBK:window.LightBake,pmats:mats});
-    const hud=K.budgetHud({textureBytes:mats.bytes+(detail?.textureBytes||0),note:'Design review; no game or Pi timing claim.'});
+    const hud=K.drawHud({textureBytes:mats.bytes+(detail?.textureBytes||0),note:'Design review; no game timing claim.'});
     const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
     renderer.setPixelRatio(Math.min(devicePixelRatio,2));
     $('canvas').appendChild(renderer.domElement);
@@ -28,7 +28,7 @@
     const state={ship:data.ships[0],stage:'plan',deck:'B',mode:'plan',lighting:'normal',compare:false,selected:null};
     let model=new THREE.Group();scene.add(model);
     window.MOCKUP_SCENE=scene;
-    window.MOCKUP_BUDGET=()=>hud.read();
+    window.MOCKUP_DRAWS=()=>hud.read();
     function layout(){
       const L=structuredClone(state.ship.layout);
       if(state.stage==='plan') for(const r of L.compartments)r.brushes=structuredClone(r.initial_brushes);

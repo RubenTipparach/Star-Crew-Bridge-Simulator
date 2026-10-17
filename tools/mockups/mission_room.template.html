@@ -260,10 +260,10 @@
 
 </div></div></div>
 <div class="note" id="note"></div>
-<div class="cost">UI cost on the Pi 5 (designs, not measurements): the room's chat and list are part of its one egui panel; at a
+<div class="cost">UI cost (designs, not measurements): the room's chat and list are part of its one egui panel; at a
 console the chat line is one more text in the title band, on foot the strip three lines, and the log one panel (1-2 draw
 calls); a line is at most 115 bytes on the reliable channel, never in the snapshot; the end screen
-is one panel. The jump's streak is one full-screen quad for a second. A desktop frame rate is not a Pi measurement.</div>
+is one panel. The jump's streak is one full-screen quad for a second.</div>
 <script>
   const states = [...document.querySelectorAll('.state')];
   const tabs = document.getElementById('tabs'), note = document.getElementById('note');

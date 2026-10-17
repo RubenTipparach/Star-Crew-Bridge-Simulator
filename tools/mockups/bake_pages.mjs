@@ -7,7 +7,7 @@
  * (its <!-- INLINE bakecache:<name>-bake --> markers). Run it after changing anything a
  * page's rooms bake from (their geometry, props or lamps, data/lighting, lightbake.js or roombake.js); a stale cache
  * only makes the page bake live. The deck plan keeps its own tool (bake_ship.mjs), the spacedock its own
- * (bake_spacedock.mjs). Documentation tooling (CLAUDE.md 4): times are this machine's, not a Pi 5's.
+ * (bake_spacedock.mjs). Documentation tooling (CLAUDE.md 4): times are this machine's.
  *
  * Usage: node tools/mockups/bake_pages.mjs docs/mockups/bridge.html [more pages] [--timeout-min 60]
  */

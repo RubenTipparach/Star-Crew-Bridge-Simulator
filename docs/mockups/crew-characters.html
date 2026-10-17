@@ -42,7 +42,7 @@
   #loading { position:fixed; left:50%; top:45%; transform:translate(-50%,-50%); z-index:10; color:var(--dim); padding:20px; text-align:center; }
   #labels { position:absolute; inset:0; pointer-events:none; }
   .crew-label { position:absolute; transform:translate(-50%,0); font-size:12px; color:var(--dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-align:center; }
-  .pi-budget { background:var(--panel)!important; border-radius:10px!important; }
+  .draw-meter { background:var(--panel)!important; border-radius:10px!important; }
   @media (min-width:760px) {
     body.lineup #viewport { top:116px; right:288px; bottom:var(--controls-height,364px); }
   }
@@ -54,7 +54,7 @@
     button { padding:5px 7px; font-size:12px; }
     .info { width:230px; top:48px; right:12px; max-height:calc(100vh - 325px); overflow:auto; }
     .mockup-title { max-width:calc(100vw - 24px)!important; top:48px!important; }
-    .pi-budget { bottom:266px!important; }
+    .draw-meter { bottom:266px!important; }
     .crew-label { font-size:10px; }
   }
 </style>
@@ -66,7 +66,7 @@
 </script>
 <!-- INLINE data:crew/characters BEGIN -->
 <script id="ship-data-characters" type="application/json">
-{"schema":"starcrew.characters/1","_doc":"Original cartoon review characters, built by tools/blender/build_crew_characters.py. Dimensions are metres before height fitting. Multipliers exaggerate the shared silhouette. Department colours come from company.json. Pending characters never replace crew-npcs figures. UV0 stores geometric part tags for file measurements; colour is palette albedo, with no texture.","budget":{"triangles":3000,"bones":30,"materials":1,"draw_calls":1},"proportions":{"head_scale":1.32,"hand_scale":1.28,"foot_scale":1.22,"neck_length_scale":0.6,"shoulder_width_scale":0.9,"waist_width_scale":0.8,"leg_length_scale":0.88},"anatomy_m":{"head_width":0.43,"head_depth":0.34,"head_height":0.43,"neck_radius":0.083,"neck_length":0.095,"chest_width":0.53,"chest_depth":0.26,"torso_length":0.44,"waist_width":0.39,"waist_depth":0.23,"hip_width":0.4,"leg_length":0.7,"leg_spacing":0.116,"leg_radius":0.077,"boot_height":0.21,"foot_width":0.14,"foot_length":0.235,"hand_width":0.12,"hand_depth":0.1,"hand_height":0.16,"arm_radius":0.062,"arm_length":0.48},"garments_m":{"clearance":0.018,"hem_height":0.033,"cuff_height":0.029,"collar_height":0.042,"collar_thickness":0.012,"boot_sole_height":0.025,"badge_width":0.044,"badge_height":0.058,"badge_depth":0.012},"face":{"eye_width_face_ratio":0.2,"eye_height_width_ratio":1.1,"iris_width_eye_ratio":0.55,"pupil_width_iris_ratio":0.4,"eye_spacing_face_ratio":0.225,"eye_height_head_ratio":0.565,"eye_bulge_m":0.01,"eyelid_margin_m":0.004,"brow_width_eye_ratio":1.16,"brow_thickness_m":0.023,"nose_width_m":0.038,"nose_depth_m":0.041,"mouth_width_m":0.098,"mouth_thickness_m":0.006,"ear_width_m":0.068,"ear_height_m":0.112,"hair_clearance_m":0.012},"topology":{"head_sides":20,"body_sides":10,"limb_sides":8,"eye_sides":16,"detail_sides":8},"palette_srgb":{"trousers":[0.13,0.17,0.22],"boots":[0.075,0.1,0.14],"trim":[0.08,0.12,0.16],"seam":[0.29,0.34,0.39],"eye_white":[0.96,0.96,0.91],"pupil":[0.035,0.045,0.06],"badge":[0.78,0.84,0.82],"mouth":[0.3,0.12,0.105]},"preview_cubes_linear":{"_doc":"Illustrative offline six-face irradiance, ordered +X,-X,+Y,-Y,+Z,-Z in game axes. These are review probes, not compiled deck probes or a Pi measurement.","normal":[[0.68,0.72,0.82],[0.5,0.55,0.66],[0.98,0.94,0.86],[0.28,0.31,0.38],[0.82,0.85,0.9],[0.4,0.44,0.54]],"red_alert":[[0.68,0.1,0.075],[0.4,0.045,0.035],[0.96,0.16,0.1],[0.22,0.025,0.02],[0.74,0.12,0.09],[0.32,0.045,0.04]],"emergency":[[0.12,0.2,0.24],[0.075,0.1,0.14],[0.24,0.4,0.43],[0.035,0.055,0.075],[0.19,0.31,0.34],[0.055,0.09,0.12]]},"characters":[{"id":"command_01","department":"command","approval":"pending","height_m":1.8,"build_scale":1.05,"skin_srgb":[0.73,0.49,0.34],"hair_srgb":[0.18,0.12,0.09],"iris_srgb":[0.28,0.49,0.6],"hair_style":"swept","sex":"male"},{"id":"command_02","department":"command","approval":"pending","height_m":1.72,"build_scale":1.05,"skin_srgb":[0.73,0.49,0.34],"hair_srgb":[0.18,0.12,0.09],"iris_srgb":[0.28,0.49,0.6],"hair_style":"bob","sex":"female"},{"id":"engineering_01","department":"engineering","approval":"pending","height_m":1.76,"build_scale":1.1,"skin_srgb":[0.38,0.23,0.17],"hair_srgb":[0.075,0.065,0.055],"iris_srgb":[0.52,0.38,0.2],"hair_style":"crop","sex":"male"},{"id":"engineering_02","department":"engineering","approval":"pending","height_m":1.68,"build_scale":1.1,"skin_srgb":[0.38,0.23,0.17],"hair_srgb":[0.075,0.065,0.055],"iris_srgb":[0.52,0.38,0.2],"hair_style":"bob","sex":"female"},{"id":"deckhands_01","department":"deckhands","approval":"pending","height_m":1.84,"build_scale":0.98,"skin_srgb":[0.78,0.59,0.43],"hair_srgb":[0.38,0.17,0.09],"iris_srgb":[0.37,0.52,0.37],"hair_style":"swept","sex":"male"},{"id":"deckhands_02","department":"deckhands","approval":"pending","height_m":1.76,"build_scale":0.98,"skin_srgb":[0.78,0.59,0.43],"hair_srgb":[0.38,0.17,0.09],"iris_srgb":[0.37,0.52,0.37],"hair_style":"bob","sex":"female"},{"id":"medical_01","department":"medical","approval":"pending","height_m":1.72,"build_scale":0.94,"skin_srgb":[0.64,0.4,0.27],"hair_srgb":[0.105,0.085,0.08],"iris_srgb":[0.27,0.46,0.56],"hair_style":"crop","sex":"male"},{"id":"medical_02","department":"medical","approval":"pending","height_m":1.64,"build_scale":0.94,"skin_srgb":[0.64,0.4,0.27],"hair_srgb":[0.105,0.085,0.08],"iris_srgb":[0.27,0.46,0.56],"hair_style":"bob","sex":"female"},{"id":"security_01","department":"security","approval":"pending","height_m":1.82,"build_scale":1.08,"skin_srgb":[0.53,0.34,0.25],"hair_srgb":[0.13,0.12,0.13],"iris_srgb":[0.33,0.41,0.5],"hair_style":"crop","sex":"male"},{"id":"security_02","department":"security","approval":"pending","height_m":1.74,"build_scale":1.08,"skin_srgb":[0.53,0.34,0.25],"hair_srgb":[0.13,0.12,0.13],"iris_srgb":[0.33,0.41,0.5],"hair_style":"bob","sex":"female"},{"id":"galley_01","department":"galley","approval":"pending","height_m":1.7,"build_scale":1.02,"skin_srgb":[0.84,0.64,0.51],"hair_srgb":[0.55,0.58,0.58],"iris_srgb":[0.28,0.48,0.51],"hair_style":"swept","sex":"male"},{"id":"galley_02","department":"galley","approval":"pending","height_m":1.62,"build_scale":1.02,"skin_srgb":[0.84,0.64,0.51],"hair_srgb":[0.55,0.58,0.58],"iris_srgb":[0.28,0.48,0.51],"hair_style":"bob","sex":"female"}]}
+{"schema":"starcrew.characters/1","_doc":"Original cartoon review characters, built by tools/blender/build_crew_characters.py. Dimensions are metres before height fitting. Multipliers exaggerate the shared silhouette. Department colours come from company.json. Pending characters never replace crew-npcs figures. UV0 stores geometric part tags for file measurements; colour is palette albedo, with no texture.","budget":{"triangles":3000,"bones":30,"materials":1,"draw_calls":1},"proportions":{"head_scale":1.32,"hand_scale":1.28,"foot_scale":1.22,"neck_length_scale":0.6,"shoulder_width_scale":0.9,"waist_width_scale":0.8,"leg_length_scale":0.88},"anatomy_m":{"head_width":0.43,"head_depth":0.34,"head_height":0.43,"neck_radius":0.083,"neck_length":0.095,"chest_width":0.53,"chest_depth":0.26,"torso_length":0.44,"waist_width":0.39,"waist_depth":0.23,"hip_width":0.4,"leg_length":0.7,"leg_spacing":0.116,"leg_radius":0.077,"boot_height":0.21,"foot_width":0.14,"foot_length":0.235,"hand_width":0.12,"hand_depth":0.1,"hand_height":0.16,"arm_radius":0.062,"arm_length":0.48},"garments_m":{"clearance":0.018,"hem_height":0.033,"cuff_height":0.029,"collar_height":0.042,"collar_thickness":0.012,"boot_sole_height":0.025,"badge_width":0.044,"badge_height":0.058,"badge_depth":0.012},"face":{"eye_width_face_ratio":0.2,"eye_height_width_ratio":1.1,"iris_width_eye_ratio":0.55,"pupil_width_iris_ratio":0.4,"eye_spacing_face_ratio":0.225,"eye_height_head_ratio":0.565,"eye_bulge_m":0.01,"eyelid_margin_m":0.004,"brow_width_eye_ratio":1.16,"brow_thickness_m":0.023,"nose_width_m":0.038,"nose_depth_m":0.041,"mouth_width_m":0.098,"mouth_thickness_m":0.006,"ear_width_m":0.068,"ear_height_m":0.112,"hair_clearance_m":0.012},"topology":{"head_sides":20,"body_sides":10,"limb_sides":8,"eye_sides":16,"detail_sides":8},"palette_srgb":{"trousers":[0.13,0.17,0.22],"boots":[0.075,0.1,0.14],"trim":[0.08,0.12,0.16],"seam":[0.29,0.34,0.39],"eye_white":[0.96,0.96,0.91],"pupil":[0.035,0.045,0.06],"badge":[0.78,0.84,0.82],"mouth":[0.3,0.12,0.105]},"preview_cubes_linear":{"_doc":"Illustrative offline six-face irradiance, ordered +X,-X,+Y,-Y,+Z,-Z in game axes. These are review probes, not compiled deck probes.","normal":[[0.68,0.72,0.82],[0.5,0.55,0.66],[0.98,0.94,0.86],[0.28,0.31,0.38],[0.82,0.85,0.9],[0.4,0.44,0.54]],"red_alert":[[0.68,0.1,0.075],[0.4,0.045,0.035],[0.96,0.16,0.1],[0.22,0.025,0.02],[0.74,0.12,0.09],[0.32,0.045,0.04]],"emergency":[[0.12,0.2,0.24],[0.075,0.1,0.14],[0.24,0.4,0.43],[0.035,0.055,0.075],[0.19,0.31,0.34],[0.055,0.09,0.12]]},"characters":[{"id":"command_01","department":"command","approval":"pending","height_m":1.8,"build_scale":1.05,"skin_srgb":[0.73,0.49,0.34],"hair_srgb":[0.18,0.12,0.09],"iris_srgb":[0.28,0.49,0.6],"hair_style":"swept","sex":"male"},{"id":"command_02","department":"command","approval":"pending","height_m":1.72,"build_scale":1.05,"skin_srgb":[0.73,0.49,0.34],"hair_srgb":[0.18,0.12,0.09],"iris_srgb":[0.28,0.49,0.6],"hair_style":"bob","sex":"female"},{"id":"engineering_01","department":"engineering","approval":"pending","height_m":1.76,"build_scale":1.1,"skin_srgb":[0.38,0.23,0.17],"hair_srgb":[0.075,0.065,0.055],"iris_srgb":[0.52,0.38,0.2],"hair_style":"crop","sex":"male"},{"id":"engineering_02","department":"engineering","approval":"pending","height_m":1.68,"build_scale":1.1,"skin_srgb":[0.38,0.23,0.17],"hair_srgb":[0.075,0.065,0.055],"iris_srgb":[0.52,0.38,0.2],"hair_style":"bob","sex":"female"},{"id":"deckhands_01","department":"deckhands","approval":"pending","height_m":1.84,"build_scale":0.98,"skin_srgb":[0.78,0.59,0.43],"hair_srgb":[0.38,0.17,0.09],"iris_srgb":[0.37,0.52,0.37],"hair_style":"swept","sex":"male"},{"id":"deckhands_02","department":"deckhands","approval":"pending","height_m":1.76,"build_scale":0.98,"skin_srgb":[0.78,0.59,0.43],"hair_srgb":[0.38,0.17,0.09],"iris_srgb":[0.37,0.52,0.37],"hair_style":"bob","sex":"female"},{"id":"medical_01","department":"medical","approval":"pending","height_m":1.72,"build_scale":0.94,"skin_srgb":[0.64,0.4,0.27],"hair_srgb":[0.105,0.085,0.08],"iris_srgb":[0.27,0.46,0.56],"hair_style":"crop","sex":"male"},{"id":"medical_02","department":"medical","approval":"pending","height_m":1.64,"build_scale":0.94,"skin_srgb":[0.64,0.4,0.27],"hair_srgb":[0.105,0.085,0.08],"iris_srgb":[0.27,0.46,0.56],"hair_style":"bob","sex":"female"},{"id":"security_01","department":"security","approval":"pending","height_m":1.82,"build_scale":1.08,"skin_srgb":[0.53,0.34,0.25],"hair_srgb":[0.13,0.12,0.13],"iris_srgb":[0.33,0.41,0.5],"hair_style":"crop","sex":"male"},{"id":"security_02","department":"security","approval":"pending","height_m":1.74,"build_scale":1.08,"skin_srgb":[0.53,0.34,0.25],"hair_srgb":[0.13,0.12,0.13],"iris_srgb":[0.33,0.41,0.5],"hair_style":"bob","sex":"female"},{"id":"galley_01","department":"galley","approval":"pending","height_m":1.7,"build_scale":1.02,"skin_srgb":[0.84,0.64,0.51],"hair_srgb":[0.55,0.58,0.58],"iris_srgb":[0.28,0.48,0.51],"hair_style":"swept","sex":"male"},{"id":"galley_02","department":"galley","approval":"pending","height_m":1.62,"build_scale":1.02,"skin_srgb":[0.84,0.64,0.51],"hair_srgb":[0.55,0.58,0.58],"iris_srgb":[0.28,0.48,0.51],"hair_style":"bob","sex":"female"}]}
 </script>
 <!-- INLINE data:crew/characters END -->
 <!-- INLINE data:crew/company BEGIN -->
@@ -87,8 +87,8 @@
  * Every Star Crew mockup reads the same layout (data/ships/<id>/layout.json), so
  * the bridge, the deck plan, the systems view and the exterior cannot disagree
  * about where a room or a door is (CLAUDE.md sections 8 and 11). This file is
- * the shared interpretation of that layout: palette, lighting states, the Pi 5
- * budget meter, room shells with door openings cut, the generated detail (frames,
+ * the shared interpretation of that layout: palette, lighting states, the draw
+ * meter, room shells with door openings cut, the generated detail (frames,
  * coves, trims, door frames, conduits, lamps), the Material Maker texture array,
  * the hull loft and labels.
  *
@@ -127,20 +127,8 @@
     return JSON.parse(el.textContent);
   }
 
-  /**
-   * The Raspberry Pi 5 (1 GB) budget a mockup is measured against. These are
-   * the provisional numbers from openspec/changes/engine-stack/design.md,
-   * "The Pi 5 budget"; that table is the source, and this copy is checked
-   * against its marker by tools/mockups/inline.py --check.
-   */
-  const PI_BUDGET = {
-    board: "Pi 5 (1 GB)",
-    triangles: 200000,       // visible triangles per frame, all passes
-    drawCalls: 300,          // draw calls per frame, all passes
-    textureMB: 96,           // texture memory
-    viewscreenPx: [1024, 512], // render-to-texture size for the main viewscreen
-    frameMs: 16.7,           // 60 frames a second target (33.3 ms floor), 3D at 1280x720
-  };
+  /** The main viewscreen's render-to-texture size, pixels (the engine's viewscreen feed). */
+  const VIEWSCREEN_PX = [1024, 512];
 
   /** Named colour roles. Mockups use roles, not hex values (CLAUDE.md section 10). */
   const PALETTE = {
@@ -2744,19 +2732,20 @@
     return s;
   }
 
-  // ------------------------------------------------------------ budget HUD
+  // ------------------------------------------------------------ draw meter
 
   /**
-   * The Pi 5 cost meter every mockup shows (CLAUDE.md section 11). Call
+   * The draw meter a mockup shows (CLAUDE.md section 11): what the page draws, as counts, against no
+   * budget (CLAUDE.md section 2: there is no Pi budget). Call
    * hud.beginFrame(renderer) before the frame's first render and
    * hud.endFrame(renderer) after its last; it sums every pass (a viewscreen's
    * render-to-texture included). Set hud.textureBytes (loadMaterials' bytes) to
    * add the texture memory line.
    */
-  function budgetHud(opts) {
+  function drawHud(opts) {
     opts = opts || {};
     const el = document.createElement("div");
-    el.className = "pi-budget";
+    el.className = "draw-meter";
     el.style.cssText = [
       "position:fixed", "right:12px", "bottom:12px", "z-index:20", "font:12px/1.35 ui-monospace,Menlo,Consolas,monospace",
       "color:#d8e2ec", "background:rgba(6,9,14,0.82)", "border:1px solid #2b3540", "border-radius:6px", "padding:8px 10px",
@@ -2764,11 +2753,6 @@
     ].join(";");
     document.body.appendChild(el);
     let frames = 0, acc = { t: 0, c: 0 }, last = performance.now(), shown = { t: 0, c: 0, fps: 0 };
-    const bar = (v, max) => {
-      const f = Math.min(1, v / max);
-      const color = v > max ? "#ff5252" : v > 0.8 * max ? "#ffb300" : "#66bb6a";
-      return `<div style="height:5px;background:#1c242d;border-radius:3px;margin:2px 0 5px"><div style="height:5px;width:${(f * 100).toFixed(1)}%;background:${color};border-radius:3px"></div></div>`;
-    };
     const hud = {
       el, textureBytes: opts.textureBytes || 0,
       beginFrame(renderer) { renderer.info.autoReset = false; renderer.info.reset(); },
@@ -2785,14 +2769,13 @@
       read() { return { triangles: shown.t, drawCalls: shown.c, textureMB: hud.textureBytes / 1048576 }; },
     };
     function render() {
-      const b = PI_BUDGET, mb = hud.textureBytes / 1048576;
+      const mb = hud.textureBytes / 1048576;
       el.innerHTML =
-        `<div style="font-weight:700;margin-bottom:4px">${PI_BUDGET.board} budget (provisional)</div>` +
-        `triangles ${shown.t.toLocaleString()} / ${b.triangles.toLocaleString()}${bar(shown.t, b.triangles)}` +
-        `draw calls ${shown.c} / ${b.drawCalls}${bar(shown.c, b.drawCalls)}` +
-        (mb ? `textures ${mb.toFixed(2)} / ${b.textureMB} MB${bar(mb, b.textureMB)}` : "") +
-        `<div style="color:#8a98a8">desktop ${shown.fps.toFixed(0)} fps: not a Pi measurement</div>` +
-        (opts.note ? `<div style="color:#8a98a8">${opts.note}</div>` : "");
+        `<div style="font-weight:700;margin-bottom:4px">Draws</div>` +
+        `<div>triangles ${shown.t.toLocaleString()}</div>` +
+        `<div>draw calls ${shown.c}</div>` +
+        (mb ? `<div>textures ${mb.toFixed(2)} MB</div>` : "") +
+        (opts.note ? `<div style="color:#8a98a8;margin-top:4px">${opts.note}</div>` : "");
     }
     return hud;
   }
@@ -2800,8 +2783,7 @@
   // -------------------------------------------------------- mockup plumbing
 
   /**
-   * Standard page chrome: title block naming the change the mockup presents,
-   * and the "mockup, not a Pi measurement" disclaimer.
+   * Standard page chrome: title block naming the change the mockup presents.
    */
   function titleBlock(opts) {
     const el = document.createElement("div");
@@ -2810,7 +2792,7 @@
     el.innerHTML =
       `<div style="font-weight:700;font-size:15px">${opts.title}</div>` +
       `<div style="color:#9fb0c0">${opts.subtitle || ""}</div>` +
-      `<div style="color:#7f8fa0;margin-top:4px">Presents <code>${opts.change}</code>. A three.js mockup on a desktop GPU: it shows layout and look, not Pi 5 performance.</div>`;
+      `<div style="color:#7f8fa0;margin-top:4px">Presents <code>${opts.change}</code>. A three.js mockup: it shows layout and look.</div>`;
     document.body.appendChild(el);
     return el;
   }
@@ -2833,7 +2815,7 @@
   /**
    * A small close button on each of a page's floating panels, so a viewer on a phone can clear the
    * view (owner, 2026-10-06: "There's lots of popups, cluttered on my phone. Add little x marks so I
-   * can close some of these and get a better view"). The panels are the title block, the Pi 5 meter
+   * can close some of these and get a better view"). The panels are the title block, the draw meter
    * and, by convention, any element of class controls, info, legend or route, id side, or with a
    * data-closable attribute (CLOSABLE). A closed panel is hidden, never removed, and a "Show panels"
    * pill at the top brings them all back; which ones a viewer closed is remembered in their own
@@ -2841,7 +2823,7 @@
    * panel's top right corner every frame, so a page that rewrites a panel's contents (the meter, an
    * info panel) never loses its button. markReady() calls it once, after the page has built its panels.
    */
-  const CLOSABLE = ".mockup-title, .pi-budget, .controls, .info, .legend, .route, #side, [data-closable]";
+  const CLOSABLE = ".mockup-title, .draw-meter, .controls, .info, .legend, .route, #side, [data-closable]";
   const PHONE_PX = 760;   // the pages' own narrow-screen breakpoint
   function panelChrome() {
     if (panelChrome.done || typeof document === "undefined") return;
@@ -2899,7 +2881,7 @@
 
   window.ShipKit = {
     version: 2,
-    layout, shipData, PI_BUDGET, PALETTE, LIGHTING,
+    layout, shipData, VIEWSCREEN_PX, PALETTE, LIGHTING,
     lightingData, fixtureStates, bakeSettings, ambientLux, bakeCap, hexLinear,
     byId, compartment, applyPatch, portalsOf, stationsIn, systemsIn, deckById,
     // plan geometry
@@ -2912,7 +2894,7 @@
     loadPanels, panelsData, panelBands, panelBays, fnv1a, decodePng, panelLayerList, panelLayerName, walkwayPaths,
     Builder, subdivideParts, buildPlatforms, platformCovers, kickOutline, edgeBands, buildSpiralStair, spiralReach, spiralCorners, buildLiftCar, buildFitout, platformRows,
     // hull, labels, chrome
-    hullGeometry, hullHalfWidth, label, budgetHud, titleBlock, registerShots, markReady, panelChrome,
+    hullGeometry, hullHalfWidth, label, drawHud, titleBlock, registerShots, markReady, panelChrome,
     rectMinusHoles, intervalMinus, worldUv,
   };
 })();
@@ -2968,8 +2950,8 @@ function populateCrew() {
 }
 const info = document.getElementById("asset-info");
 K.titleBlock({title:"Cartoon crew", subtitle:"Rigged in Blender. Awaiting screenshot approval.", change:"crew-characters"});
-const hud = K.budgetHud({note:"Review avatars and plinth. Lighting is illustrative."});
-window.MOCKUP_BUDGET = () => hud.read();
+const hud = K.drawHud({note:"Review avatars and plinth. Lighting is illustrative."});
+window.MOCKUP_DRAWS = () => hud.read();
 
 const renderer = new THREE.WebGLRenderer({antialias:true});
 renderer.setPixelRatio(Math.min(devicePixelRatio,2));

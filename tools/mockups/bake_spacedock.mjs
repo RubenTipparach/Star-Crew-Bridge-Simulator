@@ -5,7 +5,7 @@
  * ?bake=fresh, waits for every bay's bake (each inside's three colour sets and its light probes), writes them to
  * docs/mockups/cache/spacedock-bake.bin (tools/mockups/bakecache.mjs) and inlines it into the page. Run it after
  * changing anything the bay's bake reads (its geometry or fixtures, data/lighting, lightbake.js); a stale cache only
- * makes the page bake live. Documentation tooling (CLAUDE.md 4): the time it prints is this machine's, not a Pi 5's.
+ * makes the page bake live. Documentation tooling (CLAUDE.md 4): the time it prints is this machine's.
  *
  * Usage: node tools/mockups/bake_spacedock.mjs [--timeout-min 90]
  */

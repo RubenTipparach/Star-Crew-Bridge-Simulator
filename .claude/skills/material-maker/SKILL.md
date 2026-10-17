@@ -1,6 +1,6 @@
 ---
 name: material-maker
-description: Make, change and judge Star Crew's surface materials the repository's way. Material Maker graphs (.ptex) rendered and post-processed into 128 px RGBA layers of one texture array, with relief baked into the albedo under a fixed key light (no PBR on the Pi 5), a fixed texel density (64 px/m inside, 32 px/m on the hull), palette reduction, emission in alpha, and a contact sheet looked at before it is done. Data in data/materials/materials.json, tools in tools/materials. Use whenever making a texture, adding a new material, editing or exporting a Material Maker graph or ptex, recolouring a material, building or checking the texture atlas or texture array, setting texel density or tile size, or asking what a texture costs on the Pi ("make a texture", "new material", "Material Maker", "ptex", "texture atlas", "recolour a material", "texel density", "why does this wall look flat", "the floor texture has a seam").
+description: Make, change and judge Star Crew's surface materials the repository's way. Material Maker graphs (.ptex) rendered and post-processed into 128 px RGBA layers of one texture array, with relief baked into the albedo under a fixed key light (no PBR in the look), a fixed texel density (64 px/m inside, 32 px/m on the hull), palette reduction, emission in alpha, and a contact sheet looked at before it is done. Data in data/materials/materials.json, tools in tools/materials. Use whenever making a texture, adding a new material, editing or exporting a Material Maker graph or ptex, recolouring a material, building or checking the texture atlas or texture array, setting texel density or tile size, or asking what a texture costs ("make a texture", "new material", "Material Maker", "ptex", "texture atlas", "recolour a material", "texel density", "why does this wall look flat", "the floor texture has a seam").
 metadata:
   author: Star Crew (Claude Code)
   version: "1.0"
@@ -112,14 +112,14 @@ provenance. This is how to work with them.
 | Banding | Steps in a smooth gradient | `colours` too low | Raise `colours` |
 | Invisible PNG | A layer looks empty in an image viewer | Alpha 0 is "not emissive", by design | Look at the contact sheet |
 
-## The Pi 5 cost
+## What a layer costs
 
 A layer is 128 x 128 RGBA8 with its mip chain: **87,380 bytes**. The eleven layers of 2026-10-05
 are 961,180 bytes (0.92 MiB), about 1% of the 96 MB texture memory in
 `openspec/changes/engine-stack` design section 5, which stays the source for that number: quote
 it from there, never from here. Every new material adds 87,380 bytes; say so in the change that
-adds it (CLAUDE.md 2). ETC2 would cut a layer to a quarter, but block compression is worst on
-small palettised pixel art; it is not used, and would be measured on a Pi before it was.
+adds it (CLAUDE.md 2, information, not a gate). ETC2 would cut a layer to a quarter, but block compression is worst on
+small palettised pixel art; it is not used, and would be measured before it was.
 
 ## In Star Crew, unlike Undercity
 

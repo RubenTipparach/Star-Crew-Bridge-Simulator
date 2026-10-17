@@ -61,5 +61,5 @@
       "rejection": "[crew] command_01: underarm contour L turns 81.05 degrees, limit 75"
     }
   ],
-  "scope": "Exported review assets and rejection cases. Posed clothing and source IK controls are checked separately in rig-validation.json. Engine adoption, live deck probes and Pi measurements remain pending."
+  "scope": "Exported review assets and rejection cases. Posed clothing and source IK controls are checked separately in rig-validation.json. Engine adoption and live deck probes remain pending."
 }

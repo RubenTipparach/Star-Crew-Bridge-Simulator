@@ -201,14 +201,15 @@ with the `cc` crate:
   reruns on any vendored file's change and the render tests catch the rest.
 
 
-## 5. The Pi 5 budget
+## 5. The Pi 5 budget (retired: history only)
 
-<!-- pi-budget triangles=200000 draw_calls=300 texture_mb=96 -->
+> **Retired 2026-10-17, and banned** (owner: "disregard pi measurements", "there is not pi budget req";
+> CLAUDE.md section 2). Nothing is measured or checked against this table any more; it stays as the
+> record of what was planned. No tool reads it.
 
 **Provisional.** Estimates from published figures and from the scale of comparable games, to be
 replaced by `sc-probe` measurements on a 1 GB Pi 5. This table is the one source for these
-numbers (CLAUDE.md section 2); the marker comment above is read by
-`tools/mockups/inline.py --check` so the mockups' meter cannot drift from it. The budgets are
+numbers (CLAUDE.md section 2, before 2026-10-17). The budgets are
 ceilings, not targets: low poly is the style (owner: "this game doesn't need high end graphics").
 
 **The client, on a 1 GB Pi 5**

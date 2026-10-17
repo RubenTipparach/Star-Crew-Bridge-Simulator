@@ -1,6 +1,6 @@
 ---
 name: threejs-mockups
-description: Build, inline, screenshot and publish a Star Crew three.js mockup the repository's way - one page per subject in docs/mockups, reading the one ship layout through shipkit.js, lit by its own fixtures in normal and red-alert states, showing its Pi 5 triangle and draw-call cost, with named screenshot shots checked by eye before it is shown. Use whenever making or changing a mockup, a 3D view of the ship, a console UI mockup, or anything under docs/mockups ("mock up the bridge", "show the hangar in 3D", "update the deck plan", "screenshot the mockups", "publish the mockup").
+description: Build, inline, screenshot and publish a Star Crew three.js mockup the repository's way - one page per subject in docs/mockups, reading the one ship layout through shipkit.js, lit by its own fixtures in normal and red-alert states, showing the triangles and draw calls it draws (no Pi budget), with named screenshot shots checked by eye before it is shown. Use whenever making or changing a mockup, a 3D view of the ship, a console UI mockup, or anything under docs/mockups ("mock up the bridge", "show the hangar in 3D", "update the deck plan", "screenshot the mockups", "publish the mockup").
 metadata:
   author: Star Crew (Claude Code)
   version: "2.0"
@@ -17,13 +17,13 @@ is how to follow them.
 | File | What it is |
 | --- | --- |
 | `data/ships/<id>/layout.json` | The one layout source. A mockup never hand-places a room, door, seat or system. |
-| `docs/mockups/lib/shipkit.js` | The shared interpretation of the layout (schema `starcrew.ship-layout/2`: rooms are convex prism brushes that follow the hull; portals carry a normal). `compartmentMesh()` builds a room as one textured mesh: the shell with every opening cut, plus the generated detail (frames, coves, beams, baseboards, door and window frames, conduits, railings, ladders, rims, lamp fixtures) from `data/ships/<id>/detailing.json`. `loadMaterials()` decodes the Material Maker layers into one texture array, `surfaceMaterial()` draws with it (lit, or `lit: false` for baked vertex light), `bakeDirect()` is the stand-in bake, `lampsFor()` the lamp rule. Also `PALETTE` (colour roles), `LIGHTING` (normal, red alert, emergency), `PI_BUDGET`, `hullGeometry()` (textured with `{ mats }`), `label()`, `budgetHud()`, `titleBlock()`, `registerShots()`, `markReady()` (which also gives every floating panel its close button: see below), `applyPatch()` (a layout patch such as `command_suite.json` applied to a copy of the layout), and lookups and geometry (`compartment`, `portalsOf`, `portalFrame`, `portalPoint`, `wallsOf`, `measure`, `bounds`, `center`, `brushAt`, `floorAt`, `insidePoly`, `chord`). Edit it here, never inside a page. |
+| `docs/mockups/lib/shipkit.js` | The shared interpretation of the layout (schema `starcrew.ship-layout/2`: rooms are convex prism brushes that follow the hull; portals carry a normal). `compartmentMesh()` builds a room as one textured mesh: the shell with every opening cut, plus the generated detail (frames, coves, beams, baseboards, door and window frames, conduits, railings, ladders, rims, lamp fixtures) from `data/ships/<id>/detailing.json`. `loadMaterials()` decodes the Material Maker layers into one texture array, `surfaceMaterial()` draws with it (lit, or `lit: false` for baked vertex light), `bakeDirect()` is the stand-in bake, `lampsFor()` the lamp rule. Also `PALETTE` (colour roles), `LIGHTING` (normal, red alert, emergency), `PI_BUDGET`, `hullGeometry()` (textured with `{ mats }`), `label()`, `drawHud()`, `titleBlock()`, `registerShots()`, `markReady()` (which also gives every floating panel its close button: see below), `applyPatch()` (a layout patch such as `command_suite.json` applied to a copy of the layout), and lookups and geometry (`compartment`, `portalsOf`, `portalFrame`, `portalPoint`, `wallsOf`, `measure`, `bounds`, `center`, `brushAt`, `floorAt`, `insidePoly`, `chord`). Edit it here, never inside a page. |
 | `docs/mockups/lib/freecam.js` | The one free camera (owner: "I want to be able to look around, or orbit camera or pan around instead of fixed camera angles too"): orbit, pan and zoom, or look around and move at eye level, or walk on the deck. Every interior page gives the viewer one, from wherever its fixed views put the camera. Inlined by `<!-- INLINE lib:freecam -->`; the page imports three's `OrbitControls` and passes it in. |
 | `docs/mockups/lib/shipwalk.js` | Walking a whole ship in first person, deck to deck (owner: "do you have fps mode in deck plan for me to run arond?"): crew-on-deck's body (0.30 m capsule, eye at 1.65 m, 0.35 m steps) at its speeds, colliding with the rooms as drawn through an Octree of their meshes (`ShipWalk.octreeOf`, with covers over floor openings, windows and doors to space; a placed prop by its bounds), climbing ladders and hatches with E, riding a lift. Keyboard and mouse (pointer lock or drag), or a stick and buttons on a touch screen. The deck plan's Walk button uses it, and `window.MOCKUP_WALK` drives it headless for checks. Inlined by `<!-- INLINE lib:shipwalk -->`; the page imports three's `Octree` and `Capsule` and passes `Capsule` in. freecam.js's one-floor walk is the older copy: a page with one floor may keep it until it moves onto this. |
 | `docs/mockups/lib/propkit.js` | The Blender props in a page: loads the prop sets the page carries (`<!-- INLINE models:<set> -->`), picks a station's own variant of a prop, places a prop by its back and the way it faces (`placeProp`, with an accent colour), seats a crew figure (`placeCrew`), and draws the console faces of `bridge-stations` 11.6 in one atlas (`addFaces`, `faceMat`; a `strip` screen tiles the station's images along a table's inlay). The bridge variants, the command deck and the deck plan use it; a box of `opts.sizes[kind]` stands in for a prop the page does not carry. A prop's `light_panel` strips glow. `spaceViews(layout, opts)` puts the starfield on every viewscreen and in every window (one copy for every page). Inlined by `<!-- INLINE lib:propkit -->`; the page imports `GLTFLoader` and passes it in. |
 | `data/ships/<id>/detailing.json` | The detail rules' sizes and the finish table (which material each generated surface takes). Inlined by `<!-- INLINE data:<ship>/detailing -->`. |
 | `data/materials/materials.json`, `assets/textures/` | The surface materials (the `material-maker` skill). Inlined by `<!-- INLINE materials -->`. |
-| `docs/mockups/lib/template.html` | The page skeleton: import map (three.js 0.169.0 from jsDelivr), the INLINE markers, a scene, lighting buttons, a budget meter, a shot. Copy it to start. |
+| `docs/mockups/lib/template.html` | The page skeleton: import map (three.js 0.169.0 from jsDelivr), the INLINE markers, a scene, lighting buttons, a draw meter, a shot. Copy it to start. |
 | `tools/mockups/inline.py` | Writes the layout, data files, materials, shipkit and Blender-built props (`<!-- INLINE models:<set> -->`: `assets/models/<set>/props.json` and its `.glb` files, read by the page with three.js's `GLTFLoader`) between each page's INLINE markers. `--check` fails on a stale page, and checks `PI_BUDGET` against the `engine-stack` table's marker. |
 | `tools/mockups/shoot.mjs` | Headless Chromium (SwiftShader) screenshots: the default view, then every registered shot, into `docs/screenshots/mockups/<page>-<shot>.png`. Fails on console errors or a page that never sets `MOCKUP_READY`. |
 | `tools/mockups/zfight.mjs` | The z-fighting check (CLAUDE.md section 8): every triangle a page draws (`window.MOCKUP_SCENE`, which every page sets), pairs on one plane facing the same way and overlapping, summed by surface. Fails above 0.1 m^2 a page. Run it after any change to the kit, propkit or a page's geometry. |
@@ -33,7 +33,7 @@ is how to follow them.
 
 The owner, 2026-10-06: "There's lots of popups, cluttered on my phone. Add little x marks so I can close some of
 these and get a better view." `markReady()` puts a small close button on the corner of every floating panel: the
-title block, the Pi 5 meter, and any element of class `controls`, `info`, `legend` or `route`, id `side`, or with a
+title block, the draw meter, and any element of class `controls`, `info`, `legend` or `route`, id `side`, or with a
 `data-closable` attribute. Give a new floating panel one of those, never its own close code. A closed panel is
 hidden, a "Show closed panels" pill at the top brings them back, and the viewer's choice is remembered in their
 browser. On a phone (narrower than 760 px) a page opens with only its controls showing. The buttons sit in a layer
@@ -54,7 +54,7 @@ of their own, so a page may rewrite a panel's contents freely.
 4. **Light it with its own fixtures**: lamps where the ceiling fixtures are, strips, console
    glow. Provide at least normal and red alert (`ShipKit.LIGHTING`); emergency power where power
    matters. Space is dark and the sun is one light.
-5. **Show the cost.** `const hud = ShipKit.budgetHud({ textureBytes: mats.bytes }); window.MOCKUP_BUDGET = () => hud.read();`
+5. **Show the cost.** `const hud = ShipKit.drawHud({ textureBytes: mats.bytes }); window.MOCKUP_DRAWS = () => hud.read();`
    and wrap every frame's renders (render-to-texture passes included) in
    `hud.beginFrame(renderer)` and `hud.endFrame(renderer)`. Merge static geometry (one mesh per
    compartment, as the engine draws it) so the meter says something true about draw calls.
@@ -90,8 +90,9 @@ of their own, so a page may rewrite a panel's contents freely.
 
 ## Keep in mind
 
-- **The meter shows what the page draws** (triangles and draw calls); the Pi 5 budget it was
-  read against is retired (CLAUDE.md 2, owner 2026-10-17).
+- **The meter shows what the page draws** (triangles and draw calls), as information. There is no
+  Pi budget: never add a budget bar, a "Pi 5" label or a budget check to a page (CLAUDE.md 2, owner
+  2026-10-17).
 - **No shadow maps, no post-processing** that the engine's renderer will not have; they also fail on
   SwiftShader.
 - **Screens and consoles** are HTML and CSS overlays in fixed-size panels (CLAUDE.md 10), not

@@ -1,4 +1,4 @@
-/* Verify detailed Grabon review controls, actual geometry, access and budgets. */
+/* Verify detailed Grabon review controls, actual geometry, access and draw counts. */
 const fs=require('fs'),path=require('path'),assert=require('assert/strict');
 const {pathToFileURL}=require('url'),{chromium}=require('playwright');
 const root=path.resolve(__dirname,'../..'),out=path.join(root,'docs/screenshots/grabon-detail');
@@ -58,7 +58,7 @@ const frames=(page,n=12)=>page.evaluate(n=>new Promise(resolve=>{let k=0;const f
        unmatched_mirror_vertices:vertices.filter(a=>!set.has(key([-a[0],...a.slice(1)]))).length};
      }
      const interior=v.state.mode==='interior'?{ceiling_vertices:roles.ceiling||0,eye_height_m:v.camera.position.y-GRABON_DETAIL.floorAt(),clear_spawn:GRABON_DETAIL.walkable(v.camera.position.x,v.camera.position.z)}:null;
-     return {ship:v.state.ship.id,stage:v.state.stage,deck:v.state.deck,mode:v.state.mode,triangles:v.renderer.info.render.triangles,draws:v.renderer.info.render.calls,texture_mib:MOCKUP_BUDGET().textureMB,nonfinite:bad,stair_vertices:roles.stair||0,ladder_openings:holes,cutaway_ceilings:ceilings,sun_range:lightRange,exterior,interior};
+     return {ship:v.state.ship.id,stage:v.state.stage,deck:v.state.deck,mode:v.state.mode,triangles:v.renderer.info.render.triangles,draws:v.renderer.info.render.calls,texture_mib:MOCKUP_DRAWS().textureMB,nonfinite:bad,stair_vertices:roles.stair||0,ladder_openings:holes,cutaway_ceilings:ceilings,sun_range:lightRange,exterior,interior};
     });
     assert.equal(facts.nonfinite,0,JSON.stringify(facts));assert(facts.triangles<=(stage==='hull'?200000:60000),JSON.stringify(facts));assert(facts.draws<=120);assert(facts.texture_mib<=96);
     for(const hole of facts.ladder_openings)assert(hole.open&&hole.bypass,'Actual upper floor must have a ladder hole and solid bypass: '+JSON.stringify(hole));

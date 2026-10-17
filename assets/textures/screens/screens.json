@@ -12,7 +12,7 @@
   "page": "docs/mockups/bridge.html",
   "shots": "docs/screenshots/mockups/bridge-<shot>-console.png",
   "canvas": "derived from bridge.html layoutConsole() (its numbers read from the page), confirmed on each shot (the gap at y 272-280 lp and the margins at x 0-20 and 1260-1280 lp are plain background), resampled to 1 px per lp by area averaging",
-  "hud": "the budget HUD's corner is found in each shot and rebuilt from the panel grid (hud_masked_from_lp: x, y)"
+  "hud": "the draw meter's corner is found in each shot and rebuilt from the panel grid (hud_masked_from_lp: x, y)"
  },
  "image_px": [
   256,

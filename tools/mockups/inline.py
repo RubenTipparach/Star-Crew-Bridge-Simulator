@@ -69,10 +69,8 @@ block, { covers, images: { <file>: data URI } }, for pages that open a machine f
 station wears, written by tools/decals/build_decals.py) into a <script id="ship-decals"
 type="application/json"> block, { decals, images: { <file>: data URI } } (repairs-on-deck 3f).
 
---check rewrites nothing and fails when a page holds a stale copy, and also
-checks that shipkit's PI_BUDGET matches the budget marker in the engine-stack
-design (the table there is the source). Documentation tooling, standard library
-only.
+--check rewrites nothing and fails when a page holds a stale copy. Documentation tooling, standard
+library only.
 
 Usage: python3 tools/mockups/inline.py [--check] [page.html ...]
 """
@@ -89,10 +87,6 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 LIB = os.path.join(ROOT, "docs", "mockups", "lib")
 SHIPKIT = os.path.join(LIB, "shipkit.js")
-BUDGET_SOURCES = [
-    os.path.join(ROOT, "openspec", "specs", "engine-platform", "spec.md"),
-    os.path.join(ROOT, "openspec", "changes", "engine-stack", "design.md"),
-]
 MATERIALS = os.path.join(ROOT, "data", "materials", "materials.json")
 TEXTURES = os.path.join(ROOT, "assets", "textures")
 PANELS = os.path.join(ROOT, "data", "materials", "panels.json")
@@ -349,42 +343,12 @@ def process(page, check):
     return True
 
 
-def budget_ok():
-    """shipkit's PI_BUDGET must equal the marker in the budget's source document."""
-    with open(SHIPKIT, encoding="utf-8") as f:
-        kit = f.read()
-    kit_vals = {
-        "triangles": int(re.search(r"triangles:\s*(\d+)", kit).group(1)),
-        "draw_calls": int(re.search(r"drawCalls:\s*(\d+)", kit).group(1)),
-        "texture_mb": int(re.search(r"textureMB:\s*(\d+)", kit).group(1)),
-    }
-    for src in BUDGET_SOURCES:
-        if not os.path.exists(src):
-            continue
-        with open(src, encoding="utf-8") as f:
-            m = re.search(r"<!-- pi-budget ([^>]*)-->", f.read())
-        if not m:
-            continue
-        doc = {k: int(v) for k, v in re.findall(r"(\w+)=(\d+)", m.group(1))}
-        bad = {k: (kit_vals[k], doc.get(k)) for k in kit_vals if doc.get(k) != kit_vals[k]}
-        rel = os.path.relpath(src, ROOT)
-        if bad:
-            for k, (a, b) in bad.items():
-                print(f"  FAIL shipkit PI_BUDGET {k}={a} but {rel} says {b}")
-            return False
-        print(f"  shipkit PI_BUDGET matches {rel}")
-        return True
-    print("  FAIL no pi-budget marker found in " + " or ".join(os.path.relpath(s, ROOT) for s in BUDGET_SOURCES))
-    return False
-
-
 def main(argv):
     check = "--check" in argv
     pages = [a for a in argv if not a.startswith("--")]
     if not pages:
         pages = sorted(glob.glob(os.path.join(ROOT, "docs", "mockups", "*.html")))
     ok = all([process(p, check) for p in pages])
-    ok = budget_ok() and ok
     ok = bake_caches_ok() and ok
     return 0 if ok else 1
 

@@ -1,5 +1,5 @@
 /* Review instrument for faction study HTML. Checks actual rendered
-   budgets, source freshness, stage/deck controls, camera controls and mobile UI. */
+   draw counts, source freshness, stage/deck controls, camera controls and mobile UI. */
 const fs=require('fs'),path=require('path'),assert=require('assert/strict');
 const {pathToFileURL}=require('url');
 const {chromium}=require('playwright');
@@ -27,7 +27,7 @@ const frames=(p,n=5)=>p.evaluate(n=>new Promise(resolve=>{let k=0;function f(){i
       const hull=await page.evaluate(()=>{
         const v=ENEMY_VIEW,lo=[Infinity,Infinity,Infinity],hi=[-Infinity,-Infinity,-Infinity];
         v.scene.traverse(o=>{if(!o.isMesh)return;const a=o.geometry.attributes.position;for(let i=0;i<a.count;i++){const p=[a.getX(i),a.getY(i),a.getZ(i)];p.forEach((x,k)=>{lo[k]=Math.min(lo[k],x);hi[k]=Math.max(hi[k],x);});}});
-        return {ship:v.state.ship.id,stage:'hull',triangles:v.renderer.info.render.triangles,draw_calls:v.renderer.info.render.calls,texture_mib:MOCKUP_BUDGET().textureMB,extent_m:hi.map((q,k)=>+(q-lo[k]).toFixed(3))};
+        return {ship:v.state.ship.id,stage:'hull',triangles:v.renderer.info.render.triangles,draw_calls:v.renderer.info.render.calls,texture_mib:MOCKUP_DRAWS().textureMB,extent_m:hi.map((q,k)=>+(q-lo[k]).toFixed(3))};
       });
       assert.equal(hull.ship,ship.id);assert(hull.triangles>500&&hull.triangles<=12000);assert(hull.draw_calls<=120);assert(hull.texture_mib<=4);
       assert(Math.abs(hull.extent_m[0]-ship.beam_m)<.1&&Math.abs(hull.extent_m[2]-ship.length_m)<.1,'Displayed dimensions must match the actual mesh');

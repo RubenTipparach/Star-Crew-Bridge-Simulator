@@ -15,7 +15,7 @@ use crate::data::{parse, Checks, DataError, Validate};
 /// The stars' classes, colours and streak rule.
 pub const STARFIELD_FILE: &str = "data/space/starfield.json";
 
-/// The most vertices a sky may hold (the nebula-skies spec: "at most 8,000 vertices", design 8's Pi 5 budget, NS5).
+/// The most vertices a sky may hold (the nebula-skies spec: "at most 8,000 vertices", NS5).
 pub const MAX_SKY_VERTICES: usize = 8_000;
 
 /// The most vector stars a sky may hold (design 5.1: 1,400 to 2,400 a sky, with room).

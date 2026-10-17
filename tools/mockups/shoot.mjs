@@ -106,8 +106,8 @@ for (const file of pages) {
     await page.screenshot({ path: out, timeout: 120000 });
     taken.push(path.relative(ROOT, out));
   }
-  const budget = await page.evaluate(() => (window.MOCKUP_BUDGET ? window.MOCKUP_BUDGET() : null));
-  console.log(`${path.relative(ROOT, file)}: ${taken.length} shots` + (budget ? `, ${budget.triangles} triangles, ${budget.drawCalls} draw calls` : ""));
+  const draws = await page.evaluate(() => (window.MOCKUP_DRAWS ? window.MOCKUP_DRAWS() : null));
+  console.log(`${path.relative(ROOT, file)}: ${taken.length} shots` + (draws ? `, ${draws.triangles} triangles, ${draws.drawCalls} draw calls` : ""));
   for (const t of taken) console.log(`  ${t}`);
   for (const e of errors) { console.log(`  ERROR ${e}`); failed = true; }
   await page.close();

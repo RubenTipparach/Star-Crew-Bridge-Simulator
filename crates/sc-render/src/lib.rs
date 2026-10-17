@@ -236,7 +236,7 @@ pub struct UiMesh<'a> {
 /// The UI's streamed buffers, sized once (CLAUDE.md 2: allocate up front): a frame's UI that does not fit is cut, and
 /// said so once. Engineering's schematic in 3D took 48,744 vertices and 185,556 indices of the first 65,536 and
 /// 196,608, and a fight's frame with the crew tabs passed them (power-routing 6.9); doubled, the two cost 4.1 MB of the
-/// 64 MB of vertex and index buffers (engine-stack's Pi 5 budget), 2 MB more.
+/// 64 MB of vertex and index buffers, 2 MB more.
 pub const UI_MAX_VERTICES: usize = 131_072;
 /// The UI's index buffer, in 32-bit indices (see `UI_MAX_VERTICES`).
 pub const UI_MAX_INDICES: usize = 393_216;
