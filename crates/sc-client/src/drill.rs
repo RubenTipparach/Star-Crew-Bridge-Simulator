@@ -900,8 +900,8 @@ impl DrillApp {
         }
         // The round waits for START MISSION (start-mission 1): the script presses it 5 s after the chip shows, as a
         // player who read the band would (and a recording sees the round wait), and again each 2 s while it stays up
-        // (a press lost to a reconnect).
-        let shown = muster && self.start_seen.is_some();
+        // (a press lost to a reconnect). A UI run presses it only once the briefing is shot (its step 5, as READY).
+        let shown = muster && self.start_seen.is_some() && self.tour.as_ref().is_none_or(|t| t.step >= 5);
         let seen =
             if shown { *self.playtest_start.get_or_insert((self.time_s, f64::NEG_INFINITY)) } else { (0.0, 0.0) };
         if shown && self.time_s - seen.0 >= 5.0 && self.time_s - seen.1 >= 2.0 {
