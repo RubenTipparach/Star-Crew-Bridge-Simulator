@@ -487,9 +487,11 @@ Q6's rule, approved: the band's clock shows only when a mission has a time limit
 
 So it is a **safety timeout**, and the data says so: `safety_timeout_s` (600 s, server side, never drawn) replaces
 `engage_limit_s`, and a mission may give a separate `time_limit_s` that the crew are told about. Neither mission has
-one. The server ends the fight at the earlier of the two (the enemy withdraws, as before). The band shows a clock only
-with a `time_limit_s`, and then it counts down what is left, since a limit is read as time remaining; the console's
-view carries `limit_s` (none) instead of a `timed` flag, and the mockup's band follows the same rule.
+one. The server ends the fight at the earlier of the two (the enemy withdraws, as before). The band, and the OBJECTIVES
+panel's title line (section 12's other running clock), show a clock only with a `time_limit_s`, in the fight, and then
+count down what is left, since a limit is read as time remaining; the console's view carries `limit_s` (none) instead
+of a `timed` flag, and the mockup (`consoles.html`, its `MISSION.time_limit_s`) follows the same rule. Its mission
+title loses "Drill 1:" as the data's did.
 
 ### 18d. Measuring (task 4.1)
 

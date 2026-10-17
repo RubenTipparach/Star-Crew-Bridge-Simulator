@@ -562,6 +562,9 @@ pub struct ObjectivesView {
     pub title: String,
     /// The fight's clock, seconds.
     pub clock_s: f64,
+    /// The mission's time limit, when it has one: the panel counts down what is left (design 18c), else no clock.
+    #[serde(default)]
+    pub limit_s: Option<f64>,
     pub rows: Vec<ObjectiveRow>,
 }
 
@@ -588,11 +591,12 @@ pub struct ConsoleView {
     /// The captain's red alert, whatever the power: the look band's red glow.
     #[serde(default)]
     pub red_alert: bool,
-    /// The clock in the title band, seconds.
+    /// The round's clock, seconds into its phase.
     pub clock_s: f64,
-    /// The mission has a time limit: the band shows its clock (ui-art-direction Q6: only then).
-    #[serde(default = "timed")]
-    pub timed: bool,
+    /// The mission's time limit, seconds, when it has one: the band counts down what is left (ui-art-direction Q6 and
+    /// design 18c: only then; a safety timeout is never shown).
+    #[serde(default)]
+    pub limit_s: Option<f64>,
     pub hull_pct: f64,
     /// Each shield face's charge over its capacity.
     pub shield_ratio: [f64; 6],
@@ -1226,15 +1230,16 @@ fn title_band(cv: &Canvas, cx: &mut Ctx) {
     let cw = cond.len() as f32 * 9.4;
     cv.rect(1180.0 - cw - 22.0, 4.0, cw + 22.0, 24.0, 5.0, alpha(cc, 0x22 as f32 / 255.0), Some(Pen::new(1.0, cc)));
     cv.text(1170.0, 21.0, 13.0, cc, cond, T::end().ls(1.5).bold());
-    if v.timed {
-        let t = v.clock_s.max(0.0).floor() as i64;
-        cv.text(1268.0, 21.0, 14.0, c.dim.0, &format!("{:02}:{:02}", t / 60, t % 60), T::end());
+    if let Some(left) = time_left(v.limit_s, v.clock_s) {
+        cv.text(1268.0, 21.0, 14.0, c.dim.0, &left, T::end());
     }
 }
 
-/// A view without the field (the parity fixtures, saved from the mockup): its mission is timed, as both are.
-fn timed() -> bool {
-    true
+/// The band's and OBJECTIVES' clock: the time left of a mission's time limit after `clock_s`, mm:ss rounded up, or none
+/// without a limit (ui-art-direction design 18c: a safety timeout is never shown).
+pub fn time_left(limit_s: Option<f64>, clock_s: f64) -> Option<String> {
+    let left = (limit_s? - clock_s).max(0.0).ceil() as i64;
+    Some(format!("{:02}:{:02}", left / 60, left % 60))
 }
 
 /// The viewscreen's camera, in ship axes: forward, right and up (the mockup's `feedBasis`).

@@ -12,9 +12,10 @@ pub fn draw(cv: &Canvas, cx: &mut Ctx) {
     let c = &vg::style().c;
     let Some(ov) = cx.v.objectives.as_ref() else { return };
     let (b, w, _h) = panel(cv, cx, "OBJECTIVES", grid(0.0, 0.0, 12.0, 4.0));
-    let t = ov.clock_s.max(0.0).floor() as i64;
     b.text(24.0, 40.0, 26.0, c.text.0, &ov.title, T::default().bold());
-    b.text(w - 24.0, 40.0, 26.0, c.dim.0, &format!("{:02}:{:02}", t / 60, t % 60), T::end());
+    if let Some(left) = super::time_left(ov.limit_s, ov.clock_s) {
+        b.text(w - 24.0, 40.0, 26.0, c.dim.0, &left, T::end());
+    }
     b.rect(24.0, 58.0, w - 48.0, 1.0, 0.0, c.line.0, None);
     for (i, r) in ov.rows.iter().take(6).enumerate() {
         let y = 78.0 + i as f32 * 82.0;
