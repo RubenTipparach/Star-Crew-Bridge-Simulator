@@ -92,7 +92,7 @@ Engage and the patrol, so the two never meet; START wins if they did.
   number the captain acts on (wait, or go);
 - tip: "Start now: 3 of 8 ready".
 
-When the station's own tabs reach past its left edge it is not drawn; its key still works. A click or a tap on it, or the key,
+Since the round no longer starts by itself (section 1) it is always drawn: in single player the crew's tabs (and OBJECTIVES after them) stop short of it as the swap chips do, so at the captain's console, with two pages and seven crew tabs, the last tabs give way while the round waits (2026-10-17; a touch player has no Return key). A click or a tap on it, or the key,
 sends the request once; the server's refusal, if any, shows as every refusal does.
 
 `ConsoleView` carries it as `start: { key: "Return", ready: 3, aboard: 8 }` (the mockup's `consoleState().start`, none

@@ -2290,6 +2290,34 @@ mod tests {
     }
 
     #[test]
+    fn in_single_player_the_captains_crew_tabs_give_way_to_start_mission() {
+        // Regression (start-mission 1, 2026-10-17): at the captain's console in single player the seven crew tabs and
+        // OBJECTIVES ran past START MISSION's place, so the chip was not drawn and a touch player (no Return key) could
+        // not start the round, which no longer starts by itself.
+        let mut b = Bench::new(Station::Captain);
+        let mut v = b.view(1.0);
+        let crew = ["helm", "tactical", "engineering", "science", "laser_port", "laser_stbd", "gunner"];
+        v.solo = Some(console::SoloView {
+            seat: "captain".into(),
+            crew: crew
+                .iter()
+                .map(|s| console::CrewTab { station: (*s).into(), op: "Lt. Npc".into(), auto: true, seated: true })
+                .collect(),
+        });
+        v.leave = Some(console::LeaveView { key: "E".into(), share: 0.0 });
+        v.start = Some(console::StartView { key: "Return".into(), ready: 2, aboard: 8 });
+        let hits = paint(&v);
+        let start = hits.regions.iter().find(|r| r.hit == Some(Hit::Act(Act::Start))).expect("START MISSION is drawn");
+        assert!(
+            hits.regions
+                .iter()
+                .filter(|r| r.rect.max.y <= 32.0 && r.hit != Some(Hit::Act(Act::Start)))
+                .all(|r| { r.rect.max.x <= start.rect.min.x || r.rect.min.x >= start.rect.max.x }),
+            "no tab overlaps it"
+        );
+    }
+
+    #[test]
     fn every_console_zooms_its_viewscreen_in_five_steps() {
         let mut h = Bench::new(Station::Helm);
         for (i, z) in sc_core::combat::ZOOMS.iter().enumerate() {
