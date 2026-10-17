@@ -235,3 +235,22 @@ is `docs/benchmarks/2026-10-16-nebula-skies-pi5/`). Shots in `docs/screenshots/e
 | 0:34-0:37 | ORBIT off: the camera eases back | |
 | 0:37-0:45 | On foot behind the chair: the nebula through the bridge's windows and on the main viewscreen | 3 |
 
+
+## `2026-10-17-manual-start.mp4` (29 s, 1280 x 720, 30 fps; `start-mission`, the gunner's pod)
+
+The round waiting for START MISSION, and the gunner climbing out of the dorsal pod, played on foot in single player on
+Pi 1 (Pi 5 8 GB), `sc-client --solo --station gunner --playtest` (full screen), commit f38fcfe with the deck compiled
+by its `deckc` (the pods cut out of the hull). The scripted player walks, climbs and sits as a person does, presses
+START MISSION 5 s after the chip shows, and gets up by holding E. Recorded with `wf-recorder` from the centre 1920 x
+1080 of the 2560 x 1080 monitor (the HUD anchored to the monitor's edges is cut at the left), then cut, captioned and
+re-encoded to H.264 High, yuv420p. Two cuts: 0:00-0:17 is the take's 0:03-0:20, 0:17-0:29 its 0:52-1:04. Shots in
+`docs/screenshots/engine/manual-start/`.
+
+| Time | Shows | Shot |
+| --- | --- | --- |
+| 0:00-0:05 | Deck A's command passage to the dorsal turret access, up the pod's ladder ("Ladder [E] Climb up"), E at Gunner | 1 |
+| 0:05-0:11 | Seated: the briefing, START MISSION (Return, 2/8 ready) in the title band, READY; no countdown, the round waits | 2 |
+| 0:11-0:16 | START MISSION pressed: "Launch in" counts 0:05 to 0:01 | 3 |
+| 0:16-0:17 | Engage: the gunner's sight, red alert | 4 |
+| 0:17-0:20 | In the fight, E held: LEAVE STATION, the body stands in the pod | |
+| 0:20-0:29 | Standing: "Gunner [E] Sit down [Q] Climb down"; the body climbs out to deck A and walks forward | 5, 6 |
