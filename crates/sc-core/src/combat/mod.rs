@@ -777,10 +777,16 @@ impl Refusal {
 /// Who may press START MISSION (start-mission 2), from the crew as (slot, station held, bot): a seated person who holds
 /// the captain's seat, or any seated person when no person holds it (single player, where an NPC has it). The server
 /// applies it in [`Drill::start_mission`]; a client asks it only to decide whether to draw the control.
+///
+/// A bot presses it only in a crew of bots alone (a networking test's rig, a scripted capture's `--bot`), where no
+/// person is aboard to press it: with a person aboard, the start is always a person's (start-mission 1 and 2).
 pub fn may_start(crew: &[(u8, Option<Station>, bool)], slot: u8) -> Result<(), Refusal> {
     let &(_, station, bot) = crew.iter().find(|c| c.0 == slot).ok_or(Refusal::NotYourStation)?;
-    if bot || station.is_none() {
+    if station.is_none() {
         return Err(Refusal::NotYourStation);
+    }
+    if bot {
+        return if crew.iter().any(|c| !c.2) { Err(Refusal::NotYourStation) } else { Ok(()) };
     }
     let captain = crew.iter().find(|c| c.1 == Some(Station::Captain) && !c.2);
     match captain {
@@ -1869,16 +1875,9 @@ impl Drill {
             }
         }
         match self.phase {
-            Phase::Muster => {
-                let seated: Vec<&Player> = self.players.iter().filter(|p| p.station.is_some()).collect();
-                // On foot the round waits for every person aboard to reach a seat: it once began while the player
-                // was still walking up from their muster place (browser-page-fit design 6).
-                let people_seated =
-                    self.on_foot.is_none() || self.players.iter().filter(|p| !p.bot).all(|p| p.station.is_some());
-                if !seated.is_empty() && seated.iter().all(|p| p.ready) && people_seated {
-                    self.set_phase(Phase::Countdown);
-                }
-            }
+            // Muster never ends by itself: only START MISSION moves it on ([`Drill::start_mission`]; start-mission 1,
+            // the owner 2026-10-17: "I need a button to actually start the mission"). READY is the chip's count.
+            Phase::Muster => {}
             Phase::Countdown => {
                 if !self.players.iter().any(|p| p.station.is_some()) {
                     self.set_phase(Phase::Muster);
@@ -3913,8 +3912,23 @@ mod tests {
         Drill::new(DrillData::shipped(), 7)
     }
 
+    /// START MISSION, pressed by the first person aboard who may press it (the round never starts by itself,
+    /// start-mission 1). Nothing when the drill is not in Muster or nobody may.
+    fn press_start(d: &mut Drill) {
+        if d.phase != Phase::Muster {
+            return;
+        }
+        let slots: Vec<u8> = d.players.iter().map(|p| p.slot).collect();
+        for s in slots {
+            if d.start_mission(s).is_ok() {
+                return;
+            }
+        }
+    }
+
     fn run_to_engage(d: &mut Drill) {
         for _ in 0..(TICK_HZ as usize * 10) {
+            press_start(d);
             d.step();
             if d.phase == Phase::Engage {
                 return;
@@ -3936,6 +3950,7 @@ mod tests {
             })
             .collect();
         for _ in 0..(TICK_HZ as usize * 10) {
+            press_start(&mut d);
             d.step();
             if d.phase == Phase::Patrol {
                 return (d, slots);
@@ -4134,14 +4149,14 @@ mod tests {
     }
 
     #[test]
-    fn a_seated_ready_crew_starts_the_countdown_and_then_the_fight() {
+    fn a_seated_ready_crew_counts_down_to_the_fight_once_start_mission_is_pressed() {
         let mut d = drill();
         let a = d.join("Ensign A", false).unwrap();
         d.claim(a, Station::Helm).unwrap();
-        d.step();
-        assert_eq!(d.phase, Phase::Muster, "not ready yet");
         d.set_ready(a, true).unwrap();
         d.step();
+        assert_eq!(d.phase, Phase::Muster, "ready is a signal, not a start");
+        d.start_mission(a).expect("single player: the player's call");
         assert_eq!(d.phase, Phase::Countdown);
         run_to_engage(&mut d);
         assert!(d.ships[1].active, "the Hound appears at Engage");
@@ -4189,7 +4204,24 @@ mod tests {
     }
 
     #[test]
-    fn the_round_still_starts_by_itself_when_everyone_is_ready() {
+    fn a_crew_of_bots_alone_may_start_the_round_and_a_bot_beside_a_person_may_not() {
+        let mut d = drill();
+        let a = d.join("Bot A", true).unwrap();
+        let b = d.join("Bot B", true).unwrap();
+        d.claim(a, Station::Helm).unwrap();
+        d.claim(b, Station::Tactical).unwrap();
+        let crew: Vec<_> = d.players.iter().map(|p| (p.slot, p.station, p.bot)).collect();
+        assert_eq!(may_start(&crew, a), Ok(()), "no person aboard to press it: a networking rig's bots start it");
+        let me = d.join("Lt. Me", false).unwrap();
+        assert_eq!(d.start_mission(a), Err(Refusal::NotYourStation), "with a person aboard, the start is theirs");
+        d.claim(me, Station::Science).unwrap();
+        d.start_mission(me).expect("the person's call");
+    }
+
+    #[test]
+    fn the_round_waits_in_muster_until_start_mission_is_pressed() {
+        // The owner, 2026-10-17: "I need a button to actually start the mission. Not just have the mission autostart"
+        // (start-mission 1): everyone seated and ready is the chip's 2/2, never a start.
         let mut d = drill();
         let cap = d.join("Capt. A", false).unwrap();
         let helm = d.join("Lt. B", false).unwrap();
@@ -4197,8 +4229,22 @@ mod tests {
         d.claim(helm, Station::Helm).unwrap();
         d.set_ready(cap, true).unwrap();
         d.set_ready(helm, true).unwrap();
+        for _ in 0..(TICK_HZ as usize * 60) {
+            d.step();
+        }
+        assert_eq!(d.phase, Phase::Muster, "a minute later, nobody pressed START MISSION");
+    }
+
+    #[test]
+    fn start_mission_moves_a_waiting_ready_crew_to_the_countdown() {
+        let mut d = drill();
+        let cap = d.join("Capt. A", false).unwrap();
+        d.claim(cap, Station::Captain).unwrap();
+        d.set_ready(cap, true).unwrap();
         d.step();
-        assert_eq!(d.phase, Phase::Countdown, "nobody pressed START MISSION");
+        d.start_mission(cap).expect("the captain's call");
+        d.step();
+        assert_eq!(d.phase, Phase::Countdown);
     }
 
     #[test]
@@ -5004,9 +5050,10 @@ mod tests {
     }
 
     #[test]
-    fn on_foot_the_round_waits_for_the_person_to_sit_and_sitting_is_their_ready() {
-        // Regression (browser-page-fit design 6): in the browser's single player the round began while the player was
-        // still walking to the bridge, and a player who sat first waited on a READY that is not on screen on foot.
+    fn on_foot_sitting_down_is_the_persons_ready_and_the_round_still_waits_for_start_mission() {
+        // Regression (browser-page-fit design 6): a player who sat first waited on a READY that is not on screen on
+        // foot, so sitting is their READY. Since 2026-10-17 (start-mission 1) it starts nothing: the round waits for
+        // START MISSION.
         let mut d = drill();
         d.set_bridge(command_bridge());
         let bot = d.join("Lt. Xa'lensha", true).expect("joins");
@@ -5014,15 +5061,16 @@ mod tests {
         d.claim(bot, Station::Captain).expect("the bot walks to the chair");
         walk_until(&mut d, |d| d.operator(Station::Captain) == Operator::Player(bot));
         d.set_ready(bot, true).unwrap();
-        for _ in 0..60 {
-            d.step();
-        }
-        assert_eq!(d.phase, Phase::Muster, "the bot is seated and ready, but the person is still on their feet");
         walk_body(&mut d, me, [1.8, 3.5, 27.4]);
         d.claim(me, Station::Helm).expect("sits at the helm");
         walk_until(&mut d, |d| d.operator(Station::Helm) == Operator::Player(me));
         assert!(d.player(me).is_some_and(|p| p.ready), "sitting in Muster is the person's READY");
-        walk_until(&mut d, |d| d.phase == Phase::Countdown);
+        for _ in 0..(TICK_HZ as usize * 10) {
+            d.step();
+        }
+        assert_eq!(d.phase, Phase::Muster, "everyone seated and ready, and the round still waits");
+        d.start_mission(me).expect("no person is captain: the player starts from the helm");
+        assert_eq!(d.phase, Phase::Countdown);
     }
 
     #[test]

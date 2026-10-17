@@ -1016,6 +1016,23 @@ fn title_band(cv: &Canvas, cx: &mut Ctx) {
         c.line.0
     };
     cv.rect(0.0, 31.0, 1280.0, 1.0, 0.0, line, None);
+    let cond = if emerg {
+        "EMERGENCY POWER"
+    } else if red {
+        "RED ALERT"
+    } else {
+        "NORMAL"
+    };
+    let cond_x = 1180.0 - cond.len() as f32 * 9.4 - 22.0;
+    let leave_w = 34.0 + 13.0 * 9.4;
+    let leave_x = cond_x - 8.0 - leave_w;
+    let order_end = if v.leave.is_some() { leave_x } else { cond_x };
+    // START MISSION's place (start-mission 4), right against LEAVE STATION: the swap chips stop short of it, and in
+    // single player so do the crew's tabs (with OBJECTIVES after them), so the round's one way to start is always on
+    // screen, for a finger too.
+    let start_w = 34.0 + 13.0 * 9.4 + 46.0;
+    let start_x = order_end - 8.0 - start_w;
+    let tabs_end = if v.start.is_some() { start_x - 6.0 - (34.0 + 10.0 * 9.4 + 6.0) } else { f32::INFINITY };
     let mut x = 8.0;
     // The station's own chip; the captain's two pages in its place. In single player the own chip is the player's
     // seat, lit while its console is shown, and a press on it comes back to it.
@@ -1056,6 +1073,9 @@ fn title_band(cv: &Canvas, cx: &mut Ctx) {
         // A tab for each crewed station: its icon and its mode, a robot (AUTO) or a hand (MANUAL), dim while its NPC
         // walks to the seat. Press one to show its console; the tab of the console shown is filled.
         for t in &q.crew {
+            if x + 52.0 > tabs_end {
+                break;
+            }
             let (w, r) = station_word(&t.station);
             let (on, rc) = (v.station == t.station, role.of(r));
             let (fill, stroke) =
@@ -1133,20 +1153,6 @@ fn title_band(cv: &Canvas, cx: &mut Ctx) {
     }
     // The laser banks took the comms and flight-ops seats (laser-banks 3), so only the open stations are left to swap
     // to; single player crews every station, so it has none.
-    let cond = if emerg {
-        "EMERGENCY POWER"
-    } else if red {
-        "RED ALERT"
-    } else {
-        "NORMAL"
-    };
-    let cond_x = 1180.0 - cond.len() as f32 * 9.4 - 22.0;
-    let leave_w = 34.0 + 13.0 * 9.4;
-    let leave_x = cond_x - 8.0 - leave_w;
-    let order_end = if v.leave.is_some() { leave_x } else { cond_x };
-    // START MISSION's place (start-mission 4), right against LEAVE STATION: the swap chips stop short of it.
-    let start_w = 34.0 + 13.0 * 9.4 + 46.0;
-    let start_x = order_end - 8.0 - start_w;
     let open: Vec<(String, String, Option<String>)> = if solo.is_some() {
         Vec::new()
     } else {

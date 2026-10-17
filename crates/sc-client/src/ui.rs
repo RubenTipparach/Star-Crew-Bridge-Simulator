@@ -220,10 +220,16 @@ pub fn mark(label: &str, r: egui::Response) -> egui::Response {
     if r.clicked() {
         println!("sc-client: ui clicked {label}");
     }
-    r.ctx.data_mut(|d| {
-        d.get_temp_mut_or_default::<Vec<(String, egui::Rect)>>(egui::Id::new(MARKS)).push((label.to_owned(), r.rect))
-    });
+    mark_rect(&r.ctx, label, r.rect);
     r
+}
+
+/// Mark a control drawn outside egui's widgets (a console's, by its hit area `rect` in points) as [`mark`] does: where
+/// it is is said whenever it moves. Its press is said by whoever handles it.
+pub fn mark_rect(ctx: &egui::Context, label: &str, rect: egui::Rect) {
+    ctx.data_mut(|d| {
+        d.get_temp_mut_or_default::<Vec<(String, egui::Rect)>>(egui::Id::new(MARKS)).push((label.to_owned(), rect))
+    });
 }
 
 /// Every text in a frame's shapes, nested ones too (for tests of what a screen shows).

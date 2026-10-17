@@ -830,6 +830,8 @@ mod tests {
         let a = d.join("A", false).unwrap();
         d.claim(a, Station::Helm).unwrap();
         d.set_ready(a, true).unwrap();
+        // The round waits for START MISSION (start-mission 1).
+        d.start_mission(a).unwrap();
         let mut said = Vec::new();
         while d.phase != Phase::Engage || d.phase_s < s {
             d.step();

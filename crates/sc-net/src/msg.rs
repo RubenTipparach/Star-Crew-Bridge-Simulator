@@ -2415,6 +2415,7 @@ mod tests {
         let a = d.join("A", false).unwrap();
         d.claim(a, Station::Helm).unwrap();
         d.set_ready(a, true).unwrap();
+        d.start_mission(a).unwrap();
         while d.phase != Phase::Engage {
             d.step();
         }
@@ -2464,6 +2465,7 @@ mod tests {
         let p = d.join("Tac", false).unwrap();
         d.claim(p, Station::Tactical).unwrap();
         d.set_ready(p, true).unwrap();
+        d.start_mission(p).unwrap();
         while d.phase != Phase::Patrol {
             d.step();
         }

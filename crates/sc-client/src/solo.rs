@@ -228,8 +228,10 @@ mod tests {
         // Science on MANUAL: its NPC does not scan, then the player's scan goes through as Science's.
         host.npc_mut(Station::Science).unwrap().auto = false;
         me.set_ready(true);
+        // The round waits for START MISSION (start-mission 1): the player presses it.
+        me.start_mission();
         let engaged = run(&mut host, &mut me, &data, 30.0, |h, _| h.server().drill.phase == Phase::Engage);
-        assert!(engaged, "the round started with the crew ready");
+        assert!(engaged, "the round started on START MISSION");
         let quiet = Instant::now() + Duration::from_secs(2);
         run(&mut host, &mut me, &data, 3.0, |_, _| Instant::now() >= quiet);
         let b = &host.server().drill.bridge;
@@ -306,6 +308,8 @@ mod tests {
         me.claim(Station::Helm);
         assert!(run(&mut host, &mut me, &data, 30.0, |h, me| h.all_seated() && me.station() == Some(Station::Helm)));
         me.set_ready(true);
+        // The round waits for START MISSION (start-mission 1): the player presses it.
+        me.start_mission();
         assert!(run(&mut host, &mut me, &data, 60.0, |h, _| h.server().drill.phase == Phase::Engage), "the fight");
         let skipper = host.npc(Station::Captain).map(|n| n.name.clone()).expect("an NPC captain");
         me.stand();

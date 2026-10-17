@@ -507,7 +507,9 @@ pub fn briefing(
             let (word, primary) = match r {
                 ReadyState::Open => ("Ready", true),
                 ReadyState::Ready => ("Ready", false),
-                ReadyState::Waiting => ("Crew sitting down", false),
+                // Pressed while the crew still sit down: READY is a signal, not a start (start-mission 1), so it no
+                // longer promises a launch once they sit.
+                ReadyState::Waiting => ("Ready", false),
             };
             if primary {
                 k.fill(1056.0, y, 768.0, h, c.accent.0);
