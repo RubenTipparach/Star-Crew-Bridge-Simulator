@@ -383,3 +383,114 @@ A failure names the screen, the size and the strings; the captures are the owner
 
 The consoles' own panels (approved; `console-parity` owns them), sound assets, rebinding, gamepad prompts (the client
 reads no pads yet), and localisation.
+
+## 18. The leftovers, built (2026-10-17)
+
+The owner, 2026-10-17, of tasks 3.9, 3.10 and Q6's clock rule: "do this!". Of task 4.1: "disregard pi measurements".
+
+### 18a. Motion: the focus bar and the briefing (task 3.9)
+
+The durations are section 8's, already in `data/ui/ui_style.json` (`motion_ms`). What the table did not say is the
+curve, and it is now data beside them: `motion_ease`, one curve per moment, written by `tools/ui/ui_style.py` from the
+mockup's `const UI` like the rest. Three curves, none with bounce or overshoot (section 8):
+
+| Curve | t (0..1) to k | Used by |
+| --- | --- | --- |
+| `linear` | k = t | every fade: a panel, a screen, loading, a prompt |
+| `out_cubic` | k = 1 - (1 - t)^3 | the focus bar: it leaves at once and settles on the new item |
+| `in_out_cubic` | k = 4t^3 under t = 0.5, else 1 - (-2t + 2)^3 / 2 | the briefing lowering, the console rising |
+
+One module (`sc-client/src/motion.rs`) holds the curves, the clamp of elapsed time over a duration and the slide
+between two positions; every timed UI moment calls it (the fades of 3.9's built half included), so no screen keeps
+its own arithmetic.
+
+- **The focus bar slides** (90 ms, `out_cubic`). The accent bar and the raised fill are one slab that moves from the
+  item that had focus to the item that has it, whatever moved the focus (arrows, the pointer, a click). The words
+  change colour at once: only the slab moves. A focus that moves again mid-slide starts from where the slab is, never
+  from the old item. The front menu, the Esc menu and Options' page rail.
+- **The briefing lowers into the desk** (350 ms, `in_out_cubic`). When the round starts (Countdown ends, or START
+  MISSION), the briefing's solid screen slides down out of the console's screen, under the band, uncovering the
+  console that was behind it the whole time; it shows Launch in 0:00 with a full bar while it goes and takes no
+  presses. The band stays where it is, and the bridge stays lit behind (the law: no cut).
+- **The console rising** keeps its curve and reads its 600 ms from `motion_ms.console_rise` instead of a second copy
+  in `drill.rs` (`CONSOLE_RISE_S`).
+- **Reduced motion**: the approved design has no such option, so none is added here; it would be an Options row,
+  which needs the mockup first. Every motion is under 0.4 s and none moves the camera.
+
+### 18b. Console wording (task 3.10)
+
+The consoles' own words, in the approved mockups first (`consoles.html`; Engineering's full schematic is
+`power-grid.html`), then the engine. A tooltip's keys are keycaps (section 7): a tip is its words and then its keys in
+square brackets, `Next target [Tab]`, and the tip draws each bracket as a keycap after the words (`[hold]` is the
+HOLD word, `[wheel]` the mouse wheel's glyph). In the engine a key that is a binding's field is named by the field
+(`[@helm.roll_port]`), so the tip shows what the game reads; the mockup writes the key. Two tips named the wrong keys
+(the helm's roll on Q and E and its strafe on Z and C, both moved by leave-station): they now come from the bindings.
+
+| Where | Old | New |
+| --- | --- | --- |
+| Band, crew tab | `LASER PORT`, `LASER STBD` | `PORT LASER`, `STARBOARD LASER` |
+| Band, tip | `Your console (Tab)` | `Your console [Tab]` |
+| Band, tip | `{op} runs it (M)` | `{op} runs it [M]` |
+| Band, tip | `You run it, through {op} (M)` | `You give the orders, {op} carries them out [M]` |
+| Band, tip | `Acknowledge (Y)` | `Acknowledge [Y]` |
+| Band, tip | `Leave the station (hold E)` | `Leave the station [hold] [E]` |
+| Viewscreen | `VIEWSCREEN · FWD`, `· STBD` | `VIEWSCREEN · FORWARD`, `· STARBOARD` (AFT, PORT, TARGET, CHASE as they were) |
+| Viewscreen, tips | `Viewscreen: fwd`, `Viewscreen: stbd` | `Viewscreen: forward`, `Viewscreen: starboard` |
+| Scanner and plot, tips | `Closer (scroll)`, `Further (scroll)` | `Closer [wheel]`, `Further [wheel]` |
+| Helm, tip | `Forward speed: drag (W, S)` | `Forward speed: drag [W] [S]` |
+| Helm, tip | `Strafe: drag (Left, Right, Space, Ctrl). Now {x} m/s to starboard, {y} m/s up` | `Sideways and up: drag, now {x} m/s starboard, {y} m/s up [Left] [Right] [Space] [Ctrl]` |
+| Helm, tip | `All stop: speed and drift to zero (X)` | `All stop: speed and drift to zero [X]` |
+| Helm, tip | `Stick: yaw and pitch (A, D, R, F). Pull back for nose up` | `Stick: yaw and pitch, pull back for nose up [A] [D] [R] [F]` |
+| Helm, tip | `Flipper: roll left or right (Q, E)` (engine), `(Z, C)` (mockup) | `Roll: drag left or right [Z] [C]` |
+| Helm, tips | `yaw rate 3.2 deg/s` | `Yaw: turning 3.2° a second` (and Pitch, Roll) |
+| Helm, ATTITUDE | `ROLL IN YAW` | `NOSE VERTICAL`, with the tip `Nose straight up or down: roll turns like yaw` |
+| Tactical, TURRETS | `PD` | `DEFEND` |
+| Tactical, tip | `Turret: tap to change mode` | `Auto: fires at the target in its arc`, `Target: fires at the locked target`, `Defend: shoots down incoming missiles`, `Hold: does not fire`, each then `; tap to change` |
+| Tactical, tip | `corvette, hostile` | `Corvette, hostile` |
+| Gunner | `TAB` (button) | `NEXT` |
+| Gunner, tip | `Next target (Tab)` | `Next target [Tab]` |
+| Science, tip | `Scan (Q)` | `Scan [Q]` |
+| Science, SHIELDS model | `STBD` | `STARBOARD` |
+| Engineering, POWER | `EMERG` | `EMERGENCY` |
+| Engineering, tips | `Priority 0: never shed`, `Priority: 1 is fed first` | `Always powered`, `Priority: 1 is powered first and cut last` |
+| Engineering, REACTOR | `SCRAM` (button) | `STOP` |
+| Engineering, REACTOR | `SCRAM` (the core's word when it is down) | `OFF` |
+| Engineering, tip | `Scram: tap, then tap again` | `Emergency stop: tap, then tap again` |
+| Engineering, tips | `Hot leg {K} · {flow}`, `Hot leg to the chiller: {n}%`, `Cold leg {K}`, `Bypass: {n}%` | `Hot coolant {K} · {flow}`, `Through the chiller: {n}%`, `Cooled coolant {K}`, `Past the chiller: {n}%` |
+| Engineering, tip | `Hot leg {K} (band a-b, scram c) · cold leg {K}` | `Hot coolant {K} (safe a-b, stops at c) · cooled {K}` |
+| Engineering, tips | `Makeup valve: ...`, `Makeup open ...` | `Top-up valve: ...`, `Top-up open ...` |
+| Engineering, tip | `Cables cut: damage control splices them` | `Cables cut: damage control repairs them` |
+| Engineering, tip | `Tripped: factory settings in {n} s` | `Tripped: the grid resets in {n} s` |
+| Engineering, tip | `Live runs: {a} of the {b} the protection allows` | `Live cables: {a} of {b} before the grid trips` |
+| Schematic | `factory settings in {n} s` (under TRIPPED) | `resets in {n} s` |
+| Schematic, tip | `Live runs against what the main protection allows; one more trips the grid` | `Live cables of the most the grid carries: one more trips it` |
+| Schematic, tips | `The schematic as a circuit board, a board a deck`, `Back to the Engineering console, where this schematic is its side panel` | `The power plan, one board a deck`, `Back to the Engineering console` |
+| Schematic, legend | `BOXES (tap to switch)`, `RUNS (tap to switch)` | `POWER BOXES`, `CABLES` |
+| Schematic, board | `OFFLINE (DAMAGE)` | `DAMAGED` |
+
+Kept, and why: `T1` and `J1` (Q12); YAW, PITCH and ROLL (the Controls page's own words, what a flight game says);
+port, starboard, bow and stern (the ship's sides, as the station names say them); the turret letters D, V, P, S (on
+the turret's own dial, beside the station tab that names the gunner); SHORT and NO POWER on the board's legend.
+
+### 18c. The mission clock (Q6)
+
+Q6's rule, approved: the band's clock shows only when a mission has a time limit. Both missions had
+`engage_limit_s: 600`, so the clock always showed. Is that limit gameplay? No:
+
+- Nothing tells the player about it: no objective, briefing line or order mentions time, and the drill's objectives
+  are destroy the Hound, survive and shoot down both fighters.
+- What it does is end a fight nobody can finish (a crew that never closes, a bot run left going) with the enemy
+  withdrawing; in the patrol the route goes on after it either way.
+- A clock running up from 0:00 with no number to beat is a debug readout (design 13), and a player would read it as
+  a deadline that does not exist.
+
+So it is a **safety timeout**, and the data says so: `safety_timeout_s` (600 s, server side, never drawn) replaces
+`engage_limit_s`, and a mission may give a separate `time_limit_s` that the crew are told about. Neither mission has
+one. The server ends the fight at the earlier of the two (the enemy withdraws, as before). The band shows a clock only
+with a `time_limit_s`, and then it counts down what is left, since a limit is read as time remaining; the console's
+view carries `limit_s` (none) instead of a `timed` flag, and the mockup's band follows the same rule.
+
+### 18d. Measuring (task 4.1)
+
+Closed without the 1 GB Pi's numbers: the owner, 2026-10-17, "disregard pi measurements". The 8 GB Pi's counts in 4.1
+stand as counts.
