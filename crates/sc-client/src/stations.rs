@@ -22,7 +22,7 @@ use serde::de::IgnoredAny;
 use serde::Deserialize;
 use serde_json::Value;
 
-use crate::hull::{HullLight, HullView};
+use crate::hull::{HullLight, HullView, ProbeLight};
 use crate::outside::BeaconLamps;
 use crate::ships3d::{Beacon, MeshBuilder};
 
@@ -513,8 +513,8 @@ fn drawn_with_tern(sd_json: &Value, key: &str) -> bool {
 }
 
 /// Version E, Tamsin Station (spacedock design 5a), lit by the star along `sun` and Tamsin along `planet` (the station's
-/// frame); `sd_json` the spacedock file (its fleet and the port's light rings). With `baked`, the round bay's own walls,
-/// ribs, berths and lit fixtures are left out for the mockup's baked bay (`BakedBay`, design 8b); the throat stays.
+/// frame); `sd_json` the spacedock file (its fleet and the port's light rings). With `baked`, the round bay's and the
+/// throat's own walls, ribs, berths and lit fixtures are left out for the mockup's baked bay (`BakedBay`, design 8b).
 pub fn oneill(
     e: &OneillPair,
     sd_json: &Value,
@@ -644,7 +644,7 @@ pub fn oneill(
     let b = &look.bay;
     let mut inside = Soup::default();
     let mut lit = Soup::default();
-    // The bay's own parts, apart: with the mockup's bake (`baked`, design 8b) they give way to it.
+    // The bay's and the throat's own parts, apart: with the mockup's bake (`baked`, design 8b) they give way to it.
     let mut bay_in = Soup::default();
     let mut bay_lit = Soup::default();
     let wall_rows: Vec<[f32; 2]> = {
@@ -730,10 +730,10 @@ pub fn oneill(
     // The throat: its wall from the iris to the mouth, light rings and eight strips; the iris's rim.
     let n = ((zm - zi) / 40.0).ceil().max(1.0) as usize;
     let throat: Vec<[f32; 2]> = (0..=n).map(|k| [rt, zi + (zm - zi) * k as f32 / n as f32]).collect();
-    inside.lathe(&f0, &throat, seg.bay, -1.0, DETAIL, paint.throat, &tiled);
+    bay_in.lathe(&f0, &throat, seg.bay, -1.0, DETAIL, paint.throat, &tiled);
     let mut z = zm - 30.0;
     while z > zi + 20.0 {
-        lit.lathe(&f0, &[[rt - 2.0, z - 1.5], [rt - 2.0, z + 1.5]], seg.bay, -1.0, DETAIL, glow.work, &tiled);
+        bay_lit.lathe(&f0, &[[rt - 2.0, z - 1.5], [rt - 2.0, z + 1.5]], seg.bay, -1.0, DETAIL, glow.work, &tiled);
         for k in 0..b.throat_per_ring {
             let a = (k as f32 + 0.5) * tau / b.throat_per_ring as f32;
             lamps.push((f0.at(a, rt - 6.0, z), b.throat_intensity, b.throat_reach_m));
@@ -743,9 +743,9 @@ pub fn oneill(
     for k in 0..8 {
         let a = (k as f32 + 0.5) * tau / 8.0;
         let at = f0.at(a, rt - 4.0, (zm + zi) / 2.0);
-        lit.plain(at, Vec3::new(2.5, 2.5, (zm - zi - 20.0) / 2.0), Quat::from_rotation_z(a), tile, glow.work);
+        bay_lit.plain(at, Vec3::new(2.5, 2.5, (zm - zi - 20.0) / 2.0), Quat::from_rotation_z(a), tile, glow.work);
     }
-    lit.lathe(&f0, &[[rt - 3.0, zi + 4.0], [rt - 3.0, zi + 8.0]], seg.bay, -1.0, DETAIL, glow.accent, &tiled);
+    bay_lit.lathe(&f0, &[[rt - 3.0, zi + 4.0], [rt - 3.0, zi + 8.0]], seg.bay, -1.0, DETAIL, glow.accent, &tiled);
     // The mouth's lit ring and the guide rings on the dome leading in, standing off their surfaces.
     lit.lathe(&f0, &[[rt + 22.0, zm + 4.0], [rt + 2.0, zm + 4.0]], seg.round, 1.0, DETAIL, glow.work, &tiled);
     if let Some(rings) = sd_json["versions"]["E"]["port"]["light_rings_m"].as_array() {
@@ -1027,7 +1027,9 @@ struct StationGpu {
 struct BakedBay {
     inside: (Mesh, [f64; 3], f32),
     glow: (Mesh, [f64; 3], f32),
-    probes: sc_core::probes::ProbeSet,
+    /// A-D: the station's outside with its doors shut, lit by the star at load.
+    outside: Option<(Mesh, [f64; 3], f32)>,
+    probes: std::rc::Rc<sc_core::probes::ProbeSet>,
 }
 
 /// A station's lighting state's weights (normal, red alert, emergency): normal until a station has an alert of its own
@@ -1036,6 +1038,48 @@ const STATION_STATE: [f32; 3] = [1.0, 0.0, 0.0];
 
 /// The bays file, relative to the repository's root (`sc-tools bayc` writes it; gitignored, like the deck).
 pub const BAYS_FILE: &str = "compiled/stations.bays";
+
+/// A mockup station's outside (`m`'s packed vertices `v`) with its paints lit by `light` (the station's frame: a point
+/// and its face's normal, to display multipliers), a colour whose alpha is 0 being its own light and left as it is, and
+/// one whose alpha is 128 facing into the bay and lit by `probes` there instead; and its farthest vertex from the
+/// station's origin, metres.
+fn lit_outside(
+    v: &[u8],
+    m: &sc_core::bay::BayMesh,
+    light: &dyn Fn(Vec3, Vec3) -> [f32; 3],
+    probes: &sc_core::probes::ProbeSet,
+) -> (Vec<u8>, f32) {
+    let grids = probes.grids();
+    let o = DVec3::from_array(m.origin_m);
+    let mut out = v.to_vec();
+    let mut reach = 0.0f32;
+    for q in out.chunks_exact_mut(sc_core::vertex::DECK_VERTEX_BYTES) {
+        let (p, n) = sc_core::vertex::unpack_position_normal(q);
+        let at = (o + Vec3::from(p).as_dvec3() * f64::from(m.scale)).as_vec3();
+        reach = reach.max(at.length());
+        if q[15] == 0 {
+            continue;
+        }
+        let n = Vec3::from(n).normalize_or_zero();
+        let l = if q[15] == 128 {
+            // The bay's light in front of the face (a probe on the wall itself is inside it): the nearest the grids
+            // hold, a door in its reveal reaching out to the bay.
+            [4.0f32, 12.0, 24.0, 44.0]
+                .iter()
+                .find_map(|d| sc_core::probes::sample_ship(&grids, (at + n * *d).as_dvec3().to_array(), STATION_STATE))
+                .map_or([0.1; 3], |c| crate::outside::cube_at(&c, n))
+        } else {
+            light(at, n)
+        };
+        for set in 0..3 {
+            for c in 0..3 {
+                let b = &mut q[12 + set * 4 + c];
+                *b = (f32::from(*b) * l[c]).round().clamp(0.0, 255.0) as u8;
+            }
+        }
+    }
+    (out, reach)
+}
 
 /// The bays file under `root`, its texture array uploaded: None when there is none (the stand-in light shows, and it
 /// says so), an error when it is there and does not read.
@@ -1076,13 +1120,29 @@ struct Bore {
     mouth_z: f64,
 }
 
+/// The light on a docked ship whose middle is at `p` (its station's frame, metres), turned by `turn`: its bay's probes
+/// (none: the stand-in).
+fn berth_light(
+    probes: Option<&std::rc::Rc<sc_core::probes::ProbeSet>>,
+    bay: &BayLight,
+    p: DVec3,
+    turn: Quat,
+    stand_in: HullLight,
+) -> HullLight {
+    let Some(probes) = probes else { return stand_in };
+    let Some(cube) = probes.sample(p.to_array(), STATION_STATE) else { return stand_in };
+    let cube = crate::outside::turn_cube(&cube, turn).map(|c| c.map(|x| x.min(bay.hull_probe_max)));
+    let each = ProbeLight { probes: probes.clone(), at: p, turn, max: bay.hull_probe_max, state: STATION_STATE };
+    HullLight::probes(cube, stand_in, 0.0).with_bay(each)
+}
+
 /// The light on a hull under E's roof whose middle is at `p` (the station's frame, metres), turned by `turn` (the hull's
 /// frame to the station's), from the bay's `probes` (StationsView::hull_light): their cube at `p`, each axis held under
 /// `bay.hull_probe_max`; down the throat the cube at the iris giving way to `star` toward the mouth; the stand-in from
 /// the hull's own up where there are no probes.
 fn roof_light(
     b: Bore,
-    probes: Option<&sc_core::probes::ProbeSet>,
+    probes: Option<&std::rc::Rc<sc_core::probes::ProbeSet>>,
     bay: &BayLight,
     p: DVec3,
     turn: Quat,
@@ -1090,14 +1150,17 @@ fn roof_light(
 ) -> HullLight {
     let stand_in = HullLight::from_way(Vec3::Y, bay.ship_light);
     let Some(probes) = probes else { return stand_in };
-    // The last probes before the iris light the throat's first metres; the star takes over toward the mouth.
-    let at = DVec3::new(p.x, p.y, p.z.min(b.iris_z - 2.0));
+    // The probes run from the back wall to the mouth (the throat is baked with the bay); down the throat the star's
+    // light takes a growing share toward the mouth, where the Tern comes out into the sun.
     let share = ((p.z - b.iris_z) / (b.mouth_z - b.iris_z)).clamp(0.0, 1.0) as f32;
-    let Some(cube) = probes.sample(at.to_array(), STATION_STATE) else {
+    let Some(cube) = probes.sample(p.to_array(), STATION_STATE) else {
         return if share > 0.0 { star } else { stand_in };
     };
     let cube = crate::outside::turn_cube(&cube, turn).map(|c| c.map(|x| x.min(bay.hull_probe_max)));
-    HullLight::probes(cube, star, share)
+    // In the bay the hull is lit at each vertex from the probes round it (design 8b); the cube at its middle carries
+    // the throat's blend.
+    let each = ProbeLight { probes: probes.clone(), at: p, turn, max: bay.hull_probe_max, state: STATION_STATE };
+    HullLight::probes(cube, star, share).with_bay(each)
 }
 
 /// Where the eye may stand off the Tern, metres: the chase camera's stand and the scripted shots' eyes are within it.
@@ -1147,30 +1210,61 @@ impl StationsView {
             let planet = sys.sky_from(pos).planet.map_or(-Vec3::Y, |(_, d, _)| (inv * d).as_vec3());
             let version = st.version.chars().next().unwrap_or('E');
             // A placeholder has no bay to bake (its doors are shut); E takes the mockup's baked bay when the file has it.
-            let bay = bays_read.as_ref().filter(|_| version == 'E').and_then(|b| b.bay("E").map(|bay| (b, bay)));
-            let m = if version == 'E' {
+            // E takes the mockup's baked bay and throat into its own model; A-D, when the file holds them whole (their
+            // outsides with the doors shut), are the mockup's stations, the placeholder giving only its beacons.
+            let key = version.to_string();
+            let bay = bays_read.as_ref().and_then(|b| b.bay(&key).map(|bay| (b, bay)));
+            let bay = bay.filter(|(_, bay)| version == 'E' || bay.outside.is_some());
+            let mut m = if version == 'E' {
                 oneill(&sd.oneill, sd_json, &look, sun, planet, bay.is_some())
             } else {
                 placeholder(version, sd_json, &look, sun, planet)
             };
+            let mut outside_reach = 0.0f32;
+            if let (Some((_, b)), true) = (bay, version != 'E') {
+                m = StationModel {
+                    outside: Vec::new(),
+                    inside: Vec::new(),
+                    glow: Vec::new(),
+                    docked: b
+                        .docked
+                        .iter()
+                        .filter(|d| drawn_with_tern(sd_json, &d.fleet))
+                        .map(|d| DMat4::from_cols_array(&d.pose))
+                        .collect(),
+                    beacons: m.beacons,
+                    placeholder: false,
+                };
+            }
             if m.placeholder {
                 println!("sc-client: {} (version {version}) is drawn as a placeholder", st.name);
             }
-            fits_the_far_plane(look.draw_m, m.reach_m()).map_err(|e| format!("{}: {e}", st.name))?;
             triangles += m.triangles();
-            let up =
-                |ms: &[MeshBuilder]| ms.iter().map(|b| r.make_mesh(&b.vertices, Indices::U16(&b.indices))).collect();
+            // A part with nothing in it (E's inside once the bay is baked) uploads nothing.
+            let up = |ms: &[MeshBuilder]| {
+                ms.iter()
+                    .filter(|b| b.triangles() > 0)
+                    .map(|b| r.make_mesh(&b.vertices, Indices::U16(&b.indices)))
+                    .collect()
+            };
             let baked = bay.map(|(b, bay)| {
                 let mesh = |m: &sc_core::bay::BayMesh| {
                     (r.make_mesh(b.vertices_of(m), Indices::U32(&b.indices_of(m))), m.origin_m, m.scale)
                 };
                 triangles += (bay.inside.index_count + bay.glow.index_count) as usize / 3;
-                BakedBay {
-                    inside: mesh(&bay.inside),
-                    glow: mesh(&bay.glow),
-                    probes: sc_core::probes::ProbeSet::new(&b.grids(bay)),
-                }
+                // The outside's paints lit by the star and the planet from where the station stands, as E's own are; its
+                // faces into the bay by the bay's probes.
+                let probes = std::rc::Rc::new(sc_core::probes::ProbeSet::new(&b.grids(bay)));
+                let outside = bay.outside.as_ref().map(|o| {
+                    triangles += o.index_count as usize / 3;
+                    let light = outside_light(&look.outside, sun, planet);
+                    let (v, reach) = lit_outside(b.vertices_of(o), o, &light, &probes);
+                    outside_reach = reach;
+                    (r.make_mesh(&v, Indices::U32(&b.indices_of(o))), o.origin_m, o.scale)
+                });
+                BakedBay { inside: mesh(&bay.inside), glow: mesh(&bay.glow), outside, probes }
             });
+            fits_the_far_plane(look.draw_m, m.reach_m().max(outside_reach)).map_err(|e| format!("{}: {e}", st.name))?;
             stations.push(StationGpu {
                 outside: up(&m.outside),
                 inside: up(&m.inside),
@@ -1256,7 +1350,7 @@ impl StationsView {
         }
         // The baked bay: its inside and its fixtures' faces, each from its own origin and scale, in the station's state.
         if let (Some(bay), Some(tex)) = (&g.baked, &self.bay_tex) {
-            for (m, origin, scale) in [&bay.inside, &bay.glow] {
+            for (m, origin, scale) in [Some(&bay.inside), Some(&bay.glow), bay.outside.as_ref()].into_iter().flatten() {
                 let o = Vec3::new(origin[0] as f32, origin[1] as f32, origin[2] as f32);
                 let p = DeckParams {
                     mvp: vp * frame * Mat4::from_translation(o) * Mat4::from_scale(Vec3::splat(*scale)),
@@ -1270,8 +1364,10 @@ impl StationsView {
         if let Some(h) = hull {
             for pose in &g.docked {
                 let (_, turn, at) = pose.to_scale_rotation_translation();
-                let star = HullLight::from_way(Vec3::Y, self.look.bay.ship_light);
-                let light = self.hull_light(index, at, turn.as_quat(), star).unwrap_or(star);
+                let stand_in = HullLight::from_way(Vec3::Y, self.look.bay.ship_light);
+                // A docked ship lies in its bay: lit at each vertex by that bay's probes, whichever version it is.
+                let probes = g.baked.as_ref().map(|b| &b.probes);
+                let light = berth_light(probes, &self.look.bay, at, turn.as_quat(), stand_in);
                 h.draw_posed(r, t, vp, frame * pose.as_mat4(), &light);
             }
         }
@@ -1299,24 +1395,21 @@ mod tests {
     }
 
     #[test]
-    fn with_the_mockups_bake_tamsin_leaves_out_its_own_bay_and_keeps_its_throat_and_berths() {
-        // Design 8b: the baked bay replaces the stand-in's walls, ribs, berths and fixtures; the throat is not baked yet.
+    fn with_the_mockups_bake_tamsin_leaves_out_its_own_bay_and_throat_and_keeps_its_berths() {
+        // Design 8b: the baked bay and throat replace the stand-in's walls, ribs, berths and fixtures.
         let (own, baked) = (tamsin(), oneill(&Spacedock::shipped().oneill, &json(), &look(), Vec3::Z, -Vec3::Y, true));
         let tris = |m: &[MeshBuilder]| m.iter().map(MeshBuilder::triangles).sum::<usize>();
-        assert!(
-            tris(&baked.inside) > 0 && tris(&baked.inside) < tris(&own.inside) / 2,
-            "the throat stays, the bay goes"
-        );
+        assert!(tris(&own.inside) > 0 && tris(&baked.inside) == 0, "the bay and the throat go");
         assert!(
             tris(&baked.glow) > 0 && tris(&baked.glow) < tris(&own.glow),
-            "the throat's and the mouth's rings stay"
+            "the mouth's ring and the dome's guide rings stay (they are outside)"
         );
         assert_eq!(baked.docked, own.docked, "the docked ships keep their berths");
         assert_eq!(tris(&baked.outside), tris(&own.outside), "the outside is not the bay's");
     }
 
     /// A 2 x 1 x 1 probe grid 20 m apart from `origin`: the first probe's +Y face `up`, every other face and probe 0.4.
-    fn probes(origin: [f64; 3], up: f32) -> sc_core::probes::ProbeSet {
+    fn probes(origin: [f64; 3], up: f32) -> std::rc::Rc<sc_core::probes::ProbeSet> {
         let mut data = vec![0u8; 2 * sc_core::probes::PROBE_BYTES];
         for (k, probe) in data.chunks_exact_mut(sc_core::probes::PROBE_BYTES).enumerate() {
             for axis in 0..6 {
@@ -1330,7 +1423,7 @@ mod tests {
             probe[54] = 1;
         }
         let grid = sc_core::probes::ProbeGrid { origin_m: origin, spacing_m: 20.0, dims: [2, 1, 1], data: &data };
-        sc_core::probes::ProbeSet::new(&[grid])
+        std::rc::Rc::new(sc_core::probes::ProbeSet::new(&[grid]))
     }
 
     #[test]
@@ -1340,17 +1433,18 @@ mod tests {
         let set = probes([0.0, 0.0, -100.0], 1.0);
         let star = HullLight::from_way(Vec3::X, 1.0);
         let at_probe = DVec3::new(0.0, 0.0, -100.0);
-        let l = roof_light(bore, Some(&set), bay, at_probe, Quat::IDENTITY, star);
+        let l = roof_light(bore, Some(&set), bay, at_probe, Quat::IDENTITY, star.clone());
         let cube = l.cube.expect("the probes light it");
         assert!((cube[2][0] - 1.0).abs() < 0.01 && (cube[3][0] - 0.4).abs() < 0.01, "the probe's own cube: {cube:?}");
         assert_eq!(l.star_share, 0.0, "no star in the sealed bay");
         // Upside down (half a turn about its bow), the hull's up faces the bay's down.
-        let flip = roof_light(bore, Some(&set), bay, at_probe, Quat::from_rotation_z(std::f32::consts::PI), star);
+        let flip =
+            roof_light(bore, Some(&set), bay, at_probe, Quat::from_rotation_z(std::f32::consts::PI), star.clone());
         let c = flip.cube.expect("lit");
         assert!((c[3][0] - 1.0).abs() < 0.01 && (c[2][0] - 0.4).abs() < 0.01, "turned into the hull's frame: {c:?}");
         // A pool brighter than the cap is held under it.
         let hot = probes([0.0, 0.0, -100.0], 1.9);
-        let h = roof_light(bore, Some(&hot), bay, at_probe, Quat::IDENTITY, star).cube.expect("lit");
+        let h = roof_light(bore, Some(&hot), bay, at_probe, Quat::IDENTITY, star.clone()).cube.expect("lit");
         assert!((h[2][0] - bay.hull_probe_max).abs() < 0.01, "held at {}: {h:?}", bay.hull_probe_max);
     }
 
@@ -1358,13 +1452,14 @@ mod tests {
     fn down_the_throat_the_bays_light_gives_way_to_the_stars() {
         let bore = Bore { radius_m: 250.0, back_z: -600.0, iris_z: 0.0, mouth_z: 320.0 };
         let bay = &look().bay;
-        let set = probes([0.0, 0.0, -5.0], 1.0);
+        let set = probes([0.0, 0.0, 155.0], 1.0); // the throat is baked: its probes run to the mouth
         let star = HullLight::from_way(Vec3::X, 1.0);
-        let half = roof_light(bore, Some(&set), bay, DVec3::new(0.0, 0.0, 160.0), Quat::IDENTITY, star);
+        let half = roof_light(bore, Some(&set), bay, DVec3::new(0.0, 0.0, 160.0), Quat::IDENTITY, star.clone());
         assert!(half.cube.is_some() && (half.star_share - 0.5).abs() < 1e-6, "halfway, half the star's");
         assert_eq!(half.sun, Vec3::X, "the star's way");
-        let none = roof_light(bore, None, bay, DVec3::new(0.0, 0.0, -100.0), Quat::IDENTITY, star);
-        assert_eq!(none, HullLight::from_way(Vec3::Y, bay.ship_light), "no baked bay: the stand-in from its own up");
+        let none = roof_light(bore, None, bay, DVec3::new(0.0, 0.0, -100.0), Quat::IDENTITY, star.clone());
+        assert!(none.cube.is_none() && none.bay.is_none(), "no baked bay: the stand-in");
+        assert_eq!((none.sun, none.strength), (Vec3::Y, bay.ship_light), "from its own up");
     }
 
     #[test]

@@ -1306,7 +1306,7 @@ impl DrillApp {
     fn hull_light(&self, roof: Option<Roof>, ext: &ExteriorData, q: Quat) -> HullLight {
         let star = HullLight::star(&self.r, crate::outside::sun_in_ship(ext, q), Some(q));
         let (Some(roof), Some(v)) = (roof, self.meshes.stations.as_ref()) else { return star };
-        v.hull_light(roof.station, roof.at, roof.rot.inverse() * q, star).unwrap_or(star)
+        v.hull_light(roof.station, roof.at, roof.rot.inverse() * q, star.clone()).unwrap_or(star)
     }
 }
 

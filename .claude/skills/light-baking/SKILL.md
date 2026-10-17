@@ -102,11 +102,12 @@ The ships are not in the scene: the bay's probe grids light them (20 m through t
 `node tools/mockups/bake_spacedock.mjs` (about 10 minutes here for the five) and commit the cache. `?bake=fresh` bakes live,
 `?bake=0` keeps the stand-in. Its shots wait for the bake (`spacedock-E-bay*`, `-E-window*`, `-E-crossing*`).
 
-**In the engine** (spacedock design 8b): `node tools/stations/export_bays.mjs` (E by default, `--versions` for more)
-carries the baked inside, its fixtures' faces, the probes and their texture layers into `build/stations/`, and
-`cargo run --release -p sc-tools -- bayc` packs them into `compiled/stations.bays` (gitignored). The client draws E's bay
-from it and lights the Tern's hull and the docked ships from its probes, one cube a hull; without the file it shows the
-stand-in and says so. After rebaking the bay, run both again before judging the game. The patrol's headless shots
+**In the engine** (spacedock design 8b): `node tools/stations/export_bays.mjs` (all five by default, `--versions` to
+choose) carries the baked insides, their fixtures' faces, the probes, A-D's outsides with their doors shut and their
+docked ships, and the texture layers into `build/stations/`, and `cargo run --release -p sc-tools -- bayc` packs them
+into `compiled/stations.bays` (gitignored). The client draws every station from it and lights the Tern's hull and the
+docked ships at each vertex from their bay's probes; without the file it shows the stand-ins and says so.
+`sc-client --headless --station-shots DIR` draws all five from the mockup's cameras. After rebaking the bay, run both again before judging the game. The patrol's headless shots
 (`sc-client --headless --solo --bot --mission patrol-shoals --station helm --shots DIR`) include `p3b-bay-docked-ship`
 and `p3c-bay-tern-hull`, taken from out in the bay; run them once without the file to compare with the stand-in.
 

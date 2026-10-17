@@ -44,6 +44,12 @@ struct ExportBay {
     inside: ExportMesh,
     glow: ExportMesh,
     grids: Vec<ExportGrid>,
+    /// A-D: the outside with its doors shut; none for E (the engine builds its own).
+    #[serde(default)]
+    outside: Option<ExportMesh>,
+    /// The docked ships: fleet key and pose.
+    #[serde(default)]
+    docked: Vec<sc_core::bay::BayDocked>,
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -65,6 +71,10 @@ struct MeshFiles {
     c0: String,
     c1: String,
     c2: String,
+    /// A float a vertex (the outside's): 1 where the part is its own light (alpha 0), 0.5 where its face looks into the
+    /// bay's air (alpha 128), 0 for the outside proper.
+    #[serde(default)]
+    glow: Option<String>,
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -94,6 +104,8 @@ struct Corner {
     uv: [f32; 2],
     layer: u8,
     c: [[f32; 3]; 3],
+    /// The colour's alpha byte: 255, 0 where the part is its own light, 128 where it faces into the bay (the outside's).
+    a: u8,
 }
 
 /// The most texture repeats a triangle may span on either axis: the vertex holds +/-32 after a whole-span shift.
@@ -123,6 +135,7 @@ fn split(t: [Corner; 3], out: &mut Vec<[Corner; 3]>) {
         uv: std::array::from_fn(|k| mid(a.uv[k], b.uv[k])),
         layer: a.layer,
         c: std::array::from_fn(|s| std::array::from_fn(|k| mid(a.c[s][k], b.c[s][k]))),
+        a: a.a.min(b.a),
     };
     // The same winding: (a, m, c) and (m, b, c).
     split([a, m, c], out);
@@ -147,6 +160,10 @@ fn mesh(
         floats(dir, &f.layer, n)?,
     );
     let cs = [floats(dir, &f.c0, n * 3)?, floats(dir, &f.c1, n * 3)?, floats(dir, &f.c2, n * 3)?];
+    let glows = match &f.glow {
+        Some(g) => floats(dir, g, n)?,
+        None => vec![0.0; n],
+    };
     // The triangles' corners: from the index file, or the soup's own order.
     let corners: Vec<usize> = match (&f.index, m.indices) {
         (None, 0) => (0..n).collect(),
@@ -190,6 +207,14 @@ fn mesh(
             uv: [uv[i * 2], uv[i * 2 + 1]],
             layer: l as u8,
             c: std::array::from_fn(|s| [cs[s][i * 3], cs[s][i * 3 + 1], cs[s][i * 3 + 2]]),
+            // The outside's flag: its own light (alpha 0), or a face looking into the bay's air (alpha 128).
+            a: if glows[i] > 0.75 {
+                0
+            } else if glows[i] > 0.25 {
+                128
+            } else {
+                255
+            },
         })
     };
     let mut tris = Vec::with_capacity(corners.len() / 3);
@@ -213,7 +238,7 @@ fn mesh(
                 layer: q.layer,
                 normal: q.n,
                 colors: std::array::from_fn(|s| {
-                    [color_byte(q.c[s][0]), color_byte(q.c[s][1]), color_byte(q.c[s][2]), 255]
+                    [color_byte(q.c[s][0]), color_byte(q.c[s][1]), color_byte(q.c[s][2]), q.a]
                 }),
                 uv: [q.uv[0] - du, q.uv[1] - dv],
             });
@@ -258,6 +283,10 @@ pub fn run(root: &Path) -> Result<String, String> {
             mesh(&dir, &format!("{} inside", b.version), &b.inside, t.layers, &mut vertices, &mut indices)?;
         let (glow, glow_tris) =
             mesh(&dir, &format!("{} glow", b.version), &b.glow, t.layers, &mut vertices, &mut indices)?;
+        let outside = match &b.outside {
+            Some(m) => Some(mesh(&dir, &format!("{} outside", b.version), m, t.layers, &mut vertices, &mut indices)?.0),
+            None => None,
+        };
         let mut grids = Vec::new();
         let mut valid_count = 0;
         for (k, g) in b.grids.iter().enumerate() {
@@ -286,7 +315,15 @@ pub fn run(root: &Path) -> Result<String, String> {
             inside.scale,
             grids.iter().map(|g| g.dims.iter().product::<u32>()).sum::<u32>()
         ));
-        bays.push(Bay { version: b.version.clone(), digest: b.digest.clone(), inside, glow, grids });
+        bays.push(Bay {
+            version: b.version.clone(),
+            digest: b.digest.clone(),
+            inside,
+            glow,
+            grids,
+            outside,
+            docked: b.docked.clone(),
+        });
     }
     let index = BaysIndex {
         bays,
@@ -332,6 +369,7 @@ mod tests {
             uv: [uv(x, y), 0.0],
             layer: 2,
             c: [[x / 100.0; 3]; 3],
+            a: 255,
         };
         let whole = [q(0.0, 0.0), q(400.0, 0.0), q(0.0, 10.0)];
         let mut out = Vec::new();

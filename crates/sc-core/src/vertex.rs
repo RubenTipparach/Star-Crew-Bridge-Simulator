@@ -103,6 +103,19 @@ pub fn pack_deck_vertex(v: &DeckVertexIn) -> Result<[u8; DECK_VERTEX_BYTES], Pac
     Ok(out)
 }
 
+/// A packed vertex's position (in its stored units: metres times the mesh's scale) and its unit normal, decoded as the
+/// shader decodes them (the inverse of `pack_deck_vertex` for those two attributes; CPU relighting reads them).
+pub fn unpack_position_normal(v: &[u8]) -> ([f32; 3], [f32; 3]) {
+    let p = std::array::from_fn(|k| f32::from(i16::from_le_bytes([v[k * 2], v[k * 2 + 1]])) / FIXED_SCALE);
+    let w = u32::from_le_bytes([v[8], v[9], v[10], v[11]]);
+    let unorm = |shift: u32| {
+        let x = ((w >> shift) & 0x3ff) as i32;
+        let x = if x >= 512 { x - 1024 } else { x };
+        (x as f32 / 511.0).max(-1.0)
+    };
+    (p, [unorm(0), unorm(10), unorm(20)])
+}
+
 /// The mover and layer from the position's fourth lane as the shader reads it: a sign-extended
 /// integer whose low 16 bits hold the mover (low byte) and the layer (high byte), decoded with the
 /// same mask and shift as `deck.glsl` (engine-stack design 7).
@@ -123,6 +136,18 @@ mod tests {
             normal: [0.0, 1.0, 0.0],
             colors: [[255, 128, 0, 255], [10, 20, 30, 40], [1, 2, 3, 4]],
             uv: [0.5, -2.0],
+        }
+    }
+
+    #[test]
+    fn a_packed_vertex_unpacks_to_its_position_and_normal() {
+        let mut x = v();
+        x.normal = [0.6, -0.8, 0.0];
+        let b = pack_deck_vertex(&x).expect("it packs");
+        let (p, n) = unpack_position_normal(&b);
+        for k in 0..3 {
+            assert!((p[k] - x.position_m[k]).abs() < 1.0 / FIXED_SCALE, "position {k}");
+            assert!((n[k] - x.normal[k]).abs() < 2.0 / 511.0, "normal {k}");
         }
     }
 

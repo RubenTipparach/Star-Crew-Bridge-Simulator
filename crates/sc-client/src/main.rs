@@ -15,6 +15,7 @@
 //!
 //! Usage: sc-client [--window] [--deck compiled/tern.deck] [--headless --shots DIR [--poses a,b]]
 //! [--headless --walk-test DIR] [--headless --lobby-test DIR] [--console-fixture STATE.json --shots DIR]
+//! [--headless --station-shots DIR]
 //!
 //! `--poses a,b` limits the headless shots to the named poses (no bot close-ups), each in the three states.
 //!
@@ -49,6 +50,7 @@ mod ships3d;
 mod solo;
 mod stand;
 mod stations;
+mod stationshots;
 mod touch;
 mod ui;
 mod vg;
@@ -1580,6 +1582,21 @@ fn main() -> ExitCode {
         return platform::run(cfg, move |gl| {
             println!("sc-client: {} on {} ({})", gl.version, gl.renderer, gl.video_driver);
             fixture::FixtureApp::new(state, dir).map(|c| Box::new(c) as Box<dyn App>)
+        });
+    }
+    // Every station drawn by the game, outside and in its bay (spacedock design 8b): `--headless --station-shots DIR`.
+    if let Some(dir) = value("--station-shots") {
+        let cfg = WindowConfig {
+            title: "Star Crew: station shots".into(),
+            width: 1440,
+            height: 900,
+            fullscreen: false,
+            headless: true,
+            vsync: false,
+        };
+        return platform::run(cfg, move |gl| {
+            println!("sc-client: {} on {} ({})", gl.version, gl.renderer, gl.video_driver);
+            stationshots::StationShotsApp::new(dir).map(|c| Box::new(c) as Box<dyn App>)
         });
     }
     // The co-op drill (openspec/changes/coop-drill design 5): its own mode, joined by address.

@@ -148,8 +148,12 @@ impl ProbeSet {
     }
     /// The cube at `p` (`sample_ship` over every grid).
     pub fn sample(&self, p: [f64; 3], state_weights: [f32; 3]) -> Option<Cube> {
-        let grids: Vec<ProbeGrid<'_>> = self
-            .grids
+        sample_ship(&self.grids(), p, state_weights)
+    }
+
+    /// Its grids, borrowed: for many samples at once, `sample_ship` over them without a copy each time.
+    pub fn grids(&self) -> Vec<ProbeGrid<'_>> {
+        self.grids
             .iter()
             .map(|g| ProbeGrid {
                 origin_m: g.origin_m,
@@ -157,8 +161,7 @@ impl ProbeSet {
                 dims: g.dims,
                 data: &self.data[g.bytes.clone()],
             })
-            .collect();
-        sample_ship(&grids, p, state_weights)
+            .collect()
     }
 }
 
