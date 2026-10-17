@@ -6,34 +6,37 @@
 - [x] 1.2 Research of shipped games with sources (design 2): Star Trek: Bridge Crew, FTL, Artemis, Elite Dangerous, Mass Effect, Hardspace: Shipbreaker, XAG 101 and 102, Microsoft's TV safe area.
 - [x] 1.3 Proposal, design and spec delta; the bindings read from `sc-client` (design 10); every offending string with its file (design 12); the release bar (13).
 - [x] 1.4 The mockup `docs/mockups/ui-art-direction.html`: eleven screens before and after on the 1920 x 1080 reference frame, five window sizes, the accent alternative; 45 shots in `docs/screenshots/mockups/ui-art-direction/`, looked at and shrunk.
-- [ ] 1.5 The owner approves the mockup and answers Q1 to Q12 (design 16).
+- [x] 1.5 The owner approves the mockup and answers Q1 to Q12 (design 16). Approved, the owner, 2026-10-16: "approve"; Q1 to Q12 (survey UI1 to UI12)
+  each "approve", the recommendation (design 16).
 
 ## 2. Style in data (after approval)
 
-- [ ] 2.1 `tools/ui/ui_style.py` writes `data/ui/ui_style.json` from the mockup's `const UI` and `--check`s it; added to `scripts/check.sh` beside `console_style.py`.
-- [ ] 2.2 The client loads the style at startup, refusing a missing or bad field with its path; egui's visuals (fills, strokes, radii, spacing) set from it; Ubuntu Light removed.
-- [ ] 2.3 The reference-frame scale and anchors as one function (with the web agent's), used by every screen.
+- [x] 2.1 `tools/ui/ui_style.py` writes `data/ui/ui_style.json` from the mockup's `const UI` and `--check`s it; added to `scripts/check.sh` beside `console_style.py`. It also reads the type roles, keycap, item and button sizes and the screens' own glyphs from the mockup's style sheet and script, writes its two key art pictures to `assets/ui/` (1280 x 720), and checks the mockup's `reference_px` against `data/ui/reference.json`. The 12 px floor (Q8) is written by the tool with its source.
+- [x] 2.2 The client loads the style at startup, refusing a missing or bad field with its path; egui's visuals (fills, strokes, radii, spacing) set from it; Ubuntu Light removed. `sc-client/src/look.rs` (the style and the kit every screen draws with), `ui::apply_look`, `vg::install_fonts` (Barlow is egui's proportional face, the emoji faces stay behind it).
+- [x] 2.3 The reference-frame scale and anchors as one function (with the web agent's), used by every screen: `ui::anchored` beside `ui::frame_in`.
 
 ## 3. Screens (after approval, each with captures beside the mockup's)
 
-- [ ] 3.1 Front menu and Single Player (`lobby.rs`): left-hung column, key art, station cards, one primary action.
-- [ ] 3.2 Options pages and Controls (`options.rs`): Display, Game, Controls; the three binding pages from one bindings table in data, the lighting keys under Captain.
-- [ ] 3.3 Briefing on a solid screen (`drill.rs`); full station names in `sc-core` (`Station::name`); mission titles without "Drill 1:".
-- [ ] 3.4 HUD: the objective card and centre dot; roster and clock off the walking HUD; the alert chip at alert only.
-- [ ] 3.5 Prompts as data (label, keys, verb) for `drill.rs`, `onfoot.rs` and `touch.rs`; the plate and its fades.
-- [ ] 3.6 Esc menu side panel with Leave station when seated, objectives and roster (`game_menu.rs`).
-- [ ] 3.7 Leave station in the console band with the hold ring (with the stand agent's button).
-- [ ] 3.8 Loading screen and the first-time hint with its settings flag.
-- [ ] 3.9 Transitions of design 8.
-- [ ] 3.10 Every string of design 12 removed or rewritten, per the owner's answers to Q2, Q3, Q11 and Q12.
+Captures: `docs/screenshots/engine/ui-art-direction/` (each beside the mockup's after shot, 1920 x 1080 and the itch.io embed's 985 x 455), made by `sc-client --headless --lobby-test DIR` and `sc-client --headless --solo --ui-shots DIR` with `--size`. Video: `docs/videos/2026-10-16-ui-pass-pi5.mp4` (`sc-client --headless --size 1280x720 --demo DIR`, the frames at 30 a second: the front menu, Single Player, loading, the walk with the hint, the seat's prompt, the briefing, the Esc menu, Leave ship, Options and Controls' three tabs, the console).
+
+- [x] 3.1 Front menu and Single Player (`lobby.rs`): left-hung column, key art, station cards, one primary action. Comms and Flight ops are hidden (Q4); Explore the ship is the secondary action (Q5); "Bridge simulator" and the version label (Q9); Multiplayer keeps its server field and Join, with no raw address hint and no unbuilt code row.
+- [x] 3.2 Options pages and Controls (`options.rs`): Display, Game, Controls; the three binding pages from one bindings table in data (`data/input/bindings.json` `controls`, a key named by its binding's field so the page shows what the game reads), the lighting keys under Captain (1 and 2 at the captain's seat, the ALERT panel's command; emergency power is not a command the captain sends, so it has no key). Look speed is on the Game page beside the names: the mockup's Controls panel has no room for it. The front menu and the Esc menu draw one Options screen.
+- [x] 3.3 Briefing on a solid screen (`hud::briefing`, drawn by `drill.rs`) under the console's band, which stays in reach (Leave station, START MISSION); full station names in `sc-core` (`Station::name`: "Port laser", "Starboard laser"); mission titles without "Drill 1:" (a mission's `label`, "Training drill 1"). A crew row pressed takes that station; READY is the primary button until Launch in counts down.
+- [x] 3.4 HUD: the objective card and centre dot; roster and clock off the walking HUD; the alert chip at alert only (red alert; emergency power has no flag in the snapshot yet).
+- [x] 3.5 Prompts as data (`hud::Prompt`: label, keys, verbs) for `drill.rs`, `onfoot.rs` and the touch layer (`Prompt::touch_word` replaces `touch::touch_prompt`); the plate and its fades; the keys are the bindings' (`use`, `down`, `spray`), never a hard-coded E.
+- [x] 3.6 Esc menu side panel with Leave station when seated, objectives and roster (`game_menu.rs`); Leave ship offers Return to main menu and Quit to desktop, each asking once.
+- [x] 3.7 Leave station in the console band with the hold ring (built by leave-station); Leave station in the Esc menu stands up as the band's button does.
+- [x] 3.8 Loading screen and the first-time hint with its settings flag (`first_steps_done` in `settings/options.json`, set when the player first sits); the hint's marker is over the player's station with its distance.
+- [ ] 3.9 Transitions of design 8. Built: the prompt in 120 ms and out 200 ms, the Esc menu's 160 ms, the menus' pages from the ground over 250 ms, loading out over 400 ms. Not built: the focus bar's 90 ms slide and the briefing lowering into the desk (350 ms); the sounds wait for the sound change.
+- [ ] 3.10 Every string of design 12 removed or rewritten, per the owner's answers to Q2, Q3, Q11 and Q12. Done: SCS TERN, Comms and Flight ops, Roll, TOUR, the address hint, CODE, Any, Waiting for the drill and Connecting (the loading screen), the window titles, automation, (bot), A bot plays this station, ENGAGING IN, reading, CREW SITTING, Laser stbd, Drill 1:, the top bar's phase, clock and roster, BRIDGE (V), the walking prompts, (NPC) (the crew-AI icon, Q3), RTT and LOSS (debug builds only, Q11), the helm's quaternion on hover only (Q2), Bot as an operator, the consoles' "not simulated" and "not built" tips, the captain's raw station ids, Next drill, the debrief's percentages, the refusals' wording, Lt. Player and the command line's placeholder names; a long name in the console's status line is cut to fit. Not done (console-parity's approved panels, a text pass of their own): the console tooltips' keys in brackets, ROLL IN YAW and the helm's rate tips, Tactical's raw contact words and PD, Engineering's schematic jargon; T1 and J1 stay (Q12).
 
 ## 4. Measure
 
-- [ ] 4.1 UI draw calls and texture memory of the menus, the briefing and the Esc menu on the Pi 5 (1 GB), against design 15's estimates.
+- [ ] 4.1 UI draw calls and texture memory of the menus, the briefing and the Esc menu on the Pi 5 (1 GB), against design 15's estimates. Counted on the 8 GB Pi 5 (2026-10-16, the release build, `--lobby-test` and `--ui-shots`, which print them): egui batches each screen into 1 to 13 UI draw calls (front menu 3, Single Player 5, Options and Controls 3 on the menus; walking HUD 1, briefing 12, Esc menu and its Options 13, a console 10), far under design 15's estimate of about 30 over a console and the table's 300. UI textures: 4.2 MB on the menus (the font atlas and the menu's key art), 7.9 to 8.4 MB on the beaming frame while both pictures are up, 3.9 to 5.8 MB in the game. One difference from design 15: the loading picture is kept in the game (the briefing's art band shows it each round), about 3.7 MB resident; freeing it on boarding and reloading it per briefing is the alternative. Left open: the same counts on the 1 GB Pi 5 and a frame time beside them (this is a count, not a speed measure).
 
 ## 5. Release check (proposed; build after approval)
 
-- [ ] 5.1 `data/ui/forbidden_strings.json` and a headless test that collects every string the UI lays out on every reachable screen and fails on a forbidden one, naming the screen and the string.
-- [ ] 5.2 A scripted walk through every reachable screen at 1280 x 720 and 1920 x 1080, captures to `docs/screenshots/engine/release/`.
-- [ ] 5.3 An overlap and clipping check on the laid-out text rectangles of each capture (inside the screen, inside the panel, no two intersecting, no ellipsis outside an allowed band).
-- [ ] 5.4 The three as one step in `scripts/check.sh`.
+- [x] 5.1 `data/ui/forbidden_strings.json` and a headless test that collects every string the UI lays out on every reachable screen and fails on a forbidden one, naming the screen and the string.
+- [x] 5.2 A scripted walk through every reachable screen at 1280 x 720 and 1920 x 1080, captures to `docs/screenshots/engine/release/`: `--lobby-test` (the front menu's pages and Controls' tabs, Single Player, the loading screen) and `--solo --ui-shots` (loading, the walking HUD with the hint, the Esc menu walking and seated, the prompt, the briefing, Leave ship, Options, Controls' tabs, the console), each with `--size`.
+- [x] 5.3 An overlap and clipping check on the laid-out text rectangles of each capture (inside the screen, inside the panel, no two intersecting, no ellipsis outside an allowed band).
+- [x] 5.4 The three as one step in `scripts/check.sh` (step 14). The check is `crates/sc-client/src/release.rs`: the screens laid out headless in egui at both sizes, their text rectangles taken from egui's output; the debrief is not in it yet (its snapshot has no test builder).

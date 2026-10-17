@@ -97,6 +97,10 @@ pub mod keys {
     pub const Z: u32 = sdl::SDLK_Z.0;
     /// Y.
     pub const Y: u32 = sdl::SDLK_Y.0;
+    /// 1: the captain's normal lighting (ui-art-direction design 10).
+    pub const N1: u32 = sdl::SDLK_1.0;
+    /// 2: the captain's red alert.
+    pub const N2: u32 = sdl::SDLK_2.0;
     /// Left control.
     pub const LCTRL: u32 = sdl::SDLK_LCTRL.0;
     /// Return (Enter).

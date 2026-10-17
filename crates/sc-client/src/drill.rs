@@ -16,7 +16,7 @@ use std::collections::HashSet;
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::path::PathBuf;
 
-use egui::{Align2, Color32, CornerRadius, Pos2, Rect, RichText, Stroke, Vec2};
+use egui::{Align2, Color32, Pos2, Rect, RichText, Vec2};
 use glam::{DQuat, DVec3, Mat4, Quat, Vec3};
 use sc_client::platform::{keys, App, Event, Flow, Frame, TouchPhase};
 use sc_core::combat::data::{DrillData, DRILL_FILES};
@@ -38,14 +38,8 @@ use crate::ui::Ui;
 /// The viewscreen's feed, pixels: twice its 614 x 194 layout points, so it stays sharp up to 1440p.
 const FEED: (u32, u32) = (1228, 388);
 
-const PANEL: Color32 = Color32::from_rgba_premultiplied(10, 16, 26, 232);
-const EDGE: Color32 = Color32::from_rgb(44, 62, 82);
-const TEXT: Color32 = Color32::from_rgb(222, 230, 238);
 const DIM: Color32 = Color32::from_rgb(128, 146, 164);
-const CYAN: Color32 = Color32::from_rgb(88, 200, 232);
 const AMBER: Color32 = Color32::from_rgb(242, 160, 70);
-const RED: Color32 = Color32::from_rgb(232, 82, 70);
-const GREEN: Color32 = Color32::from_rgb(112, 204, 122);
 
 /// What `--connect` was given.
 pub struct DrillArgs {
@@ -85,6 +79,31 @@ pub struct DrillArgs {
     pub all_hands: bool,
     /// The mission to load, `data/missions/<id>.json` (`--mission`; a server's welcome names its own).
     pub mission: String,
+    /// Single player: the UI's capture run (`--ui-shots DIR`, `--demo DIR`; ui-art-direction tasks 3 and 5).
+    pub tour: Option<TourArgs>,
+}
+
+/// The UI's capture run (CLAUDE.md 4: a capture instrument, it decides nothing a player could not): a scripted player
+/// walks to its station with the first-time hint up, stands a moment in reach, sits, reads the briefing, opens the
+/// Esc menu and its pages, and watches the console into the fight. `--ui-shots` writes a named capture of each screen
+/// (ui-art-direction task 5.2); `--demo` writes every frame at 30 a second for the video, each screen held a while.
+#[derive(Clone, Debug)]
+pub struct TourArgs {
+    /// Where the captures or frames go.
+    pub dir: PathBuf,
+    /// Every frame, for a video (`--demo`), rather than one capture a screen.
+    pub video: bool,
+    /// The video's next frame number (the front menu's frames come first).
+    pub frame: u64,
+}
+
+/// Where the UI's capture run is: its step, when the step began, its frames.
+#[derive(Debug)]
+struct Tour {
+    args: TourArgs,
+    step: usize,
+    since: f64,
+    frames: u64,
 }
 
 struct Meshes {
@@ -199,6 +218,9 @@ pub struct DrillApp {
     shown: Option<Station>,
     /// Single player: READY pressed while the crew still walk to their seats; sent once they sit (design 4).
     ready_held: bool,
+    /// START MISSION on this frame's console, and the drill clock (`phase_s`) it was first seen at (start-mission 4):
+    /// the scripted shots capture it and press it.
+    start_seen: Option<f64>,
     /// The pointer's events since the last frame, for the console.
     pointer: Vec<PointerEv>,
     /// F3: the link's round trip and loss in a corner (debug numbers are not console content).
@@ -282,6 +304,18 @@ pub struct DrillApp {
     /// The on-foot prompt last said (logged when it changes), and when the last refusal logged was made.
     prompt_said: Option<String>,
     refused_said: Option<f64>,
+    /// The prompt plate on screen and how much of it shows: it fades in over `prompt_in` and out over `prompt_out`
+    /// (ui-art-direction design 8).
+    plate: Option<(crate::hud::Prompt, f32)>,
+    /// The loading screen's and the briefing's art and the loading screen's tip, loaded on the first frame and kept
+    /// while the game runs (design 15: the briefing shows it again each round).
+    art: Option<(Option<egui::TextureHandle>, Option<crate::hud::Tip>)>,
+    /// The game's clock at the first snapshot: the loading screen fades out over `load_out` from it.
+    boarded_at: Option<f64>,
+    /// `--ui-shots` and `--demo`: the UI's capture run.
+    tour: Option<Tour>,
+    /// The last frame's UI meshes, one draw call each (the capture run reports them).
+    ui_meshes: usize,
 }
 
 /// The console comes up from the desk over this long once the body sits, seconds (the law: maximum immersion).
@@ -399,6 +433,7 @@ impl DrillApp {
             solo,
             shown: None,
             ready_held: false,
+            start_seen: None,
             pointer: Vec::new(),
             show_net: false,
             shots_taken: HashSet::new(),
@@ -446,6 +481,11 @@ impl DrillApp {
             touch_stick: None,
             touch_down: false,
             prompt_said: None,
+            plate: None,
+            art: None,
+            boarded_at: None,
+            tour: None,
+            ui_meshes: 0,
             refused_said: None,
         };
         match sc_core::repair::data::RepairData::load_for_ship(|rel| {
@@ -454,7 +494,12 @@ impl DrillApp {
             Ok(r) => app.repair_data = Some(r),
             Err(e) => println!("sc-client: no repairs on deck ({e})"),
         }
-        if app.args.film && app.solo.is_some() {
+        if let (Some(t), true) = (app.args.tour.clone(), app.solo.is_some()) {
+            app.playtest = Some(crate::playtest::Playtest::ui_tour(app.args.station));
+            // The run shows the first-time hint whatever this machine's settings say, and keeps nothing.
+            app.options.first_steps_done = false;
+            app.tour = Some(Tour { frames: t.frame, args: t, step: 0, since: 0.0 });
+        } else if app.args.film && app.solo.is_some() {
             app.playtest = Some(crate::playtest::Playtest::film(app.args.station));
         } else if app.args.playtest && app.solo.is_some() {
             // A patrol's script looks out of the windows as the patrol goes on (patrol-mission design 11).
@@ -554,7 +599,7 @@ impl DrillApp {
         burning: &[usize],
         jobs: &[sc_core::combat::DeckJob],
         empty: &[usize],
-    ) -> Option<String> {
+    ) -> Option<crate::hud::Prompt> {
         let seats = &self.data.stations.seats;
         // The use key sits (the same key stands, leave-station 2), takes and repairs.
         let use_key = self.bindings.use_key;
@@ -622,7 +667,7 @@ impl DrillApp {
             dock = Some(*k as u8);
         }
         let repairing = self.deck.is_some();
-        let mut spray = held.contains(&keys::F) || self.mouse_left;
+        let mut spray = held.contains(&self.bindings.spray_key) || self.mouse_left;
         let chest = glam::DVec3::new(f64::from(feet[0]), f64::from(feet[1]) + 1.2, f64::from(feet[2]));
         let rooms = &self.data.tern_layout.rooms;
         let in_fire = rooms.iter().position(|r| r.contains(chest)).is_some_and(|k| burning.contains(&k));
@@ -667,7 +712,7 @@ impl DrillApp {
             // At a machine the body stays: the game has the hands.
             None if repairing => (sc_core::walk::Input { yaw: self.look.0, ..Default::default() }, false),
             None => {
-                let mut i = crate::onfoot::OnFoot::keys_input(&held, &pressed, self.look.0);
+                let mut i = crate::onfoot::OnFoot::keys_input(&held, &pressed, self.look.0, &self.bindings);
                 // The touch layer's stick walks the body as the keys do, by how far it is pushed (touch-controls 3).
                 if let Some((forward, right, run)) = self.touch_stick.filter(|s| s.0 != 0.0 || s.1 != 0.0) {
                     i.forward = forward;
@@ -703,23 +748,27 @@ impl DrillApp {
             }
             self.walk_sent = self.time_s;
         }
-        // What E and F do here: sit (taking the seat from an NPC in it), take an extinguisher, spray the fire, or the
-        // lift's and ladder's keys.
+        // What the use and spray keys do here (ui-art-direction design 7): sit (taking the seat from an NPC in it), take
+        // an extinguisher, spray the fire, or the lift's and ladder's keys; the keys are the bindings', as read above.
+        use crate::hud::Prompt;
+        use crate::look::KeyTok;
         let crew = self.session.as_ref().map(|s| s.crew.clone()).unwrap_or_default();
         let others = self.session.as_ref().and_then(|s| s.latest()).map(|s| s.bodies.clone()).unwrap_or_default();
-        let agent = (me.agent * 100.0).round();
+        let b = &self.bindings;
+        let use_key = || vec![KeyTok::Key(b.use_label.clone())];
         match seat {
-            Some(st) => Some(seat_prompt(st, me.slot, &crew, &others)),
+            Some(st) => Some(seat_prompt(st, me.slot, &crew, &others, &b.use_label)),
             None if repairing => None,
-            None if reach_job.is_some() => reach_job.as_ref().map(|(_, title)| format!("E  Repair: {title}")),
-            None if at_locker && me.agent < 1.0 => Some("E  Take an extinguisher".to_owned()),
-            None if emptied && me.agent < 1.0 => Some("Bracket empty".to_owned()),
-            None if in_fire && me.agent > 0.0 => Some(format!("FIRE   F  Spray it   (agent {agent:.0}%)")),
-            None if in_fire => Some("FIRE   An extinguisher hangs by the door".to_owned()),
-            None => foot
-                .prompt()
-                .map(str::to_owned)
-                .or_else(|| (me.agent > 0.0).then(|| format!("Extinguisher {agent:.0}%"))),
+            None if reach_job.is_some() => reach_job.as_ref().map(|(_, title)| Prompt::act(title, use_key(), "Repair")),
+            None if at_locker && me.agent < 1.0 => Some(Prompt::act("Extinguisher", use_key(), "Take")),
+            None if emptied && me.agent < 1.0 => Some(Prompt::note("Extinguisher", "Empty")),
+            None if in_fire && me.agent > 0.0 => {
+                let mut p = Prompt::act("Fire", vec![KeyTok::Hold, KeyTok::Key(b.spray_label.clone())], "Spray");
+                p.bar = Some(me.agent);
+                Some(p)
+            }
+            None if in_fire => Some(Prompt::note("Fire", "Find an extinguisher")),
+            None => foot.prompt(b),
         }
     }
 
@@ -733,6 +782,15 @@ impl DrillApp {
     }
 
     /// Seated in a station of this player's own, the menu shut: LEAVE STATION and the stand key work.
+    /// Whether this player may press START MISSION now (start-mission 2): `combat::may_start` on the crew the server
+    /// sent, the rule the server applies to the request.
+    fn may_start(&self) -> bool {
+        let Some(s) = self.session.as_ref() else { return false };
+        let Some(me) = s.slot else { return false };
+        let crew: Vec<(u8, Option<Station>, bool)> = s.crew.iter().map(|c| (c.slot, c.station, c.bot)).collect();
+        self.bot.is_none() && sc_core::combat::may_start(&crew, me).is_ok()
+    }
+
     fn can_stand(&self, station: Option<Station>, posture: Option<sc_core::combat::bodies::Posture>) -> bool {
         posture == Some(sc_core::combat::bodies::Posture::Seated)
             && station.is_some()
@@ -1420,6 +1478,97 @@ impl DrillApp {
         }
     }
 
+    /// One frame of the UI's capture run; false when it is over. `seated`: the body sits at its console;
+    /// `loading`: how much of the loading screen shows.
+    fn tour_step(&mut self, f: &Frame, seated: bool, loading: f32) -> bool {
+        let Some(mut t) = self.tour.take() else { return true };
+        let video = t.args.video;
+        if video {
+            let name = format!("frame-{:05}.png", t.frames);
+            let px = sc_render::read_output(f.width, f.height);
+            if let Err(e) = sc_client::capture::write_png(&t.args.dir.join(name), f.width, f.height, &px) {
+                eprintln!("sc-client: {e}");
+            }
+        }
+        t.frames += 1;
+        let now = self.time_s;
+        // How long a screen is held: long enough to read in the video, long enough for a fade in a capture; the console
+        // a while into the fight.
+        let hold = match t.step {
+            0 => 0.0,
+            11 => 3.0,
+            _ if video => 2.5,
+            _ => 0.5,
+        };
+        let phase = self.session.as_ref().and_then(|s| s.latest()).map(|s| s.phase);
+        let boarded = self.boarded_at.map_or(0.0, |b| now - b);
+        let risen = self.seated_at.is_some_and(|s| now - s > CONSOLE_RISE_S + 0.3);
+        let own = self.args.station.name();
+        let plate = self.plate.as_ref().is_some_and(|(p, a)| p.label == own && !p.acts.is_empty() && *a >= 0.99);
+        // Each step: is its screen up, the menu's page for it, and its capture's name.
+        let (ready, page, name): (bool, &str, &str) = match t.step {
+            0 => (loading > 0.9, "closed", "1-loading"),
+            1 => (self.free && boarded > 1.5, "closed", "2-hud-first-steps"),
+            2 => (true, "main", "3-pause-walking"),
+            3 => (plate, "closed", "4-prompt"),
+            4 => (seated && risen && matches!(phase, Some(Phase::Muster | Phase::Countdown)), "closed", "5-briefing"),
+            5 => (true, "main", "6-pause-seated"),
+            6 => (true, "leave", "7-pause-leave"),
+            7 => (true, "display", "8-options"),
+            8 => (true, "controls-foot", "9-controls-foot"),
+            9 => (true, "controls-console", "10-controls-console"),
+            10 => (true, "controls-touch", "11-controls-touch"),
+            11 => (phase.is_some_and(Phase::live), "closed", "12-console"),
+            _ => {
+                println!("sc-client: the UI run is done ({} frames)", t.frames);
+                return false;
+            }
+        };
+        // A moment that went by on its own is passed: the loading screen once aboard, the prompt once seated, the
+        // briefing once the fight is on.
+        let gone = match t.step {
+            0 => boarded > 1.0,
+            3 => seated,
+            4 => phase.is_some_and(Phase::live),
+            _ => false,
+        };
+        if !ready && gone {
+            println!("sc-client: ui run: step {} passed", t.step);
+            t.step += 1;
+            t.since = now;
+        }
+        if !ready {
+            t.since = now;
+        } else {
+            self.menu.tour_page(page);
+            // The briefing is read: READY goes out once the crew sit, as a player's would.
+            if t.step >= 5 {
+                self.ready_held = !self.session.as_ref().is_some_and(|s| s.ready());
+            }
+            if now - t.since >= hold {
+                if !video {
+                    let px = sc_render::read_output(f.width, f.height);
+                    let path = t.args.dir.join(format!("{name}.png"));
+                    match sc_client::capture::write_png(&path, f.width, f.height, &px) {
+                        Ok(()) => println!("sc-client: wrote {}", path.display()),
+                        Err(e) => eprintln!("sc-client: {e}"),
+                    }
+                }
+                // ui-art-direction task 4.1: the UI's draw calls (egui's meshes, one draw each) and its textures.
+                println!(
+                    "sc-client: ui run: {name}: {} UI draw calls, {:.1} MB of UI textures",
+                    self.ui_meshes,
+                    self.ui.texture_bytes() as f64 / 1e6
+                );
+                t.step += 1;
+                t.since = now;
+                self.menu.tour_page("closed");
+            }
+        }
+        self.tour = Some(t);
+        true
+    }
+
     fn scripted_shots(&mut self, f: &Frame) {
         if self.args.shots.is_none() {
             return;
@@ -1450,6 +1599,23 @@ impl DrillApp {
         // after reading it, and it goes out when the crew are seated.
         if self.solo.is_some() && snap.phase == Phase::Muster && t >= 2.0 {
             self.ready_held = true;
+        }
+        // START MISSION (start-mission 4): a scripted run seated while the round waits shoots the band with the
+        // control, then presses it a second later, as the player would (again each second while it is still up: a
+        // press lost to a reconnect), and shoots the countdown.
+        if let Some(seen) = self.start_seen {
+            self.capture(f, &format!("1-start-mission-{st}.png"));
+            if t - seen >= 1.0 {
+                self.shots_taken.insert("start-pressed".into());
+                self.start_seen = Some(t);
+                if let Some(s) = self.session.as_ref() {
+                    println!("sc-client: START MISSION (scripted)");
+                    s.start_mission();
+                }
+            }
+        }
+        if snap.phase == Phase::Countdown && self.shots_taken.contains("start-pressed") && t >= 0.5 {
+            self.capture(f, &format!("2-countdown-started-{st}.png"));
         }
         if self.args.film {
             self.film(f, &snap);
@@ -1837,7 +2003,7 @@ impl App for DrillApp {
         // countdown too (chase-camera 3; owner, 2026-10-14: "normal time please, I dont like the speedup"). Without
         // --shots the film runs on the clock, for a recorder on a machine with a GPU (obs-record); everything else
         // steps by the frame, as a player's game does.
-        let filming = self.args.film && self.args.shots.is_some();
+        let filming = (self.args.film && self.args.shots.is_some()) || self.tour.as_ref().is_some_and(|t| t.args.video);
         let dt = if filming { 1.0 / 30.0 } else { f.elapsed_s.clamp(0.0, 0.1) };
         self.time_s += dt;
         if let Some(h) = self.solo.as_mut() {
@@ -1938,22 +2104,30 @@ impl App for DrillApp {
             }
             self.refused_said = refused.map(|r| r.1);
         }
-        // What E does here, said once when it changes: a playtest's and the browser smoke test's view of the walk.
-        if foot_prompt != self.prompt_said {
-            if let Some(p) = foot_prompt.as_deref() {
-                println!("sc-client: prompt: {}", p.split_whitespace().collect::<Vec<_>>().join(" "));
+        // What the keys do here, said once when it changes: a playtest's and the browser smoke test's view of the walk.
+        let line = foot_prompt.as_ref().map(crate::hud::Prompt::line);
+        if line != self.prompt_said {
+            if let Some(p) = &line {
+                println!("sc-client: prompt: {p}");
             }
-            self.prompt_said = foot_prompt.clone();
+            self.prompt_said = line;
         }
-        // By thumb the prompt loses its key letters and USE carries its verb (touch-controls 3).
+        // By thumb the plate shows no keys and USE carries the verb (touch-controls 3).
         let touching = self.touch.active();
-        self.touch_down = foot_prompt.as_deref().is_some_and(|p| p.contains("Q  Down"));
-        let (use_word, foot_prompt) = match foot_prompt {
-            Some(p) if touching => {
-                let (w, clean) = crate::touch::touch_prompt(&p);
-                (w, Some(clean))
-            }
-            p => (None, p),
+        let b = &self.bindings;
+        self.touch_down = foot_prompt.as_ref().is_some_and(|p| p.has_key(&b.down_label));
+        let use_word =
+            foot_prompt.as_ref().filter(|_| touching).and_then(|p| p.touch_word(&b.use_label, &b.spray_label));
+        // The plate fades in and out (design 8); walking to a station picked from a tab says where.
+        let want = foot_prompt
+            .clone()
+            .or_else(|| mine.and_then(|b| b.going).map(|g| crate::hud::Prompt::note(g.name(), "On your way")));
+        let m = &crate::look::look().f.motion_ms;
+        let (fade_in, fade_out) = (dt as f32 * 1000.0 / m.prompt_in, dt as f32 * 1000.0 / m.prompt_out);
+        self.plate = match (want, self.plate.take()) {
+            (Some(p), was) => Some((p, (was.map_or(0.0, |w| w.1) + fade_in).min(1.0))),
+            (None, Some((p, a))) => Some((p, a - fade_out)).filter(|x| x.1 > 0.0),
+            (None, None) => None,
         };
         if !free {
             self.release_mouse();
@@ -1974,6 +2148,12 @@ impl App for DrillApp {
         let seated = !walking && station.is_some() && mine.is_some();
         if seated && self.seated_at.is_none() {
             self.rise_from = self.last_view;
+            // The first-time hint has done its work once the player sits (ui-art-direction design 11).
+            if !self.options.first_steps_done && self.bot.is_none() && self.args.shots.is_none() && self.tour.is_none()
+            {
+                self.options.first_steps_done = true;
+                self.options.keep();
+            }
             println!("sc-client: sat at {}", station.map_or("a seat", |s| s.name()));
         }
         if !seated && self.seated_at.is_some() {
@@ -2084,7 +2264,9 @@ impl App for DrillApp {
                     &inside,
                     out,
                 );
-                let (w, h) = (720.0 * aspect, 720.0);
+                // The picture in the UI's points, as the screen is laid out (ui::Fit).
+                let pts = self.ui.fit().points;
+                let (w, h) = (pts.x, pts.y);
                 let crew = self.session.as_ref().map(|s| s.crew.clone()).unwrap_or_default();
                 // A name over every body (crew-nameplates 2): on screen, near and in sight (the crew start about the
                 // ship, so walls and decks hide some). Off when Options says so.
@@ -2111,9 +2293,36 @@ impl App for DrillApp {
                 // The farthest first, so a nearer plate is drawn over one behind it.
                 let mut labels = labels;
                 labels.sort_by(|a, b| b.dist.total_cmp(&a.dist));
-                let banner =
-                    foot_prompt.clone().or_else(|| mine.and_then(|b| b.going).map(|g| format!("To {}", g.name())));
-                bridge_ui = (!rising).then_some(BridgeUi { labels, banner, overview: !own });
+                // The HUD (ui-art-direction design 11): the objective, the alert at alert only, the extinguisher in
+                // hand, and the first time aboard the hint with a marker over the player's station.
+                let my_station = self.solo.as_ref().map_or(self.args.station, |h| h.seat);
+                let objective = match ships.as_ref().map(|x| x.2.phase) {
+                    Some(Phase::Muster | Phase::Countdown) => {
+                        Some(format!("Report to the {}", my_station.name().to_lowercase()))
+                    }
+                    Some(_) => ships
+                        .as_ref()
+                        .and_then(|(t, h, s)| crate::seat::objectives_view(s, t, h, &self.data))
+                        .and_then(|ov| ov.rows.iter().find(|r| r.state != "done").map(|r| r.words.clone())),
+                    None => None,
+                };
+                let hint = (own && free && !self.options.first_steps_done && self.bot.is_none()).then(|| {
+                    let at = self.seat_points.iter().find(|p| p.0 == my_station).and_then(|(_, p, _)| {
+                        let top = [p[0], p[1] + 1.6, p[2]];
+                        let d = top.iter().zip(eye).map(|(a, e)| (f64::from(*a) - e).powi(2)).sum::<f64>().sqrt();
+                        crate::drill_bridge::project(vp, eye, top, w, h).map(|q| (Pos2::new(q[0], q[1]), d as f32))
+                    });
+                    (my_station.name().to_owned(), at)
+                });
+                bridge_ui = (!rising).then_some(BridgeUi {
+                    labels,
+                    plate: self.plate.clone(),
+                    touch: touching,
+                    objective: objective.filter(|_| own),
+                    red_alert: red,
+                    agent: mine.filter(|b| own && b.agent > 0.0 && b.posture != Posture::Seated).map(|b| b.agent),
+                    hint,
+                });
             }
         }
         let crew = self.session.as_ref().map(|s| s.crew.clone()).unwrap_or_default();
@@ -2122,15 +2331,19 @@ impl App for DrillApp {
         let st = self.console_station();
         let solo = self.solo.is_some();
         let mut console_view = ships.as_ref().filter(|_| !on_bridge).map(|(t, h, snap)| {
-            let ops: Vec<(Station, String)> = crew
-                .iter()
-                .filter_map(|c| Some((c.station?, if c.bot && !solo { "Bot".to_owned() } else { c.name.clone() })))
-                .collect();
+            let ops: Vec<(Station, String)> = crew.iter().filter_map(|c| Some((c.station?, c.name.clone()))).collect();
             let mut v = self.seats[st as usize].view(st, t, h, snap, &self.data, &ops, self.time_s);
             // LEAVE STATION while this player sits (leave-station 4): the stand key on its keycap, the hold's ring.
             v.leave = seated_body.then(|| console::LeaveView {
                 key: self.bindings.use_label.clone(),
                 share: self.stand.share(self.data.stations.seats.stand_hold_s),
+            });
+            // START MISSION while the round waits and this player may start it (start-mission 4): the server's own
+            // rule, asked of the crew list it sends.
+            v.start = (snap.phase == Phase::Muster && self.may_start()).then(|| console::StartView {
+                key: self.bindings.start_label.clone(),
+                ready: crew.iter().filter(|c| c.ready && c.station.is_some()).count() as u32,
+                aboard: crew.len() as u32,
             });
             v
         });
@@ -2161,7 +2374,16 @@ impl App for DrillApp {
         let mut painted: Option<(console::kit::Hits, f32)> = None;
         let mut pointer: Vec<PointerEv> = Vec::new();
         let show_net = self.show_net;
-        let place = format!("SCS Tern, {}", station.map_or("Bridge", |s| s.name()));
+        if ships.is_some() && self.boarded_at.is_none() {
+            self.boarded_at = Some(self.time_s);
+        }
+        let menu_view = menu_view(self, ships.as_ref(), seated_body);
+        let art = self.art.get_or_insert_with(|| (None, crate::hud::tip(&self.bindings, self.args.seed)));
+        let need_art = art.0.is_none();
+        let controls = self.bindings.controls.clone();
+        let loading_a = self.boarded_at.map_or(1.0, |t| {
+            1.0 - ((self.time_s - t) * 1000.0 / f64::from(crate::look::look().f.motion_ms.load_out)) as f32
+        });
         let mut menu_ask = None;
         let (menu, options) = (&mut self.menu, &mut self.options);
         let deck = self.deck.as_ref();
@@ -2190,7 +2412,10 @@ impl App for DrillApp {
                     }
                 });
             }
-            draw_ui(ctx, &view, &mut ask, show_net);
+            if need_art {
+                art.0 = crate::look::load_art(ctx, crate::look::Art::Loading);
+            }
+            draw_ui(ctx, &view, &mut ask, show_net, (art.0.as_ref(), art.1.as_ref()), loading_a);
             if let Some(d) = deck {
                 let painter =
                     ctx.layer_painter(egui::LayerId::new(egui::Order::Foreground, egui::Id::new("deck-repair")));
@@ -2199,7 +2424,7 @@ impl App for DrillApp {
             let layer = ctx.layer_painter(egui::LayerId::new(egui::Order::Foreground, egui::Id::new("touch")));
             touch.paint(&layer, use_word.as_deref());
             touch.paint_stand(&layer, stand_share);
-            menu_ask = menu.show(ctx, &place, options);
+            menu_ask = menu.show(ctx, &menu_view, options, &controls);
         });
         self.pointer = pointer;
         // A finger on the console in Engage, against this frame's controls (touch-controls 4).
@@ -2222,6 +2447,24 @@ impl App for DrillApp {
                     println!("sc-client: LEAVE STATION");
                     self.stand_now();
                 }
+            }
+        }
+        // START MISSION, by the mouse, a finger or its key (start-mission 4): the request goes to the server, which
+        // decides; the press is the button's, not a touch that takes a crewed station MANUAL.
+        let start_shown = console_view.as_ref().is_some_and(|v| v.start.is_some());
+        let phase_s = ships.as_ref().map_or(0.0, |x| x.2.phase_s);
+        self.start_seen = if start_shown { self.start_seen.or(Some(phase_s)) } else { None };
+        let mut start_now = start_shown && !self.menu.open() && self.pressed.contains(&self.bindings.start_key);
+        if let Some((hits, _)) = painted.as_ref().filter(|_| start_shown) {
+            if crate::seat::band_pressed(hits, &self.pointer, &crate::console::kit::Act::Start) {
+                self.pointer.clear();
+                start_now = true;
+            }
+        }
+        if start_now {
+            if let Some(s) = self.session.as_ref() {
+                println!("sc-client: START MISSION");
+                s.start_mission();
             }
         }
         // The script's press: the middle of the control as drawn, pressed and let go, as a player's pointer would.
@@ -2247,6 +2490,12 @@ impl App for DrillApp {
         // Return to menu leaves the crew for the front menu (the station passes to automation, design 2); Exit closes
         // the game. Each was asked Yes or No first.
         match menu_ask {
+            Some(crate::game_menu::MenuAsk::LeaveStation) => {
+                if self.can_stand(station, mine.map(|b| b.posture)) {
+                    println!("sc-client: LEAVE STATION");
+                    self.stand_now();
+                }
+            }
             Some(crate::game_menu::MenuAsk::Leave) if self.args.menu => crate::back_to_menu(None),
             Some(crate::game_menu::MenuAsk::Leave | crate::game_menu::MenuAsk::Exit) => return Flow::Done,
             _ => {}
@@ -2325,6 +2574,7 @@ impl App for DrillApp {
                 }
             }
         }
+        self.ui_meshes = frame.meshes().len();
         // The viewscreen's feed in its window under the console, or black when there is no console yet.
         let ppp = frame.ppp;
         match console_view {
@@ -2366,6 +2616,9 @@ impl App for DrillApp {
             None => self.r.present_with_ui(&self.blank, f.width, f.height, true, &frame.meshes(), frame.points),
         }
         self.scripted_shots(f);
+        if !self.tour_step(f, seated, loading_a) {
+            return Flow::Done;
+        }
         // The hand-over test: the game up with its briefing, then back to the menu.
         let briefing = self.session.as_ref().and_then(|s| s.latest()).is_some_and(|s| s.phase_s >= 1.0);
         if let (Some(dir), true) = (self.args.hand_test.clone(), briefing) {
@@ -2398,20 +2651,32 @@ fn seat_rule(
     (claim_rule(false, holder, walker), holder, walker)
 }
 
-/// What E offers at seat `st` for the body in `slot`, by the server's rule: a free seat is sat in, a bot's (in it or
-/// walking to it) is taken from it, a person's is theirs. The prompt never promises a seat the server would refuse
-/// (CLAUDE.md 6.1: the preview is the outcome).
-fn seat_prompt(st: Station, slot: u8, crew: &[sc_net::msg::CrewEntry], bodies: &[sc_net::msg::BodySnap]) -> String {
-    let name = |s: u8| crew.iter().find(|c| c.slot == s).map_or("Someone", |c| c.name.as_str());
+/// What the use key offers at seat `st` for the body in `slot`, by the server's rule: a free seat is sat in, a bot's (in
+/// it or walking to it) is taken from it, a person's is theirs. The prompt never promises a seat the server would refuse
+/// (CLAUDE.md 6.1: the preview is the outcome). Drawn as ui-art-direction design 7's plate: the station over its key and
+/// verb, or over the name of whoever has it, with nothing to press.
+fn seat_prompt(
+    st: Station,
+    slot: u8,
+    crew: &[sc_net::msg::CrewEntry],
+    bodies: &[sc_net::msg::BodySnap],
+    use_label: &str,
+) -> crate::hud::Prompt {
+    use crate::hud::Prompt;
+    let name = |s: u8| crew.iter().find(|c| c.slot == s).map_or("Someone", |c| c.name.as_str()).to_owned();
+    let key = vec![crate::look::KeyTok::Key(use_label.to_owned())];
     match seat_rule(st, Some(slot), crew, bodies) {
-        (ClaimRule::Sit, _, _) => format!("E  Sit at {}", st.name()),
+        (ClaimRule::Sit, _, _) => Prompt::act(st.name(), key, "Sit down"),
         (ClaimRule::Relieve, holder, walker) => {
-            format!("E  Take {} from {}", st.name(), holder.or(walker).map_or("Someone", |o| name(o.slot)))
+            let who = holder.or(walker).map_or("Someone".to_owned(), |o| name(o.slot));
+            Prompt::act(st.name(), key, &format!("Relieve {who}"))
         }
         (ClaimRule::Taken(s), holder, _) if holder.is_some_and(|h| h.slot == s) => {
-            format!("{} holds {}", name(s), st.name())
+            Prompt { log_extra: Some(format!("holds {}", st.name())), ..Prompt::note(st.name(), &name(s)) }
         }
-        (ClaimRule::Taken(s), _, _) => format!("{} is on the way to {}", name(s), st.name()),
+        (ClaimRule::Taken(s), _, _) => {
+            Prompt { log_extra: Some(format!("is on the way to {}", st.name())), ..Prompt::note(st.name(), &name(s)) }
+        }
     }
 }
 
@@ -2429,7 +2694,6 @@ enum UiAsk {
 struct UiView {
     error: Option<String>,
     stage: Option<Stage>,
-    server: String,
     station: Option<Station>,
     /// This player's slot.
     slot: Option<u8>,
@@ -2465,10 +2729,21 @@ struct Label {
     dist: f64,
 }
 
+/// The walking HUD's state this frame (ui-art-direction design 11).
 struct BridgeUi {
     labels: Vec<Label>,
-    banner: Option<String>,
-    overview: bool,
+    /// The prompt plate and how much of it shows.
+    plate: Option<(crate::hud::Prompt, f32)>,
+    /// By thumb: the plate shows no keys.
+    touch: bool,
+    /// The objective card's line.
+    objective: Option<String>,
+    /// The alert chip.
+    red_alert: bool,
+    /// The extinguisher in hand, its agent left.
+    agent: Option<f32>,
+    /// The first-time hint: the player's station, and its marker on screen and distance.
+    hint: Option<(String, Option<(Pos2, f32)>)>,
 }
 
 impl UiView {
@@ -2477,7 +2752,6 @@ impl UiView {
         Self {
             error: app.error.clone(),
             stage: s.map(|s| s.stage),
-            server: app.args.server.clone(),
             station: s.and_then(|s| s.station()),
             slot: s.and_then(|s| s.slot),
             want: app.args.station,
@@ -2498,42 +2772,8 @@ impl UiView {
     }
 }
 
-/// Where the reference frame (the 1280 x 720 canvas of bridge-stations 8.0) starts on the screen: the one mapping,
-/// `ui::frame_in` (browser-page-fit design 5). On a screen laid out by `ui::Fit` its scale is 1.
-fn canvas_origin(ctx: &egui::Context) -> Pos2 {
-    crate::ui::frame_in(ctx.content_rect()).0
-}
-
 fn label(ui: &mut egui::Ui, text: &str, size: f32, colour: Color32) {
     ui.label(RichText::new(text).size(size).color(colour));
-}
-
-fn big_button(text: &str, size: Vec2, text_pt: f32, fill: Color32) -> egui::Button<'static> {
-    egui::Button::new(RichText::new(text.to_owned()).size(text_pt).strong().color(Color32::WHITE))
-        .min_size(size)
-        .corner_radius(CornerRadius::same(6))
-        .fill(fill)
-}
-
-/// A fixed-size panel at `rect` (canvas points) with a title, holding `add`.
-fn panel(ctx: &egui::Context, id: &str, rect: Rect, title: &str, add: impl FnOnce(&mut egui::Ui)) {
-    let o = canvas_origin(ctx);
-    egui::Area::new(egui::Id::new(id)).fixed_pos(rect.min + o.to_vec2()).order(egui::Order::Middle).show(ctx, |ui| {
-        egui::Frame::new()
-            .fill(PANEL)
-            .stroke(Stroke::new(1.0_f32, EDGE))
-            .corner_radius(CornerRadius::same(6))
-            .inner_margin(egui::Margin::same(10))
-            .show(ui, |ui| {
-                let inner = rect.size() - Vec2::splat(20.0);
-                ui.set_min_size(inner);
-                ui.set_max_size(inner);
-                if !title.is_empty() {
-                    label(ui, title, 13.0, DIM);
-                }
-                add(ui);
-            });
-    });
 }
 
 fn mmss(s: f64) -> String {
@@ -2541,247 +2781,232 @@ fn mmss(s: f64) -> String {
     format!("{:02}:{:02}", s / 60, s % 60)
 }
 
-fn draw_ui(ctx: &egui::Context, v: &UiView, ask: &mut Vec<UiAsk>, show_net: bool) {
+/// The game's screens around the consoles (ui-art-direction design 11): the loading screen until the ship is up (and
+/// fading out over it), the walking HUD on the bridge, the briefing over the console before the round, the debrief.
+/// `art`: the loading screen's and the briefing's picture and the tip; `loading`: how much of the loading screen still
+/// shows over the game.
+fn draw_ui(
+    ctx: &egui::Context,
+    v: &UiView,
+    ask: &mut Vec<UiAsk>,
+    show_net: bool,
+    art: (Option<&egui::TextureHandle>, Option<&crate::hud::Tip>),
+    loading: f32,
+) {
+    let mlabel = mission_label(&v.mission);
+    let loading_screen = |progress: f32, a: f32| {
+        let painter = ctx.layer_painter(egui::LayerId::new(egui::Order::Foreground, egui::Id::new("loading")));
+        let mut painter = painter;
+        painter.multiply_opacity(a);
+        crate::hud::loading(&painter, ctx.content_rect(), art.0, &mlabel, &v.mission.title, art.1, progress);
+        if let Some(e) = &v.error {
+            let k =
+                crate::look::kit(&painter, ctx.content_rect(), crate::ui::Anchor::BottomRight, Vec2::new(900.0, 200.0));
+            let c = crate::look::look().c();
+            k.text(crate::look::Role::Body, 900.0 - 96.0, 40.0, c.warn.0, e, crate::look::Align::End);
+        }
+    };
     let Some(snap) = v.snap.as_ref() else {
-        let text = match (&v.error, v.stage) {
-            (Some(e), _) => e.to_string(),
-            (None, Some(Stage::Joined)) => "Waiting for the drill".into(),
-            _ => format!("Connecting to {}", v.server),
+        let progress = match v.stage {
+            Some(Stage::Joined) => 0.8,
+            Some(_) => 0.5,
+            None => 0.2,
         };
-        egui::Area::new(egui::Id::new("connecting")).anchor(Align2::CENTER_CENTER, Vec2::ZERO).show(ctx, |ui| {
-            label(ui, "STAR CREW", 34.0, AMBER);
-            label(ui, &text, 20.0, TEXT);
-        });
+        loading_screen(progress, 1.0);
         return;
     };
     if let Some(b) = &v.bridge {
-        bridge_overlay(ctx, v, snap.phase, snap.phase_s, b);
-        return;
-    }
-    match snap.phase {
-        Phase::Muster | Phase::Countdown => briefing(ctx, v, snap.phase, snap.phase_s, ask),
-        Phase::Engage | Phase::Patrol => {
-            // A refused command says why, over the status strip, for a few seconds.
-            if let Some((why, age)) = v.refused.as_ref().filter(|r| r.1 < 3.0) {
-                let _ = age;
-                egui::Area::new(egui::Id::new("refused")).anchor(Align2::CENTER_BOTTOM, Vec2::new(0.0, -40.0)).show(
-                    ctx,
-                    |ui| {
-                        label(ui, why, 16.0, AMBER);
-                    },
-                );
+        bridge_overlay(ctx, b);
+    } else {
+        match snap.phase {
+            Phase::Muster | Phase::Countdown => briefing(ctx, v, snap.phase, snap.phase_s, ask, art.0),
+            Phase::Engage | Phase::Patrol => {
+                // A refused command says why, over the status strip, for a few seconds.
+                if let Some((why, _)) = v.refused.as_ref().filter(|r| r.1 < 3.0) {
+                    egui::Area::new(egui::Id::new("refused"))
+                        .anchor(Align2::CENTER_BOTTOM, Vec2::new(0.0, -40.0))
+                        .show(ctx, |ui| {
+                            label(ui, why, 16.0, AMBER);
+                        });
+                }
             }
+            Phase::Debrief => debrief(ctx, v, snap),
         }
-        Phase::Debrief => debrief(ctx, v, snap),
     }
-    if show_net {
+    // F3's round trip and loss: a debug overlay, off in release builds (ui-art-direction Q11).
+    if show_net && cfg!(debug_assertions) {
         egui::Area::new(egui::Id::new("net")).anchor(Align2::RIGHT_TOP, Vec2::new(-10.0, 40.0)).show(ctx, |ui| {
             let rtt = v.rtt_ms.map_or("--".to_owned(), |r| format!("{r:.0} ms"));
             label(ui, &format!("RTT {rtt}  LOSS {:.1}%", v.loss * 100.0), 13.0, DIM);
         });
     }
+    if loading > 0.0 {
+        loading_screen(1.0, loading);
+    }
 }
 
-/// The bridge's top band, points: two rows, the drill and its clock at the left and who holds each station in a grid
-/// to its right, so neither is ever drawn over the other (CLAUDE.md 10: a band for each text, verified apart).
-const BAND_H: f32 = 48.0;
-/// The crew grid's rows in the band.
-const BAND_ROWS: usize = 2;
-/// The band's margin at each side and the gap between the head and the grid and between the grid's columns, points.
-const BAND_PAD: f32 = 16.0;
-const BAND_GAP: f32 = 22.0;
-
-/// The bridge on screen (design 9): a band along the top with the drill, its phase and clock and who holds each
-/// station, a name over every body with where it is walking, and this player's own walk said once in the middle.
-fn bridge_overlay(ctx: &egui::Context, v: &UiView, phase: Phase, phase_s: f64, b: &BridgeUi) {
-    use egui::FontId;
-    let w = ctx.content_rect().width();
-    // The band spans the screen's top edge; what is placed on the picture is placed on the reference frame.
-    let o = canvas_origin(ctx);
-    let painter = ctx.layer_painter(egui::LayerId::new(egui::Order::Middle, egui::Id::new("bridge-names")));
-    let head = format!("{}   {}   {}", v.mission.title, format!("{phase:?}").to_uppercase(), mmss(phase_s));
-    let held: Vec<String> = Station::ALL
+/// What the Esc menu shows of the game (ui-art-direction design 11, shot pause-after): the mission, whether this
+/// player sits, their name and station, the objectives as the OBJECTIVES tab measures them, and the crew.
+fn menu_view(
+    app: &DrillApp,
+    ships: Option<&(ShipSnap, ShipSnap, Snapshot)>,
+    seated: bool,
+) -> crate::game_menu::MenuView {
+    let s = app.session.as_ref();
+    let crew = s.map(|s| s.crew.clone()).unwrap_or_default();
+    let mine = s.and_then(|s| s.station());
+    let slot = s.and_then(|s| s.slot);
+    let objectives = match ships.and_then(|(t, h, snap)| crate::seat::objectives_view(snap, t, h, &app.data)) {
+        Some(ov) => ov.rows.iter().map(|r| (r.words.clone(), r.state == "done")).collect(),
+        None => app.data.mission.objectives.iter().map(|o| (o.words.clone(), false)).collect(),
+    };
+    let rows = Station::ALL
         .iter()
-        .map(|s| {
-            let who = v.crew.iter().find(|c| c.station == Some(*s)).map_or("auto".to_owned(), |c| c.name.clone());
-            format!("{} {}", s.name(), who)
+        .map(|st| {
+            let who = crew.iter().find(|c| c.station == Some(*st));
+            crate::hud::CrewRow {
+                station: *st,
+                name: who.map(|c| c.name.clone()),
+                you: mine == Some(*st),
+                ready: who.is_some(),
+                npc: who.is_some_and(|c| c.bot),
+            }
         })
         .collect();
-    top_band(&painter, w, head, &held);
+    let me = crew
+        .iter()
+        .find(|c| Some(c.slot) == slot)
+        .map(|c| (c.name.clone(), mine.map_or("person", crate::hud::role_of).to_owned()));
+    crate::game_menu::MenuView {
+        label: mission_label(&app.data.mission),
+        title: app.data.mission.title.clone(),
+        seated,
+        me,
+        objectives,
+        crew: rows,
+    }
+}
+
+/// The small line over a mission's name: its `label`, or the briefing's word for one without.
+fn mission_label(m: &sc_core::combat::data::MissionFile) -> String {
+    if m.label.is_empty() {
+        "Mission".to_owned()
+    } else {
+        m.label.clone()
+    }
+}
+
+/// The walking HUD (ui-art-direction design 11, shots hud-after, prompt-after, hint-after): a name over every body,
+/// the objective card top left, the centre dot, the alert chip at alert only, the prompt plate below the dot, the
+/// extinguisher's bar beside it, and the first time aboard the hint with its marker. No roster, phase or clock.
+fn bridge_overlay(ctx: &egui::Context, b: &BridgeUi) {
+    let screen = ctx.content_rect();
+    let painter = ctx.layer_painter(egui::LayerId::new(egui::Order::Middle, egui::Id::new("bridge-names")));
     for l in &b.labels {
         crate::nameplate::draw(&painter, l.at, &l.name, l.npc, l.going.as_deref(), l.k);
     }
-    if let Some(t) = &b.banner {
-        painter.text(Pos2::new(w / 2.0, o.y + 560.0), Align2::CENTER_CENTER, t, FontId::proportional(30.0), AMBER);
+    if let Some(o) = &b.objective {
+        crate::hud::objective_card(&painter, screen, o);
     }
-    if b.overview {
-        painter.text(
-            Pos2::new(w / 2.0, o.y + 700.0),
-            Align2::CENTER_CENTER,
-            "BRIDGE (V)",
-            FontId::proportional(14.0),
-            DIM,
-        );
+    if b.red_alert {
+        crate::hud::alert_chip(&painter, screen, true);
     }
-}
-
-/// The top band `w` points wide: `head` (the drill, its phase and clock) at the left, and `held` (who holds each
-/// station) in a grid of [`BAND_ROWS`] rows to its right, ending at the right margin. A column takes its widest entry;
-/// when the grid does not fit beside the head every column gives up the same share and its entries are cut with an
-/// ellipsis, so the grid never reaches back over the head.
-fn top_band(painter: &egui::Painter, w: f32, head: String, held: &[String]) {
-    use egui::text::{LayoutJob, TextWrapping};
-    use egui::FontId;
-    painter.rect_filled(Rect::from_min_size(Pos2::ZERO, Vec2::new(w, BAND_H)), CornerRadius::ZERO, PANEL);
-    let head = painter.layout_no_wrap(head, FontId::proportional(17.0), TEXT);
-    let head_w = head.size().x;
-    painter.galley(Pos2::new(BAND_PAD, (BAND_H - head.size().y) / 2.0), head, TEXT);
-    let font = FontId::proportional(14.0);
-    let cols = held.len().div_ceil(BAND_ROWS);
-    if cols == 0 {
-        return;
+    crate::hud::reticle(&painter, screen);
+    if let Some(a) = b.agent {
+        crate::hud::carried_bar(&painter, screen, a);
     }
-    let natural: Vec<f32> =
-        held.iter().map(|t| painter.layout_no_wrap(t.clone(), font.clone(), DIM).size().x.ceil()).collect();
-    let widest: Vec<f32> = (0..cols)
-        .map(|c| (0..BAND_ROWS).filter_map(|r| natural.get(r * cols + c)).copied().fold(0.0, f32::max))
-        .collect();
-    let room = (w - BAND_PAD - (BAND_PAD + head_w + BAND_GAP) - BAND_GAP * (cols - 1) as f32).max(0.0);
-    let sum: f32 = widest.iter().sum();
-    let widths: Vec<f32> = if sum <= room { widest } else { widest.iter().map(|c| (c * room / sum).floor()).collect() };
-    let mut x = w - BAND_PAD - widths.iter().sum::<f32>() - BAND_GAP * (cols - 1) as f32;
-    let row_h = BAND_H / BAND_ROWS as f32;
-    for (c, cw) in widths.iter().enumerate() {
-        for r in 0..BAND_ROWS {
-            let Some(t) = held.get(r * cols + c) else { continue };
-            let mut job = LayoutJob::simple_singleline(t.clone(), font.clone(), DIM);
-            job.wrap = TextWrapping::truncate_at_width(*cw);
-            let g = painter.layout_job(job);
-            let y = row_h * (r as f32 + 0.5) - g.size().y / 2.0;
-            painter.galley(Pos2::new(x, y), g, DIM);
-        }
-        x += cw + BAND_GAP;
+    if let Some((station, marker)) = &b.hint {
+        crate::hud::first_steps(&painter, screen, station, &[crate::look::KeyTok::Key("E".into())], *marker);
+    }
+    if let Some((p, a)) = &b.plate {
+        crate::hud::prompt_plate(&painter, screen, p, *a, b.touch);
     }
 }
 
-/// The briefing's panel on the canvas, points: wide enough for all eight stations' claim buttons in one row, the
-/// mission on the left and the crew on the right, so the crew list never runs into the buttons below it.
-const BRIEF_MIN: (f32, f32) = (40.0, 36.0);
-const BRIEF_SIZE: (f32, f32) = (1200.0, 648.0);
-/// The mission's column, points; the crew take the rest of the panel's width.
-const BRIEF_LEFT_W: f32 = 660.0;
-/// The crew rows' cells, points: the station, then the name (cut with an ellipsis), then READY or reading.
-const CREW_STATION_W: f32 = 112.0;
-const CREW_MARK_W: f32 = 76.0;
-
-/// One cell `width` points wide holding `text`, cut with an ellipsis when it does not fit.
-fn cell(ui: &mut egui::Ui, width: f32, text: &str, size: f32, colour: Color32) {
-    let layout = egui::Layout::left_to_right(egui::Align::Center);
-    ui.allocate_ui_with_layout(Vec2::new(width, size + 8.0), layout, |ui| {
-        ui.set_min_width(width);
-        ui.add(egui::Label::new(RichText::new(text).size(size).color(colour)).truncate());
-    });
-}
-
-fn briefing(ctx: &egui::Context, v: &UiView, phase: Phase, phase_s: f64, ask: &mut Vec<UiAsk>) {
-    let rect = Rect::from_min_size(Pos2::new(BRIEF_MIN.0, BRIEF_MIN.1), Vec2::new(BRIEF_SIZE.0, BRIEF_SIZE.1));
-    panel(ctx, "briefing", rect, "BRIEFING", |ui| {
-        let inner = ui.available_size();
-        let gap = 24.0;
-        let right_w = inner.x - BRIEF_LEFT_W - gap;
-        let claim_h = 44.0;
-        // What the two columns may take: the panel less its title and the row of claim buttons.
-        let column_h = inner.y - claim_h - 2.0 * ui.spacing().item_spacing.y;
-        ui.horizontal_top(|ui| {
-            ui.allocate_ui_with_layout(
-                Vec2::new(BRIEF_LEFT_W, column_h),
-                egui::Layout::top_down(egui::Align::Min),
-                |ui| {
-                    ui.set_width(BRIEF_LEFT_W);
-                    // The mission's words are the data's: a longer one scrolls in its column, never under the crew.
-                    egui::ScrollArea::vertical().id_salt("briefing-mission").max_height(column_h).show(ui, |ui| {
-                        ui.spacing_mut().item_spacing.y = 6.0;
-                        label(ui, &v.mission.title, 30.0, AMBER);
-                        ui.label(RichText::new(&v.mission.situation).size(17.0).color(TEXT));
-                        ui.add_space(4.0);
-                        for o in &v.mission.objectives {
-                            label(ui, &format!("- {}", o.words), 17.0, TEXT);
-                        }
-                        ui.add_space(8.0);
-                        let mine = v.station.unwrap_or(v.want);
-                        label(ui, &format!("{} ORDERS", mine.name().to_uppercase()), 13.0, DIM);
-                        ui.label(RichText::new(v.mission.orders.of(mine)).size(18.0).color(CYAN));
-                    });
-                },
-            );
-            ui.add_space(gap - ui.spacing().item_spacing.x);
-            ui.allocate_ui_with_layout(Vec2::new(right_w, column_h), egui::Layout::top_down(egui::Align::Min), |ui| {
-                ui.set_width(right_w);
-                ui.spacing_mut().item_spacing.y = 4.0;
-                label(ui, "CREW", 13.0, DIM);
-                let name_w = right_w - CREW_STATION_W - CREW_MARK_W - 2.0 * ui.spacing().item_spacing.x;
-                for s in Station::ALL {
-                    let who = v.crew.iter().find(|c| c.station == Some(s));
-                    let (name, ready) = who.map_or(("automation".to_owned(), true), |c| {
-                        (format!("{}{}", c.name, if c.bot { " (bot)" } else { "" }), c.ready)
-                    });
-                    ui.horizontal(|ui| {
-                        cell(ui, CREW_STATION_W, s.name(), 17.0, DIM);
-                        cell(ui, name_w, &name, 17.0, TEXT);
-                        if who.is_some() {
-                            let (mark, colour) = if ready { ("READY", GREEN) } else { ("reading", AMBER) };
-                            cell(ui, CREW_MARK_W, mark, 15.0, colour);
-                        }
-                    });
-                }
-                ui.add_space(14.0);
-                if phase == Phase::Countdown {
-                    let left = (v.mission.countdown_s - phase_s).ceil().max(0.0);
-                    label(ui, &format!("ENGAGING IN {left:.0}"), 30.0, AMBER);
-                } else {
-                    let text = if v.ready {
-                        "READY"
-                    } else if v.ready_held {
-                        "CREW SITTING"
-                    } else {
-                        "MARK READY"
-                    };
-                    let fill = if v.ready { Color32::from_rgb(40, 120, 60) } else { Color32::from_rgb(170, 100, 30) };
-                    if ui
-                        .add_enabled(
-                            v.station.is_some() && !v.bot,
-                            big_button(text, Vec2::new(220.0, 52.0), 20.0, fill),
-                        )
-                        .clicked()
-                    {
-                        ask.push(UiAsk::Ready(!v.ready));
-                    }
-                }
-                if v.bot {
-                    label(ui, "A bot plays this station", 14.0, DIM);
-                }
-            });
-        });
-        // Every station's claim button in one row along the bottom, each an eighth of the panel.
-        let n = Station::ALL.len() as f32;
-        let claim_w = ((inner.x - (n - 1.0) * ui.spacing().item_spacing.x) / n).floor();
-        ui.horizontal(|ui| {
-            for s in Station::ALL {
-                // Off for a person's seat only: a bot's is taken from it (relieve-bots 6).
-                let bodies = v.snap.as_ref().map_or(&[][..], |x| x.bodies.as_slice());
-                let held_by_other =
-                    v.station != Some(s) && matches!(seat_rule(s, v.slot, &v.crew, bodies).0, ClaimRule::Taken(_));
-                let fill =
-                    if v.station == Some(s) { Color32::from_rgb(30, 90, 120) } else { Color32::from_rgb(34, 44, 58) };
-                let button = big_button(s.name(), Vec2::new(claim_w, claim_h), 17.0, fill);
-                let r = ui.add_enabled(!held_by_other && !v.bot, button);
-                if crate::ui::mark(&format!("claim {}", s.name()), r).clicked() {
-                    ask.push(UiAsk::Claim(s));
-                }
+/// The briefing on the console before the round (ui-art-direction design 11, Q7): a solid screen under the console's
+/// band (LEAVE STATION and START MISSION stay in reach there), the mission, your orders, the crew, then READY or Launch
+/// in. A crew row pressed takes that station (relieve-bots 6: never a person's).
+fn briefing(
+    ctx: &egui::Context,
+    v: &UiView,
+    phase: Phase,
+    phase_s: f64,
+    ask: &mut Vec<UiAsk>,
+    art: Option<&egui::TextureHandle>,
+) {
+    use crate::hud::{BriefingAsk, CrewRow, ReadyState};
+    let mine = v.station.unwrap_or(v.want);
+    let crew: Vec<CrewRow> = Station::ALL
+        .iter()
+        .map(|s| {
+            let who = v.crew.iter().find(|c| c.station == Some(*s));
+            CrewRow {
+                station: *s,
+                name: who.map(|c| c.name.clone()),
+                you: v.station == Some(*s),
+                ready: who.is_some_and(|c| c.ready),
+                npc: who.is_some_and(|c| c.bot),
             }
-        });
+        })
+        .collect();
+    let objectives: Vec<(String, bool)> = v.mission.objectives.iter().map(|o| (o.words.clone(), false)).collect();
+    let launch = (phase == Phase::Countdown).then(|| {
+        let total = v.mission.countdown_s.max(1e-3);
+        ((total - phase_s).max(0.0), (phase_s / total).clamp(0.0, 1.0) as f32)
     });
+    let ready = (v.station.is_some() && !v.bot).then_some(if v.ready {
+        ReadyState::Ready
+    } else if v.ready_held {
+        ReadyState::Waiting
+    } else {
+        ReadyState::Open
+    });
+    let label = mission_label(&v.mission);
+    let b = crate::hud::Briefing {
+        label: &label,
+        title: &v.mission.title,
+        situation: &v.mission.situation,
+        objectives,
+        orders: (mine, v.mission.orders.of(mine)),
+        crew,
+        launch,
+        ready,
+    };
+    let screen = ctx.content_rect();
+    // The console's band (its top 32 layout points) stays: the solid screen is everything under it.
+    let (o, k) = crate::ui::frame_in(screen);
+    let band = Rect::from_min_size(o, Vec2::new(crate::ui::layout_size().x * k, BRIEF_BAND_PT * k));
+    let got = crate::look::screen_area(ctx, "briefing", egui::Order::Middle, |ui, screen| {
+        ui.set_clip_rect(screen);
+        let below = Rect::from_min_max(egui::pos2(screen.min.x, band.max.y), screen.max);
+        let above = Rect::from_min_max(screen.min, egui::pos2(screen.max.x, band.min.y));
+        let sides = [
+            Rect::from_min_max(egui::pos2(screen.min.x, band.min.y), egui::pos2(band.min.x, band.max.y)),
+            Rect::from_min_max(egui::pos2(band.max.x, band.min.y), egui::pos2(screen.max.x, band.max.y)),
+        ];
+        let ground = crate::look::look().c().ground.0;
+        for r in std::iter::once(above).chain(sides) {
+            ui.painter().rect_filled(r, 0.0, ground);
+        }
+        let mut sub = ui.new_child(egui::UiBuilder::new().max_rect(below));
+        sub.set_clip_rect(below);
+        crate::hud::briefing(&mut sub, screen, art, &b)
+    });
+    match got {
+        Some(BriefingAsk::Ready(r)) => ask.push(UiAsk::Ready(r)),
+        Some(BriefingAsk::Claim(s)) if !v.bot && v.station != Some(s) => {
+            // Off for a person's seat only: a bot's is taken from it (relieve-bots 6).
+            let bodies = v.snap.as_ref().map_or(&[][..], |x| x.bodies.as_slice());
+            if !matches!(seat_rule(s, v.slot, &v.crew, bodies).0, ClaimRule::Taken(_)) {
+                ask.push(UiAsk::Claim(s));
+            }
+        }
+        _ => {}
+    }
 }
+
+/// The console's band, layout points: the briefing leaves it showing.
+const BRIEF_BAND_PT: f32 = 32.0;
 
 /// An "s" for more than one.
 fn plural(n: usize) -> &'static str {
@@ -2792,67 +3017,73 @@ fn plural(n: usize) -> &'static str {
     }
 }
 
+/// The debrief between rounds, in the screens' style (ui-art-direction design 6 and 12): an opaque panel in the
+/// middle, the outcome in its state's colour with its shape, the round's numbers, the damage control, the next round.
 fn debrief(ctx: &egui::Context, v: &UiView, snap: &Snapshot) {
-    let rect = Rect::from_min_size(Pos2::new(290.0, 120.0), Vec2::new(700.0, 460.0));
-    let (head, colour) = match snap.outcome {
-        Outcome::Victory => ("VICTORY", GREEN),
-        Outcome::Defeat => ("THE TERN IS LOST", RED),
-        Outcome::Withdrew => ("THE HOUND WITHDREW", AMBER),
-        Outcome::None => ("DEBRIEF", TEXT),
+    use crate::look::{kit, look, Align, Role};
+    let c = look().c();
+    let (head, colour, icon) = match snap.outcome {
+        Outcome::Victory => ("Victory", c.ok.0, "check"),
+        Outcome::Defeat => ("The Tern is lost", c.danger.0, "bang"),
+        Outcome::Withdrew => ("The Hound withdrew", c.warn.0, "bang"),
+        Outcome::None => ("Debrief", c.text.0, "objectives"),
     };
-    panel(ctx, "debrief", rect, "DEBRIEF", |ui| {
-        label(ui, head, 40.0, colour);
-        label(ui, &v.mission.title, 18.0, DIM);
-        ui.add_space(12.0);
-        let st = &snap.stats;
-        let pct = |h: u32, s: u32| if s == 0 { 0.0 } else { 100.0 * f64::from(h) / f64::from(s) };
-        let rows = [
-            ("Time", mmss(st.engage_s)),
-            (
-                "Turret hits",
-                format!("{} of {} ({:.0} %)", st.tern_hits, st.tern_shots, pct(st.tern_hits, st.tern_shots)),
-            ),
-            ("Missile hits", format!("{} of {}", st.missile_hits, st.missiles_fired)),
-            ("Damage dealt", format!("{:.0} MJ", st.damage_dealt_mj)),
-            ("Damage taken", format!("{:.0} MJ", st.damage_taken_mj)),
-            ("Hull left", format!("{:.0} of {:.0} MJ", v.tern.as_ref().map_or(0.0, |t| t.hull), v.tern_hull)),
-        ];
-        for (k, val) in rows {
-            ui.horizontal(|ui| {
-                ui.add_sized(Vec2::new(200.0, 26.0), egui::Label::new(RichText::new(k).size(18.0).color(DIM)));
-                label(ui, &val, 20.0, TEXT);
-            });
-        }
-        // The teams put the ship right before the next drill (ship-damage 9).
-        let hurt = snap.damage.integrity.iter().filter(|i| f64::from(**i) < v.nominal_pct).count();
-        let fires = snap.damage.fires.len();
-        let repairs = match (hurt, fires) {
-            (0, 0) => "Ship put right".to_owned(),
-            (h, 0) => format!("Repairing {h} system{}", plural(h)),
-            (0, f) => format!("Fighting {f} fire{}", plural(f)),
-            (h, f) => format!("Repairing {h} system{}, fighting {f} fire{}", plural(h), plural(f)),
-        };
-        ui.horizontal(|ui| {
-            ui.add_sized(
-                Vec2::new(200.0, 26.0),
-                egui::Label::new(RichText::new("Damage control").size(18.0).color(DIM)),
-            );
-            label(ui, &repairs, 20.0, if hurt + fires == 0 { GREEN } else { AMBER });
-        });
-        ui.add_space(14.0);
-        let next = if hurt + fires == 0 {
-            (v.mission.debrief_s - snap.phase_s).max(0.0)
-        } else {
-            (v.mission.debrief_max_s - snap.phase_s).max(0.0)
-        };
-        let when = if hurt + fires == 0 { "Next drill in" } else { "Next drill at the latest in" };
-        label(ui, &format!("{when} {next:.0} s"), 18.0, AMBER);
-    });
+    let st = &snap.stats;
+    let rows = [
+        ("Time", mmss(st.engage_s)),
+        ("Turret hits", format!("{} of {}", st.tern_hits, st.tern_shots)),
+        ("Missile hits", format!("{} of {}", st.missile_hits, st.missiles_fired)),
+        ("Damage dealt", format!("{:.0} MJ", st.damage_dealt_mj)),
+        ("Damage taken", format!("{:.0} MJ", st.damage_taken_mj)),
+        ("Hull left", format!("{:.0} of {:.0} MJ", v.tern.as_ref().map_or(0.0, |t| t.hull), v.tern_hull)),
+    ];
+    // The teams put the ship right before the next round (ship-damage 9).
+    let hurt = snap.damage.integrity.iter().filter(|i| f64::from(**i) < v.nominal_pct).count();
+    let fires = snap.damage.fires.len();
+    let repairs = match (hurt, fires) {
+        (0, 0) => "Ship put right".to_owned(),
+        (h, 0) => format!("Repairing {h} system{}", plural(h)),
+        (0, f) => format!("Fighting {f} fire{}", plural(f)),
+        (h, f) => format!("Repairing {h} system{}, fighting {f} fire{}", plural(h), plural(f)),
+    };
+    let next = if hurt + fires == 0 {
+        (v.mission.debrief_s - snap.phase_s).max(0.0)
+    } else {
+        (v.mission.debrief_max_s - snap.phase_s).max(0.0)
+    };
+    let painter = ctx.layer_painter(egui::LayerId::new(egui::Order::Middle, egui::Id::new("debrief")));
+    let screen = ctx.content_rect();
+    let k = kit(&painter, screen, crate::ui::Anchor::Centre, Vec2::new(1040.0, 760.0));
+    k.panel(0.0, 0.0, 1040.0, 760.0);
+    k.bar(0.0, 0.0, 760.0);
+    k.text(Role::Label, 64.0, 48.0, c.accent.0, &mission_label(&v.mission), Align::Start);
+    let ty = 48.0 + k.line(Role::Label) + 12.0;
+    k.icon(icon, 64.0 + 24.0, ty + k.line(Role::Display) / 2.0, 48.0, colour);
+    k.text(Role::Display, 64.0 + 64.0, ty, colour, head, Align::Start);
+    let mut y = ty + k.line(Role::Display) + 32.0;
+    for (name, val) in
+        rows.iter().map(|(a, b)| (*a, b.clone())).chain(std::iter::once(("Damage control", repairs.clone())))
+    {
+        k.text(Role::Body, 64.0, y, c.dim.0, name, Align::Start);
+        let col = if name == "Damage control" && hurt + fires > 0 { c.warn.0 } else { c.text.0 };
+        k.text(Role::Body, 400.0, y, col, &val, Align::Start);
+        y += 52.0;
+    }
+    let when = if hurt + fires == 0 { "Next round in" } else { "Next round at the latest in" };
+    k.text(
+        Role::Label,
+        64.0,
+        760.0 - 56.0 - k.line(Role::Label),
+        c.dim.0,
+        &format!("{when} {next:.0} s"),
+        Align::Start,
+    );
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{bridge_overlay, briefing, seat_prompt, BridgeUi, UiView, BAND_H, BRIEF_MIN, BRIEF_SIZE};
+    use super::{bridge_overlay, briefing, seat_prompt, BridgeUi, UiView};
+    use crate::release::{check, texts_drawn};
     use egui::{Pos2, Rect};
     use sc_core::combat::bodies::Posture;
     use sc_core::combat::data::{DrillData, DRILL_FILES, DRILL_FILE_COUNT};
@@ -2873,26 +3104,26 @@ mod tests {
         // on its way loses the seat to a person (relieve-bots 2), so the prompt offers it.
         let crew = [crew(1, "Me", None, false), crew(2, "Lt. Vor", None, true), crew(3, "Ana", None, false)];
         let bodies = [body(1, None), body(2, Some(Station::Captain)), body(3, Some(Station::Helm))];
-        assert_eq!(seat_prompt(Station::Captain, 1, &crew, &bodies), "E  Take Captain from Lt. Vor");
-        let p = seat_prompt(Station::Helm, 1, &crew, &bodies);
-        assert_eq!(p, "Ana is on the way to Helm");
-        assert!(!p.starts_with("E  "), "nothing for E to do, so USE stays dark");
+        assert_eq!(seat_prompt(Station::Captain, 1, &crew, &bodies, "E").line(), "Captain [E] Relieve Lt. Vor");
+        let p = seat_prompt(Station::Helm, 1, &crew, &bodies, "E");
+        assert_eq!(p.line(), "Helm Ana is on the way to Helm");
+        assert!(p.acts.is_empty(), "nothing for E to do, so USE stays dark");
     }
 
     #[test]
     fn a_free_seat_is_sat_in_and_an_npcs_is_taken_from_it() {
         let crew = [crew(1, "Me", None, false), crew(2, "Lt. Vor", Some(Station::Helm), true)];
         let bodies = [body(1, None), body(2, None)];
-        assert_eq!(seat_prompt(Station::Captain, 1, &crew, &bodies), "E  Sit at Captain");
-        assert_eq!(seat_prompt(Station::Helm, 1, &crew, &bodies), "E  Take Helm from Lt. Vor");
+        assert_eq!(seat_prompt(Station::Captain, 1, &crew, &bodies, "E").line(), "Captain [E] Sit down");
+        assert_eq!(seat_prompt(Station::Helm, 1, &crew, &bodies, "E").line(), "Helm [E] Relieve Lt. Vor");
     }
 
     #[test]
     fn a_players_seat_is_held_and_my_own_walk_does_not_block_me() {
         let crew = [crew(1, "Me", None, false), crew(3, "Ana", Some(Station::Tactical), false)];
         let bodies = [body(1, Some(Station::Captain))];
-        assert_eq!(seat_prompt(Station::Tactical, 1, &crew, &bodies), "Ana holds Tactical");
-        assert_eq!(seat_prompt(Station::Captain, 1, &crew, &bodies), "E  Sit at Captain");
+        assert_eq!(seat_prompt(Station::Tactical, 1, &crew, &bodies, "E").line(), "Tactical Ana holds Tactical");
+        assert_eq!(seat_prompt(Station::Captain, 1, &crew, &bodies, "E").line(), "Captain [E] Sit down");
     }
 
     /// The mission `id` as the client loads it, from the repository's data.
@@ -2908,7 +3139,7 @@ mod tests {
     /// All eight stations crewed, by the names in the Tamsin undock captures: the player at Helm, NPCs elsewhere.
     fn eight_crew() -> Vec<CrewEntry> {
         let names = [
-            "Lt. Player",
+            "Lt. Hurath of House Zarlen",
             "Lt. Sil Saren",
             "Lt. Jaya Strandraari",
             "Lt. Elaya Corregan",
@@ -2935,7 +3166,6 @@ mod tests {
         UiView {
             error: None,
             stage: None,
-            server: String::new(),
             station: Some(me),
             slot: Some(0),
             want: me,
@@ -2955,60 +3185,6 @@ mod tests {
         }
     }
 
-    /// One drawn text: its words, where it is drawn and the clip it is drawn in, points.
-    struct Drawn {
-        text: String,
-        rect: Rect,
-        clip: Rect,
-    }
-
-    /// Every text `draw` puts on an output of `px` pixels, with the game's fonts and style, after the frames egui
-    /// takes to size its areas; and the output's size in points.
-    fn texts_drawn(px: (u32, u32), mut draw: impl FnMut(&egui::Context)) -> (Vec<Drawn>, egui::Vec2) {
-        fn collect(shape: &egui::Shape, clip: Rect, out: &mut Vec<Drawn>) {
-            match shape {
-                egui::Shape::Text(t) if !t.galley.is_empty() => out.push(Drawn {
-                    text: t.galley.text().to_owned(),
-                    rect: t.galley.rect.translate(t.pos.to_vec2()),
-                    clip,
-                }),
-                egui::Shape::Vec(v) => v.iter().for_each(|s| collect(s, clip, out)),
-                _ => {}
-            }
-        }
-        let ui = crate::ui::Ui::new();
-        let fit = crate::ui::Fit::new(px.0, px.1, px.0 as f32);
-        let (ppp, points) = (fit.ppp, fit.points);
-        let mut out = Vec::new();
-        for _ in 0..4 {
-            let mut raw =
-                egui::RawInput { screen_rect: Some(Rect::from_min_size(Pos2::ZERO, points)), ..Default::default() };
-            if let Some(vp) = raw.viewports.get_mut(&raw.viewport_id) {
-                vp.native_pixels_per_point = Some(ppp);
-            }
-            out = ui.ctx.run(raw, &mut draw).shapes;
-        }
-        let mut drawn = Vec::new();
-        for c in &out {
-            collect(&c.shape, c.clip_rect, &mut drawn);
-        }
-        (drawn, points)
-    }
-
-    /// Each pair of texts drawn over one another (by more than a point each way), named.
-    fn overlapping(drawn: &[Drawn]) -> Vec<String> {
-        let mut bad = Vec::new();
-        for (i, a) in drawn.iter().enumerate() {
-            for b in &drawn[i + 1..] {
-                let o = a.rect.intersect(b.rect);
-                if o.width() > 1.0 && o.height() > 1.0 {
-                    bad.push(format!("{:?} over {:?}", a.text, b.text));
-                }
-            }
-        }
-        bad
-    }
-
     /// The output sizes the screens must fit (browser-page-fit design 5): 1080p, the Pi's 720p, a laptop, 1440p, 4:3,
     /// an ultrawide, itch's embed, a phone held sideways, and the undock video's 1280 x 678 window.
     const OUTPUTS: [(u32, u32); 9] = [
@@ -3024,62 +3200,55 @@ mod tests {
     ];
 
     #[test]
-    fn the_bridge_band_keeps_the_clock_clear_of_eight_crew() {
-        // The Tamsin undock captures drew "Patrol: the Shoals   PATROL   00:03" over the start of the crew list.
-        let v = view("patrol-shoals", Station::Helm);
-        let b = BridgeUi { labels: Vec::new(), banner: None, overview: false };
+    fn the_walking_hud_is_one_objective_and_a_dot_with_no_roster_phase_or_clock() {
+        // Before (ui-art-direction design 1): "Patrol: the Shoals   PATROL   00:03" and eight crew across the top, over
+        // one another in the browser, and BRIDGE (V) along the bottom.
+        let b = BridgeUi {
+            labels: Vec::new(),
+            plate: Some((crate::hud::Prompt::act("Helm", vec![crate::look::KeyTok::Key("E".into())], "Sit down"), 1.0)),
+            touch: false,
+            objective: Some("Report to the helm".into()),
+            red_alert: false,
+            agent: None,
+            hint: Some(("Helm".into(), None)),
+        };
+        let bad = check("walking HUD", |ctx| bridge_overlay(ctx, &b));
+        assert!(bad.is_empty(), "{bad:#?}");
         for px in OUTPUTS {
-            let (drawn, points) = texts_drawn(px, |ctx| bridge_overlay(ctx, &v, Phase::Patrol, 3.0, &b));
-            let bad = overlapping(&drawn);
-            assert!(bad.is_empty(), "texts in the band overlap at {px:?}: {bad:?}");
-            assert_eq!(drawn.len(), 9, "the head and eight stations at {px:?}");
-            assert!(drawn.iter().any(|d| d.text.starts_with("Patrol: the Shoals")), "the head is drawn at {px:?}");
+            let (drawn, points) = texts_drawn(px, |ctx| bridge_overlay(ctx, &b));
+            let screen = Rect::from_min_size(Pos2::ZERO, points).expand(0.5);
             for d in &drawn {
-                assert!(
-                    d.rect.min.x >= 0.0 && d.rect.max.x <= points.x && d.rect.min.y >= 0.0 && d.rect.max.y <= BAND_H,
-                    "{:?} at {:?} leaves the band (0-{} x 0-{BAND_H}) at {px:?}",
-                    d.text,
-                    d.rect,
-                    points.x
-                );
+                assert!(screen.contains_rect(d.rect), "{:?} at {:?} leaves the screen at {px:?}", d.text, d.rect);
             }
+            let texts: Vec<&str> = drawn.iter().map(|d| d.text.as_str()).collect();
+            assert!(texts.contains(&"OBJECTIVE") && texts.contains(&"Report to the helm"), "{texts:?} at {px:?}");
+            assert!(texts.contains(&"Sit down") && texts.contains(&"E"), "the plate: key and verb at {px:?}");
+            assert!(!texts.iter().any(|t| t.contains(':')), "no clock on the walking HUD at {px:?}: {texts:?}");
         }
     }
 
     #[test]
     fn the_briefing_fits_eight_crew_and_every_stations_orders() {
-        // The undock video's briefing drew Laser port, Laser stbd and Gunner over one another, the claim buttons below.
+        // The undock video's briefing drew Laser port, Laser stbd and Gunner over one another, the claim buttons below;
+        // the art direction's is a solid screen with one hierarchy and no (bot), automation or MARK READY.
         for id in ["patrol-shoals", "drill-hound"] {
             for me in Station::ALL {
                 let v = view(id, me);
-                for px in OUTPUTS {
-                    let (drawn, points) = texts_drawn(px, |ctx| briefing(ctx, &v, Phase::Muster, 1.0, &mut Vec::new()));
-                    let (origin, scale) = crate::ui::frame_in(Rect::from_min_size(Pos2::ZERO, points));
-                    assert!((scale - 1.0).abs() < 1e-4, "a fitted screen holds the frame at one point a point");
-                    let panel = Rect::from_min_size(
-                        Pos2::new(BRIEF_MIN.0 + origin.x, BRIEF_MIN.1 + origin.y),
-                        egui::vec2(BRIEF_SIZE.0, BRIEF_SIZE.1),
-                    );
-                    let screen = Rect::from_min_size(Pos2::ZERO, points);
-                    assert!(
-                        screen.contains_rect(panel),
-                        "the briefing {panel:?} leaves the screen {screen:?} at {px:?}"
-                    );
-                    let bad = overlapping(&drawn);
-                    assert!(bad.is_empty(), "briefing texts overlap ({id}, {me:?}, {px:?}): {bad:?}");
-                    for d in &drawn {
-                        assert!(
-                            panel.contains_rect(d.rect) && d.clip.contains_rect(d.rect),
-                            "{:?} at {:?} is not whole inside the panel {panel:?} ({id}, {me:?}, {px:?})",
-                            d.text,
-                            d.rect
-                        );
-                    }
-                    for name in ["Lt. Kiya Ashberg (bot)", "Lt. Haro Lundivan (bot)", "Gunner", "MARK READY"] {
-                        assert!(drawn.iter().any(|d| d.text == name), "{name:?} is drawn ({id}, {me:?}, {px:?})");
-                    }
+                let bad = check(&format!("briefing {id} {me:?}"), |ctx| {
+                    briefing(ctx, &v, Phase::Muster, 1.0, &mut Vec::new(), None)
+                });
+                assert!(bad.is_empty(), "{bad:#?}");
+                let (drawn, _) =
+                    texts_drawn((1920, 1080), |ctx| briefing(ctx, &v, Phase::Muster, 1.0, &mut Vec::new(), None));
+                for name in
+                    ["Lt. Kiya Ashberg", "Lt. Haro Lundivan", "Gunner", "Starboard laser", "READY", "YOUR ORDERS"]
+                {
+                    assert!(drawn.iter().any(|d| d.text == name), "{name:?} is drawn ({id}, {me:?})");
                 }
             }
         }
+        let v = view("drill-hound", Station::Helm);
+        let bad = check("briefing countdown", |ctx| briefing(ctx, &v, Phase::Countdown, 2.0, &mut Vec::new(), None));
+        assert!(bad.is_empty(), "{bad:#?}");
     }
 }

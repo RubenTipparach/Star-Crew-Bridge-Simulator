@@ -141,4 +141,5 @@ the ship walk draws at a median 26-28 FPS on this Pi without recording (`docs/be
 | --- | --- | --- | --- |
 | Q1 | What is a Grabon ship? Nothing in the repository names one | A heavier enemy than the Hound (a cruiser that takes several minutes to beat), designed in `missions` with a mockup | Recommendation taken (ask only with screenshots); the `missions` mockup will show it |
 | Q2 | The captain viewing any station's dashboard reverses `bridge-stations` 5 ("no console carries another station's tab") | Follow the owner's flow: the Captain console gets a view of each station, read-only until he takes it | Recommendation taken (ask only with screenshots) |
+| J1 | Take the 15 steps as the gate and build them in the order A the room, B aboard with C command, D damage and repair, E the end | Approve: A first, because every later recording starts in the room | Approved, the owner, 2026-10-16 (survey 2): "approve" |
 | Q3 | "This ship requires at least 8 crew": a rule that blocks a mission with fewer, or NPCs filling to 8 | NPCs fill the crew to 8, so one player can still play (CLAUDE.md 7) | Recommendation taken (ask only with screenshots) |

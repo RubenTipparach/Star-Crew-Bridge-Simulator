@@ -184,6 +184,6 @@ Pi measures it when the change is built.
 
 | Id | Question | Recommendation | Status |
 | --- | --- | --- | --- |
-| O1 | The hull seen from the windows and from outside: approve the captures | Approve | Asked in survey 2 (2026-10-11), with the captures and the review page |
+| O1 | The hull seen from the windows and from outside: approve the captures | Approve | Approved, the owner, 2026-10-16 (survey 2): "approve". The walk outside (`warp-pylons` O7) is asked with its own captures |
 | O2 | The Cyan livery in the game | Cyan, the model's default and the owner's preferred | Recommendation taken (ask only with screenshots) |
 | O3 | The eight lower-deck rooms grow outboard to their windows (191 m^3) | Grow them, as the window design does | Recommendation taken (ask only with screenshots) |

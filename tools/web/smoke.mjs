@@ -127,11 +127,11 @@ async function playByTouch() {
   await page.waitForTimeout(8000);
   await snap("3-aboard.png");
   // The move stick: a thumb lands low on the left and pushes forward to the rim; held there it runs. The body walks up
-  // the corridor to the bridge in short pushes until a seat is in reach (the client says so: "prompt: E Sit at ..." or
-  // "E Take ..."); the crew walking the same corridor push it about, so the walk is steered by what the client says,
+  // the corridor to the bridge in short pushes until a seat is in reach (the client says so: "prompt: Helm [E] Sit
+  // down" or "[E] Relieve ..."); the crew walking the same corridor push it about, so the walk is steered by what the client says,
   // not timed.
   const prompt = () => lines.filter((l) => l.startsWith("sc-client: prompt: ")).pop() || "";
-  const inReach = () => /prompt: E (Sit at|Take (?!an extinguisher))/.test(prompt());
+  const inReach = () => /prompt: .* \[E\] (Sit down|Relieve )/.test(prompt());
   let pushes = 0, waits = 0;
   while (!inReach()) {
     // A seat in reach that a crew member is still walking to is theirs: stand and wait for them to sit.
@@ -303,7 +303,7 @@ try {
     await page.waitForTimeout(4000);
     await page.mouse.click(640, 400);
     const prompt = () => lines.filter((l) => l.startsWith("sc-client: prompt: ")).pop() || "";
-    const inReach = () => /prompt: E (Sit at|Take (?!an extinguisher))/.test(prompt());
+    const inReach = () => /prompt: .* \[E\] (Sit down|Relieve )/.test(prompt());
     for (let i = 0; !inReach() && !broken(); i++) {
       if (i > 300) throw new Error("the keys never walked the body to a seat");
       await page.keyboard.down("Shift");

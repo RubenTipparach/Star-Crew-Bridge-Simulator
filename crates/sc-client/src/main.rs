@@ -32,13 +32,17 @@ mod firefx;
 mod first_light;
 mod fixture;
 mod game_menu;
+mod hud;
 mod hull;
 mod lobby;
+mod look;
 mod nameplate;
 mod onfoot;
 mod options;
 mod outside;
 mod playtest;
+#[cfg(test)]
+mod release;
 mod repairs;
 mod seat;
 mod ships3d;
@@ -219,31 +223,28 @@ struct MapLabel {
     own: bool,
 }
 
-/// The map's title and deck, and each marker's name in a dark pill (the player's ringed).
+/// The map's title and deck at the top left of the safe area (ui-art-direction design 11), and each marker's name on a
+/// square plate (the player's edged).
 fn map_overlay(ctx: &egui::Context, deck: &str, labels: &[MapLabel]) {
+    use look::{Align, Role};
     let screen = ctx.content_rect();
-    egui::Area::new(egui::Id::new("map")).anchor(egui::Align2::CENTER_TOP, egui::Vec2::new(0.0, 14.0)).show(
-        ctx,
-        |ui| {
-            ui.vertical_centered(|ui| {
-                ui.label(
-                    egui::RichText::new("SHIP MAP").size(24.0).strong().color(egui::Color32::from_rgb(242, 160, 70)),
-                );
-                ui.label(egui::RichText::new(deck).size(15.0).color(egui::Color32::from_rgb(190, 160, 230)));
-            });
-        },
-    );
     let painter = ctx.layer_painter(egui::LayerId::new(egui::Order::Background, egui::Id::new("names")));
+    let c = look::look().c();
+    let k = look::kit(&painter, screen, ui::Anchor::TopLeft, egui::Vec2::new(800.0, 200.0));
+    k.text(Role::Label, 96.0, 54.0, c.accent.0, "Ship map", Align::Start);
+    k.text(Role::Title, 96.0, 54.0 + k.line(Role::Label) + 8.0, c.text.0, deck, Align::Start);
+    let (_, s) = ui::anchored(screen, ui::Anchor::Centre, egui::Vec2::ZERO);
     for l in labels {
         let p = egui::pos2(screen.min.x + l.at[0] * screen.width(), screen.min.y + l.at[1] * screen.height());
-        let size = if l.own { 17.0 } else { 13.0 };
-        let galley = painter.layout_no_wrap(l.text.clone(), egui::FontId::proportional(size), l.colour);
-        let r = egui::Rect::from_center_size(p, galley.size() + egui::vec2(10.0, 4.0));
-        painter.rect_filled(r, 6.0, egui::Color32::from_rgba_premultiplied(6, 9, 14, 200));
+        let m = look::Kit::new(painter.clone(), p, s);
+        let role = if l.own { Role::Body } else { Role::Label };
+        let w = m.width(role, &l.text) + 20.0;
+        let h = m.line(role) + 8.0;
+        m.fill(-w / 2.0, -h / 2.0, w, h, look::alpha(c.panel.0, 0.9));
         if l.own {
-            painter.rect_stroke(r, 6.0, egui::Stroke::new(1.5_f32, l.colour), egui::StrokeKind::Outside);
+            m.edge(-w / 2.0, -h / 2.0, w, h, l.colour);
         }
-        painter.galley(r.min + egui::vec2(5.0, 2.0), galley, l.colour);
+        m.text_mid(role, 0.0, 0.0, l.colour, &l.text, Align::Middle);
     }
 }
 
@@ -357,6 +358,13 @@ struct Client {
     walk_names: Vec<([f32; 2], String, f32)>,
     /// The game menu's Exit was chosen: the next frame ends the game.
     quit: bool,
+    /// The keys (`data/input/bindings.json`): the walk's use and down keys, and what Controls lists.
+    bindings: bindings::Bindings,
+    /// The loading screen's art and tip while Beam aboard loads the ship (ui-art-direction design 11).
+    loading: Option<(Option<egui::TextureHandle>, Option<hud::Tip>)>,
+    /// `--demo DIR`: the video's run (a capture instrument, CLAUDE.md 4): every frame written, the front menu worked
+    /// by a script, then single player's UI run (`drill::TourArgs`); the folder and the next frame's number.
+    demo: Option<(PathBuf, u64)>,
 }
 
 /// Load the deck at `deck`, or first light's test room when there is none (refused for a test that needs the ship),
@@ -532,7 +540,8 @@ impl Client {
                 std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(1, |d| d.as_nanos() as u64)
             };
             let cam = Camera { pos: [0.0; 3], yaw: 0.0, pitch: 0.0 };
-            (Scene::Empty, None, cam, Some(lobby::Lobby::new(names, seed)))
+            let controls = bindings::load()?.controls;
+            (Scene::Empty, None, cam, Some(lobby::Lobby::new(names, seed, controls)))
         } else {
             let (scene, walker, cam) = load_scene(&mut r, &deck, &exterior, walk_test, 7)?;
             (scene, walker, cam, None)
@@ -579,12 +588,15 @@ impl Client {
             options: options::Options::load(),
             walk_names: Vec::new(),
             quit: false,
+            bindings: bindings::load()?,
+            loading: None,
+            demo: None,
         })
     }
 
     /// A frame of the lobby: the sky turning slowly behind the panel; Beam aboard loads the ship.
     fn lobby_frame(&mut self, f: &Frame) -> Flow {
-        let dt = if self.shots.is_some() { 1.0 / 30.0 } else { f.elapsed_s.min(0.1) };
+        let dt = if self.shots.is_some() || self.demo.is_some() { 1.0 / 30.0 } else { f.elapsed_s.min(0.1) };
         self.time_s += dt;
         let mut shot = None;
         let mut beam = false;
@@ -605,19 +617,50 @@ impl Client {
         }
         if let (Some(n), Some(l)) = (self.lobby_test.as_mut(), self.lobby.as_mut()) {
             *n += 1;
-            // The four buttons, Multiplayer, Options, then Single Player's officer panel, a roll and Tour.
+            // The four items, Multiplayer, Options' pages and Controls' tabs, then Single Player's officer panel, a roll
+            // and Explore the ship, whose loading screen is shot as it boards.
+            use options::{Page as P, Tab};
             match *n {
                 20 => shot = Some("menu-1-main.png"),
                 21 => l.page = lobby::Page::Multi,
                 40 => shot = Some("menu-2-multi.png"),
                 41 => l.page = lobby::Page::Options,
                 60 => shot = Some("menu-3-options.png"),
-                61 => l.page = lobby::Page::Single,
-                80 => shot = Some("lobby-1.png"),
-                81 => l.roll(),
-                100 => shot = Some("lobby-2-rolled.png"),
-                101 => beam = true,
+                61 => l.screen.page = P::Game,
+                70 => shot = Some("menu-4-options-game.png"),
+                71 => l.screen.page = P::Controls,
+                80 => shot = Some("menu-5-controls-foot.png"),
+                81 => l.screen.tab = Tab::Console,
+                90 => shot = Some("menu-6-controls-console.png"),
+                91 => l.screen.tab = Tab::Touch,
+                100 => shot = Some("menu-7-controls-touch.png"),
+                101 => l.page = lobby::Page::Single,
+                120 => shot = Some("lobby-1.png"),
+                121 => l.roll(),
+                140 => shot = Some("lobby-2-rolled.png"),
+                141 => beam = true,
                 _ => {}
+            }
+        }
+        // `--demo`: the front menu worked as a player would, slowly enough to read, then Beam aboard.
+        let mut demo_solo = false;
+        if let (Some(_), Some(l)) = (self.demo.as_ref(), self.lobby.as_mut()) {
+            let t = self.time_s;
+            let step = |a: f64| t >= a && t - 1.0 / 30.0 < a;
+            if step(1.5) || step(2.1) || step(2.7) {
+                l.focus_down();
+            }
+            if step(3.6) {
+                l.page = lobby::Page::Single;
+            }
+            if step(5.4) {
+                l.roll();
+            }
+            if step(7.0) {
+                l.officer.station = 1;
+            }
+            if step(8.5) {
+                demo_solo = true;
             }
         }
         if self.beaming >= 1 {
@@ -659,7 +702,7 @@ impl Client {
         });
         // Beam aboard hosts the game here, in the browser as on the desktop: single player runs on the local link,
         // which needs no socket and no thread (browser-single-player design 1).
-        let action = if solo_now { lobby::LobbyAction::Solo } else { action };
+        let action = if solo_now || demo_solo { lobby::LobbyAction::Solo } else { action };
         let hand_dir = self.hand_test.as_ref().map(|h| h.0.clone());
         match action {
             lobby::LobbyAction::Quit => return Flow::Done,
@@ -685,6 +728,11 @@ impl Client {
                     film_orbit: false,
                     all_hands: false,
                     mission: "drill-hound".into(),
+                    tour: self.demo.as_ref().map(|(dir, n)| drill::TourArgs {
+                        dir: dir.clone(),
+                        video: true,
+                        frame: *n,
+                    }),
                 };
                 platform::hand_over(move |_| drill::DrillApp::new(args).map(|c| Box::new(c) as Box<dyn App>));
             }
@@ -693,26 +741,46 @@ impl Client {
         if beam || action == lobby::LobbyAction::Tour {
             self.beaming = 1;
         }
-        // The beaming frame: the panel gives way to one line.
+        // The beaming frame: the loading screen while the ship loads (ui-art-direction design 11), its art loaded here
+        // and freed with it once aboard (design 15).
         let frame = if self.beaming == 1 {
+            let bindings = &self.bindings;
+            let loading = &mut self.loading;
             self.ui.run(&mut self.r, f, self.time_s, |ctx| {
-                egui::Area::new(egui::Id::new("beam")).anchor(egui::Align2::CENTER_CENTER, egui::Vec2::ZERO).show(
-                    ctx,
-                    |ui| {
-                        ui.label(
-                            egui::RichText::new("ENERGIZING")
-                                .size(40.0)
-                                .strong()
-                                .color(egui::Color32::from_rgb(242, 160, 70)),
-                        );
-                    },
+                let (art, tip) =
+                    loading.get_or_insert_with(|| (look::load_art(ctx, look::Art::Loading), hud::tip(bindings, 0)));
+                hud::loading(
+                    &ctx.layer_painter(egui::LayerId::background()),
+                    ctx.content_rect(),
+                    art.as_ref(),
+                    "Explore",
+                    "The Tern",
+                    tip.as_ref(),
+                    0.6,
                 );
             })
         } else {
             frame
         };
         self.r.present_with_ui(&self.target, f.width, f.height, true, &frame.meshes(), frame.points);
+        if let Some((dir, n)) = self.demo.as_mut() {
+            let px = sc_render::read_output(f.width, f.height);
+            if let Err(e) =
+                sc_client::capture::write_png(&dir.join(format!("frame-{n:05}.png")), f.width, f.height, &px)
+            {
+                eprintln!("sc-client: {e}");
+            }
+            *n += 1;
+        }
+        if self.beaming == 1 && self.lobby_test.is_some() {
+            shot = Some("lobby-3-loading.png");
+        }
         if let Some(n) = shot {
+            println!(
+                "sc-client: measure: {n}: {} UI draw calls, {:.1} MB of UI textures",
+                frame.meshes().len(),
+                self.ui.texture_bytes() as f64 / 1e6
+            );
             if let Some((dir, _, _)) = &self.hand_test {
                 if !capture_to(f, dir, n) {
                     return Flow::Fail;
@@ -871,30 +939,33 @@ impl Client {
         named.into_iter().map(|(_, at, name, k)| (at, name, k)).collect()
     }
 
-    /// The HUD aboard: who you are, and what E and Q do where you stand; on the map, its title and the names over the
-    /// markers.
+    /// The HUD aboard (ui-art-direction design 11): the centre dot and what the use and down keys do where you stand,
+    /// on a plate below it; on the map, its title and the names over the markers.
     fn hud(&mut self, f: &Frame) -> ui::UiFrame {
-        let officer = self.officer.clone();
-        let prompt = self.walker.as_ref().filter(|_| !self.flying && self.map.is_none()).and_then(|w| w.foot.prompt());
+        let prompt = self
+            .walker
+            .as_ref()
+            .filter(|_| !self.flying && self.map.is_none())
+            .and_then(|w| w.foot.prompt(&self.bindings));
         let labels = std::mem::take(&mut self.map_labels);
         let map_deck = self.map.as_ref().map(|m| match m.deck {
-            None => "ALL DECKS".to_owned(),
+            None => "All decks".to_owned(),
             Some(k) => {
                 let n = self.walker.as_ref().map_or(3, |w| w.decks.len());
-                format!("DECK {}", (b'A' + (n - 1 - k) as u8) as char)
+                format!("Deck {}", (b'A' + (n - 1 - k) as u8) as char)
             }
         });
         let names = std::mem::take(&mut self.walk_names);
-        let place = match self.walker.as_ref() {
-            Some(w) => {
-                let n = w.decks.len();
-                let k = w.decks.iter().rposition(|h| w.body.feet[1] >= h - 0.5).unwrap_or(0);
-                format!("SCS Tern, Deck {}", (b'A' + (n - 1 - k) as u8) as char)
-            }
-            None => "SCS Tern".to_owned(),
+        let view = game_menu::MenuView {
+            label: "Explore".into(),
+            title: "The Tern".into(),
+            seated: false,
+            me: self.officer.as_ref().map(|(t, _)| (t.clone(), "person".to_owned())),
+            objectives: Vec::new(),
+            crew: Vec::new(),
         };
         let mut menu_ask = None;
-        let (menu, options) = (&mut self.menu, &mut self.options);
+        let (menu, options, controls) = (&mut self.menu, &mut self.options, &self.bindings.controls);
         let frame = self.ui.run(&mut self.r, f, self.time_s, |ctx| {
             if let Some(deck) = &map_deck {
                 map_overlay(ctx, deck, &labels);
@@ -905,37 +976,17 @@ impl Client {
                 let p = egui::pos2(screen.min.x + at[0] * screen.width(), screen.min.y + at[1] * screen.height());
                 nameplate::draw(&painter, p, name, true, None, *k);
             }
-            menu_ask = menu.show(ctx, &place, options);
-
-            if let Some((title, station)) = &officer {
-                egui::Area::new(egui::Id::new("officer"))
-                    .anchor(egui::Align2::LEFT_TOP, egui::Vec2::new(18.0, 14.0))
-                    .show(ctx, |ui| {
-                        ui.label(
-                            egui::RichText::new(title).size(20.0).strong().color(egui::Color32::from_rgb(242, 160, 70)),
-                        );
-                        ui.label(egui::RichText::new(station).size(15.0).color(egui::Color32::from_rgb(190, 160, 230)));
-                    });
+            if map_deck.is_none() {
+                hud::reticle(&painter, screen);
             }
-            if let Some(p) = prompt {
-                egui::Area::new(egui::Id::new("prompt"))
-                    .anchor(egui::Align2::CENTER_BOTTOM, egui::Vec2::new(0.0, -40.0))
-                    .show(ctx, |ui| {
-                        egui::Frame::new()
-                            .fill(egui::Color32::from_rgba_premultiplied(8, 12, 20, 210))
-                            .corner_radius(16.0)
-                            .inner_margin(egui::Margin::symmetric(18, 8))
-                            .show(ui, |ui| {
-                                ui.label(
-                                    egui::RichText::new(p).size(20.0).color(egui::Color32::from_rgb(225, 232, 245)),
-                                );
-                            });
-                    });
+            if let Some(p) = &prompt {
+                hud::prompt_plate(&painter, screen, p, 1.0, false);
             }
+            menu_ask = menu.show(ctx, &view, options, controls);
         });
         self.map_labels = labels;
         self.walk_names = names;
-        // Resume takes the mouse back; Return to menu leaves for the front menu; Exit closes the game.
+        // Resume takes the mouse back; Return to main menu leaves for the front menu; Quit closes the game.
         match menu_ask {
             Some(game_menu::MenuAsk::Resume) => {
                 self.captured = true;
@@ -943,7 +994,7 @@ impl Client {
             }
             Some(game_menu::MenuAsk::Leave) => back_to_menu(None),
             Some(game_menu::MenuAsk::Exit) => self.quit = true,
-            None => {}
+            Some(game_menu::MenuAsk::LeaveStation) | None => {}
         }
         frame
     }
@@ -952,7 +1003,8 @@ impl Client {
     fn walk(&mut self, dt: f64, steer: Option<Input>) {
         let Some(w) = self.walker.as_mut() else { return };
         let lift_keys = steer.is_none();
-        let input = steer.unwrap_or_else(|| onfoot::OnFoot::keys_input(&self.held, &self.pressed, self.cam.yaw));
+        let input = steer
+            .unwrap_or_else(|| onfoot::OnFoot::keys_input(&self.held, &self.pressed, self.cam.yaw, &self.bindings));
         self.pressed.clear();
         w.step(input, lift_keys, dt);
         self.cam.pos = w.eye();
@@ -1417,7 +1469,8 @@ impl App for Client {
                 self.cam.pitch = (self.cam.pitch - dy * k).clamp(-1.5, 1.5);
             }
             Event::KeyDown(keys::F12) => self.capture_next = true,
-            Event::KeyDown(keys::F) if self.walker.is_some() => {
+            // Flying is a tool for looking round the ship, not the game's: debug builds only (ui-art-direction Q5).
+            Event::KeyDown(keys::F) if self.walker.is_some() && cfg!(debug_assertions) => {
                 // Flying, then landing where the camera is: the body stands on the floor under the eye.
                 self.flying = !self.flying;
                 if let (false, Some(w)) = (self.flying, self.walker.as_mut()) {
@@ -1487,6 +1540,22 @@ fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let value = |name: &str| args.iter().position(|a| a == name).and_then(|i| args.get(i + 1)).map(PathBuf::from);
     let headless = args.iter().any(|a| a == "--headless");
+    // `--size WxH`: the window's size (a capture at 1280 x 720, or the itch.io embed's 985 x 455).
+    let size = args
+        .iter()
+        .position(|a| a == "--size")
+        .and_then(|i| args.get(i + 1))
+        .and_then(|s| s.split_once('x'))
+        .and_then(|(w, h)| Some((w.parse::<u32>().ok()?, h.parse::<u32>().ok()?)));
+    let (win_w, win_h) = size.unwrap_or((1920, 1080));
+    // A name for a launch from the command line, rolled as the lobby rolls one (design 12: never a placeholder).
+    let rolled = || -> String {
+        std::fs::read_to_string("data/crew/names.json")
+            .ok()
+            .and_then(|t| sc_core::data::parse::<sc_core::names::NameData>("data/crew/names.json", &t).ok())
+            .map(|n| format!("Lt. {}", n.generate(&mut sc_core::rng::Rng::for_purpose(7, 1, "officer_name"))))
+            .unwrap_or_else(|| "Lt. Hurath".into())
+    };
     let shots = value("--shots");
     let deck = value("--deck").unwrap_or_else(|| PathBuf::from("compiled/tern.deck"));
     let walk_dir = value("--walk-test");
@@ -1501,7 +1570,7 @@ fn main() -> ExitCode {
             return ExitCode::from(2);
         };
         let cfg = WindowConfig {
-            title: "Star Crew: console fixture".into(),
+            title: "Star Crew".into(),
             width: 1280,
             height: 720,
             fullscreen: false,
@@ -1533,13 +1602,13 @@ fn main() -> ExitCode {
                 if watch {
                     "Observer".into()
                 } else {
-                    format!("{} officer", station.name())
+                    rolled()
                 }
             });
         let cfg = WindowConfig {
-            title: "Star Crew: drill".into(),
-            width: 1920,
-            height: 1080,
+            title: "Star Crew".into(),
+            width: win_w,
+            height: win_h,
             fullscreen: !headless && !args.iter().any(|a| a == "--window"),
             headless,
             vsync: !headless,
@@ -1561,6 +1630,7 @@ fn main() -> ExitCode {
             film_orbit: false,
             all_hands: false,
             mission: "drill-hound".into(),
+            tour: None,
         };
         return platform::run(cfg, move |gl| {
             println!("sc-client: {} on {} ({})", gl.version, gl.renderer, gl.video_driver);
@@ -1578,9 +1648,9 @@ fn main() -> ExitCode {
         let station = station.map(String::as_str).and_then(sc_core::combat::Station::from_id);
         let name = args.iter().position(|a| a == "--name").and_then(|i| args.get(i + 1)).cloned();
         let cfg = WindowConfig {
-            title: "Star Crew: single player".into(),
-            width: 1920,
-            height: 1080,
+            title: "Star Crew".into(),
+            width: win_w,
+            height: win_h,
             fullscreen: !headless && !args.iter().any(|a| a == "--window"),
             headless,
             vsync: !headless,
@@ -1589,7 +1659,7 @@ fn main() -> ExitCode {
             server: String::new(),
             station: station.unwrap_or(sc_core::combat::Station::Helm),
             any: station.is_none(),
-            name: name.unwrap_or_else(|| "Lt. Player".into()),
+            name: name.unwrap_or_else(rolled),
             bot: args.iter().any(|a| a == "--bot"),
             shots,
             watch: false,
@@ -1607,6 +1677,10 @@ fn main() -> ExitCode {
                 .and_then(|i| args.get(i + 1))
                 .cloned()
                 .unwrap_or_else(|| "drill-hound".into()),
+            // `--ui-shots DIR`: a capture of every screen of the game; `--demo DIR`: every frame, for the video.
+            tour: value("--ui-shots")
+                .map(|dir| drill::TourArgs { dir, video: false, frame: 0 })
+                .or_else(|| value("--demo").map(|dir| drill::TourArgs { dir, video: true, frame: 0 })),
         };
         return platform::run(cfg, move |gl| {
             println!("sc-client: {} on {} ({})", gl.version, gl.renderer, gl.video_driver);
@@ -1617,7 +1691,7 @@ fn main() -> ExitCode {
     if let Some(i) = args.iter().position(|a| a == "--repairs") {
         let open = args.get(i + 1).filter(|a| !a.starts_with("--")).cloned();
         let cfg = WindowConfig {
-            title: "Star Crew: repairs".into(),
+            title: "Star Crew".into(),
             width: 1920,
             height: 1080,
             fullscreen: !headless && !args.iter().any(|a| a == "--window"),
@@ -1633,15 +1707,20 @@ fn main() -> ExitCode {
             repairs::RepairsApp::new(open, shots).map(|c| Box::new(c) as Box<dyn App>)
         });
     }
-    if headless && shots.is_none() && !args.iter().any(|a| a == "--connect" || a == "--hand-over-test") {
+    let demo = value("--demo");
+    if headless
+        && shots.is_none()
+        && demo.is_none()
+        && !args.iter().any(|a| a == "--connect" || a == "--hand-over-test")
+    {
         eprintln!("sc-client: --headless needs --shots DIR (nothing would be seen)");
         return ExitCode::from(2);
     }
     let cfg = WindowConfig {
         title: "Star Crew".into(),
         // In the browser the window is the page's canvas, sized by the page (engine-stack design 10a).
-        width: if cfg!(target_os = "emscripten") { 1280 } else { 1920 },
-        height: if cfg!(target_os = "emscripten") { 720 } else { 1080 },
+        width: if cfg!(target_os = "emscripten") { 1280 } else { win_w },
+        height: if cfg!(target_os = "emscripten") { 720 } else { win_h },
         // Full screen unless Options says a window (front-menu design 4), or `--window` asks for one.
         fullscreen: !headless
             && !args.iter().any(|a| a == "--window")
@@ -1657,6 +1736,7 @@ fn main() -> ExitCode {
         println!("sc-client: {} on {} ({})", gl.version, gl.renderer, gl.video_driver);
         let mut c = Client::new(deck, if hand_test.is_some() { None } else { shots }, walk_test, lobby_test)?;
         c.hand_test = hand_test.map(|d| (d, false, 0));
+        c.demo = demo.map(|d| (d, 0));
         if let Some(names) = &only_poses {
             c.only_poses(names)?;
         }

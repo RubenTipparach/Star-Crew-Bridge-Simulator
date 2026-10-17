@@ -19,4 +19,4 @@ The owner asked on 2026-10-15 (the proposal).
 ## 3. Gate
 
 - [x] 3.1 The walking playtest: up from a station mid-Engage, walk on.
-- [ ] 3.2 The owner looks at the mockup and engine captures of the title band.
+- [x] 3.2 The owner looks at the mockup and engine captures of the title band (approved, the owner, 2026-10-16: "approve").

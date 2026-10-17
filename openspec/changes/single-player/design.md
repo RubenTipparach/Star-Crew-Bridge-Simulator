@@ -125,4 +125,4 @@ page cannot open, and the browser's Beam aboard toured the ship instead.
 | --- | --- | --- | --- |
 | Q1 | A press on an AUTO station's console takes it to MANUAL | Yes, the NPC hands over | Recommendation taken (ask only with screenshots) |
 | Q2 | The browser tours the ship until it can host | Yes | Recommendation taken (ask only with screenshots) |
-| Q3 | Approve the crew tabs and the switch (the captures beside the mockup) | Approve | In survey 2 with the screenshots (https://claude.ai/artifact/JQm65V7LHVWDJF8dPdZYqY) |
+| Q3 | Approve the crew tabs and the switch (the captures beside the mockup) | Approve | Approved, the owner, 2026-10-16 (survey 2): "approve, but need a start mission button when everyone is ready, or captain can start even when everyone is not ready. it doesnt matter." The crew tabs stand; the START MISSION control is the `start-mission` change |

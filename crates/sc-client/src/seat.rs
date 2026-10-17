@@ -524,6 +524,7 @@ impl Seat {
             alert: if br.red_alert { "red_alert" } else { "normal" }.into(),
             red_alert: br.red_alert,
             clock_s: snap.phase_s,
+            timed: data.mission.engage_limit_s > 0.0,
             hull_pct: tern.hull / data.tern_combat.hull_mj.max(1e-9) * 100.0,
             shield_ratio: std::array::from_fn(|f| tern.faces[f] / caps[f].max(1e-9)),
             power_mw: snap.power.as_ref().map(|p| p.rx_out_mw + p.bat_out_mw),
@@ -607,6 +608,7 @@ impl Seat {
             objectives_open: self.obj_open,
             objectives,
             leave: None,
+            start: None,
             // Engineering's schematic, while open: it waits for the first snapshots with the grid and the routing.
             schem: if self.schem_open {
                 snap.power.as_ref().zip(snap.route.as_ref()).map(|(p, r)| self.schem(p, r, snap, data))
@@ -998,7 +1000,8 @@ impl Seat {
         let presets = &data.tern_shields.presets;
         match a {
             // The drill stands the player up before the console sees the press (leave-station 4).
-            Act::Leave => {}
+            // The drill sends START MISSION before the console sees the press (start-mission 4).
+            Act::Leave | Act::Start => {}
             Act::Swap(id) => {
                 self.obj_open = false;
                 if let Some(st) = Station::from_id(&id) {
@@ -1685,7 +1688,18 @@ impl Seat {
                     self.act(Act::Scan, v, tern, hound, data, &mut out);
                 }
             }
-            Station::Engineering | Station::Captain => {}
+            // The captain's lighting keys, at the captain's seat only (owner, 2026-10-15: "lighting can only be changed
+            // by the captain"): the ALERT panel's command, which the server allows the Captain's station alone.
+            Station::Captain => {
+                let (normal, red) = ctx_input.keys.lights;
+                if pressed.contains(&red) && !v.red_alert {
+                    out.push(SeatAsk::Command(Command::Alert(true)));
+                }
+                if pressed.contains(&normal) && v.red_alert {
+                    out.push(SeatAsk::Command(Command::Alert(false)));
+                }
+            }
+            Station::Engineering => {}
         }
         // Y acknowledges the captain's order, on any console.
         if pressed.contains(&keys::Y) {
@@ -1696,7 +1710,12 @@ impl Seat {
 }
 
 /// The OBJECTIVES panel's rows (objectives-tab 2), each measured by the mission's rule from the snapshot.
-fn objectives_view(snap: &Snapshot, tern: &ShipSnap, hound: &ShipSnap, data: &DrillData) -> Option<ObjectivesView> {
+pub(crate) fn objectives_view(
+    snap: &Snapshot,
+    tern: &ShipSnap,
+    hound: &ShipSnap,
+    data: &DrillData,
+) -> Option<ObjectivesView> {
     let m = &data.mission;
     let enemy_hull = if hound.alive { hound.hull / data.enemy.combat.hull_mj.max(1e-9) } else { 0.0 };
     let tern_hull = tern.hull / data.tern_combat.hull_mj.max(1e-9);
@@ -1755,9 +1774,15 @@ pub enum PointerEv {
 /// Whether this frame's pointer pressed LEAVE STATION (leave-station 4): a press whose topmost control is it. The
 /// drill asks before the console's own input, in any phase, and stands the player up.
 pub fn leave_pressed(hits: &console::kit::Hits, events: &[PointerEv]) -> bool {
-    events
-        .iter()
-        .any(|e| matches!(e, PointerEv::Press(p) if hits.at(*p).is_some_and(|r| r.hit == Some(Hit::Act(Act::Leave)))))
+    band_pressed(hits, events, &Act::Leave)
+}
+
+/// Whether this frame's pointer pressed a title-band control the drill takes before the console's own input
+/// (LEAVE STATION, START MISSION): a press whose topmost control is `act`.
+pub fn band_pressed(hits: &console::kit::Hits, events: &[PointerEv], act: &Act) -> bool {
+    events.iter().any(
+        |e| matches!(e, PointerEv::Press(p) if hits.at(*p).is_some_and(|r| r.hit.as_ref() == Some(&Hit::Act(act.clone())))),
+    )
 }
 
 /// This frame's input for the seat.
@@ -2161,6 +2186,54 @@ mod tests {
             assert!(!sent, "{st:?}: the console sends nothing for it; the drill stands the player up");
             let elsewhere = vec![PointerEv::Press(Pos2::new(640.0, 400.0))];
             assert!(!leave_pressed(&hits, &elsewhere), "{st:?}: a press on the panels is not LEAVE STATION");
+        }
+    }
+
+    #[test]
+    fn the_lighting_keys_call_red_alert_at_the_captains_seat_only() {
+        // ui-art-direction design 10: 1 and 2 are the ALERT panel's command, listed under Captain alone.
+        let keys = crate::bindings::Bindings::shipped();
+        for st in [Station::Captain, Station::Helm] {
+            let mut b = Bench::new(st);
+            let v = b.view(1.0);
+            let hits = paint(&v);
+            let (t, h) = (b.snap.ships[0].clone(), b.snap.ships[1].clone());
+            // The key that changes the state it is in: 1 at red alert, 2 at normal.
+            let key = if v.red_alert { keys.lights.0 } else { keys.lights.1 };
+            let input = Input { pressed: HashSet::from([key]), keys: keys.clone(), ..Default::default() };
+            let asks = b.seat.input(&input, &hits, 1.0, &v, &t, &h, &b.data, st, 1.0);
+            let alert = asks.iter().any(|a| matches!(a, SeatAsk::Command(Command::Alert(r)) if *r != v.red_alert));
+            assert_eq!(alert, st == Station::Captain, "{st:?}: the lighting keys act only from the captain's seat");
+        }
+    }
+
+    #[test]
+    fn start_mission_takes_the_orders_place_in_the_band_and_a_click_is_its_own() {
+        for st in [Station::Captain, Station::Helm] {
+            let mut b = Bench::new(st);
+            let mut v = b.view(1.0);
+            v.leave = Some(console::LeaveView { key: "E".into(), share: 0.0 });
+            v.start = Some(console::StartView { key: "Return".into(), ready: 3, aboard: 8 });
+            v.order = Some("CLOSE ON THE HOUND".into());
+            let hits = paint(&v);
+            let start = hits.regions.iter().find(|r| r.hit == Some(Hit::Act(Act::Start))).expect("START MISSION").rect;
+            let leave = hits.regions.iter().find(|r| r.hit == Some(Hit::Act(Act::Leave))).unwrap().rect;
+            assert!(start.max.y <= 32.0, "{st:?}: START MISSION is in the title band");
+            assert!(start.max.x <= leave.min.x, "{st:?}: it ends before LEAVE STATION");
+            assert!(
+                hits.regions.iter().all(|r| r.hit != Some(Hit::Act(Act::Ack))),
+                "{st:?}: it takes the order's place"
+            );
+            let p = start.center();
+            let click = vec![PointerEv::Press(p), PointerEv::Release(p)];
+            assert!(band_pressed(&hits, &click, &Act::Start), "{st:?}: a click on it is START MISSION's");
+            assert!(!leave_pressed(&hits, &click), "{st:?}: and not LEAVE STATION's");
+            v.start = None;
+            let hits = paint(&v);
+            assert!(
+                hits.regions.iter().all(|r| r.hit != Some(Hit::Act(Act::Start))),
+                "{st:?}: none once the round starts"
+            );
         }
     }
 
