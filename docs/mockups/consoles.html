@@ -1914,9 +1914,10 @@
    * A vertex's tint (geometryOf) multiplies its light. Lamp lenses are painted lit or dark
    * lamp by lamp (the lamps that are not fixed, in order, one lens each); status strips the
    * state's colour; screens keep their tint, brightened. Use with surfaceMaterial({ lit: false }).
-   * The light-baking mockup has the real baker (lightbake.js); this is for pages that only
-   * need rooms to read as lit. opts.gain (default 0.55) scales lamp light; opts.cap (1.6)
-   * clamps a vertex.
+   * Once roombake.js has baked the room (geo.userData.bakedLight, the real bake: shadows,
+   * occlusion, one bounce), its light replaces the quick light, times the tint, and the
+   * lenses, strips and screens are painted on it as before. opts.gain (default 0.55) scales
+   * the quick light's lamps; opts.cap (1.6) clamps a vertex of it.
    */
   function bakeDirect(THREE, geo, lamps, key, opts) {
     opts = opts || {};
@@ -1928,7 +1929,15 @@
       const c = l.fixed ? (l.color || [1, 1, 1]) : [lampC.r * (l.color ? l.color[0] : 1), lampC.g * (l.color ? l.color[1] : 1), lampC.b * (l.color ? l.color[2] : 1)];
       return { l, c };
     });
-    for (let i = 0; i < P.length / 3; i++) {
+    // A room baked by roombake.js (light-baking design 15) carries its light, 9 floats a vertex in the three states:
+    // that light times the vertex's tint replaces the quick light below. A room lit by no lamp at all stays quick.
+    const B = lamps.length ? geo.userData.bakedLight : null, si = ["normal", "red_alert", "emergency"].indexOf(key);
+    if (B && B.length === P.length * 3 && si >= 0) {
+      for (let i = 0; i < P.length / 3; i++) {
+        const o = i * 9 + si * 3;
+        C.setXYZ(i, B[o] * (T ? T[i * 3] : 1), B[o + 1] * (T ? T[i * 3 + 1] : 1), B[o + 2] * (T ? T[i * 3 + 2] : 1));
+      }
+    } else for (let i = 0; i < P.length / 3; i++) {
       let er = 0, eg = 0, eb = 0;
       for (const { l, c } of on) {
         const dx = l.p[0] - P[i * 3], dy = l.p[1] - P[i * 3 + 1], dz = l.p[2] - P[i * 3 + 2], d2 = dx * dx + dy * dy + dz * dz, d = Math.sqrt(d2) || 1e-6;

@@ -224,8 +224,10 @@ impl BridgeView {
         // The hull (tern-exterior 4): after the rooms, so their walls hide most of it before it is shaded.
         // Lit by the sky's sun, turned into the ship's frame by the Tern's attitude (patrol-mission design 11.3).
         if let Some(h) = &self.hull {
-            let (light, k) = out.hull_light.unwrap_or((crate::outside::sun_in_ship(ext, out.attitude), 1.0));
-            h.draw_lit(r, t, proj * view, eye, light, k, out.hull_light.is_none().then_some(out.attitude));
+            let light = out.hull_light.unwrap_or_else(|| {
+                crate::hull::HullLight::star(r, crate::outside::sun_in_ship(ext, out.attitude), Some(out.attitude))
+            });
+            h.draw_lit(r, t, proj * view, eye, &light);
         }
         // The viewscreens: the feed's picture on a quad 3 cm in front of each, as the walk draws them.
         if let Some((feed, scanlines)) = out.screen {
@@ -364,9 +366,8 @@ pub struct Outside<'a> {
     pub lighting: [f32; 3],
     /// The viewscreens' picture and its scan lines' depth, once rendered this frame.
     pub screen: Option<(&'a Target, f32)>,
-    /// The light on the hull when it is not the sky's sun: under a station's roof, its floods' way (the ship's frame)
-    /// and strength (patrol-mission design 12b).
-    pub hull_light: Option<(Vec3, f32)>,
+    /// The light on the hull (patrol-mission design 11.3 and 12b, spacedock design 8b); None for the sky's sun.
+    pub hull_light: Option<crate::hull::HullLight>,
     /// Draws the Hound, missiles, bolts and bursts into the pass, given the view-projection from the bridge's eye in
     /// the system's frame (directions only: positions are taken relative to the eye).
     pub objects: DrawOutside<'a>,

@@ -50,7 +50,7 @@ emergency power cost nothing extra to bake. Stored as three `RGBA8` vertex colou
 - **Moving things use probes**: ambient cubes on a 1 m grid, from the same bake.
 - **Bakes are deterministic**: seeded quasi-random samples keyed by stable ids, never `Math.random`
   or thread order; a digest proves it.
-- **Every bake states its Pi 5 cost** (CLAUDE.md 2): triangles added, bytes, and the residual if a
+- **Every bake states its cost** (CLAUDE.md 2, information, not a gate): triangles added, bytes, and the residual if a
   cap was reached.
 - **Numbers say what they are**: a bake time from the mockup is this machine's CPU in one browser
   thread, not a Pi 5 and not the engine baker.
@@ -77,17 +77,38 @@ change; `python3 tools/mockups/inline.py --check` fails when the cache was baked
 `lightbake.js`. A room the cache does not match bakes live, so a forgotten rewrite costs time, not
 correctness. `?bake=fresh` ignores the cache; `--rooms bridge` bakes one room for a quick look.
 
+## Every page's rooms (roombake.js)
+
+Every mockup that draws the Tern's rooms (or a concept ship's) bakes them with the deck plan's own room bake, moved
+into `docs/mockups/lib/roombake.js` (design section 15a). A page makes `RoomBake.page({ name, THREE, K, LBK, L, DET,
+pmats })` and calls `relight(geo, lamps, { id, comp, openings, onBaked })` for each room mesh; `ShipKit.bakeDirect`
+then writes the baked light instead of its quick light, and `onBaked` re-runs the page's own lighting step. A page
+carries `lib:lightbake`, `lib:roombake`, `data:lighting/*` and `bakecache:<name>-bake` markers. After changing anything
+a page's rooms bake from, run `node tools/mockups/bake_pages.mjs docs/mockups/<page>.html` (it bakes the rooms
+fresh, runs every shot so the rooms they build are baked too, writes `docs/mockups/cache/<name>-bake.bin` and inlines
+it). `?bake=0` keeps the quick light, `?bake=rooms` bakes the rooms fresh; `shoot.mjs` waits for the bakes. A mesh
+that is not a room (furniture of its own, console faces) keeps the quick light.
+
 ## A station's bay (spacedock)
 
-`docs/mockups/spacedock.html` bakes E's round bay (540 m across) on load with the same baker and the `station`
-preset of `bake.json` (spacedock design 8a): fixture types `bay_ring`, `bay_flood`, `berth_work`, `window_tier`; cells
-from `bake.json` `station` (wall 16 m, ribs 30 m, berths 8 m); `gather_range_m` 1,200 so bounce reads across the bay.
+`docs/mockups/spacedock.html` bakes all five versions' bays (E's round bay 540 m across, A's hall 1.7 km) with the
+same baker and the `station` preset of `bake.json` (spacedock design 8a): fixture types `bay_ring`, `spine_flood`,
+`bay_flood`, `hall_flood`, `ring_flood`, `axis_lamp`, `berth_work`, `window_tier`; cells from `bake.json` `station`
+(wall 10 m, A's and D's 20 m, ribs 30 m, berths 8 m); `gather_range_m` 1,200 so bounce reads across the bay.
 The ships are not in the scene: the bay's probe grids light them (20 m through the air, 5 m round each berth, `bake.json`
 `station`), every hull at each vertex by `sc-core`'s `probes.rs` rule, mirrored in `lightbake.js` as `sampleProbes` and
 `cubeLight`; `bakeProbeGrid` bakes a grid, for the deck plan's rooms too. The page opens lit from
 `docs/mockups/cache/spacedock-bake.bin`: after changing anything the bay's bake reads, run
-`node tools/mockups/bake_spacedock.mjs` (about 2.5 minutes here) and commit the cache. `?bake=fresh` bakes live,
+`node tools/mockups/bake_spacedock.mjs` (about 10 minutes here for the five) and commit the cache. `?bake=fresh` bakes live,
 `?bake=0` keeps the stand-in. Its shots wait for the bake (`spacedock-E-bay*`, `-E-window*`, `-E-crossing*`).
+
+**In the engine** (spacedock design 8b): `node tools/stations/export_bays.mjs` (E by default, `--versions` for more)
+carries the baked inside, its fixtures' faces, the probes and their texture layers into `build/stations/`, and
+`cargo run --release -p sc-tools -- bayc` packs them into `compiled/stations.bays` (gitignored). The client draws E's bay
+from it and lights the Tern's hull and the docked ships from its probes, one cube a hull; without the file it shows the
+stand-in and says so. After rebaking the bay, run both again before judging the game. The patrol's headless shots
+(`sc-client --headless --solo --bot --mission patrol-shoals --station helm --shots DIR`) include `p3b-bay-docked-ship`
+and `p3c-bay-tern-hull`, taken from out in the bay; run them once without the file to compare with the stand-in.
 
 ## Bake and compare today (the mockup baker)
 
@@ -102,7 +123,7 @@ uses it on the Tern's bridge and engineering. It is documentation tooling, not e
    lightmap, Split with any two); State (Normal, Red alert, Emergency power, Power loss); Bounces;
    Texel size; Toggles (AO in the bake on or off, Debug: occlusion only, Debug: vertex wireframe
    or lightmap texel checker, the probe-lit crew figure). The panel on the right gives triangles, vertices, bytes, atlas size, bake time,
-   rays, residual and digest; the meter gives the Pi 5 budget.
+   rays, residual and digest; the meter gives what it draws (the Pi 5 budget is retired, CLAUDE.md 2).
 3. **Place or tune a lamp**: fixture types and their photometry are `data/lighting/fixtures.json`
    (a ceiling panel 850 cd, a high-bay lamp 2,200 cd); placement is the kit's lamp rule
    (`ShipKit.lampsFor`, from `data/ships/tern/detailing.json` `lamps`: a panel in every frame bay,

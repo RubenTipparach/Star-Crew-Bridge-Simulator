@@ -4,12 +4,14 @@
 //! `sc-tools check-data` loads every engine data file through `sc-core`'s one loader, so a file the
 //! game would refuse at startup is refused here first, naming the file and the field.
 //! `sc-tools deckc [ship]` compiles a ship's decks into `compiled/<ship>.deck` (see `deckc`).
+//! `sc-tools bayc` compiles the spacedock bays into `compiled/stations.bays` (see `bayc`).
 //! `sc-tools names [count] [seed]` prints generated crew names (lobby design 2), to judge the table.
 //! `sc-tools walk-report [ship]` measures the walk world's heap and a body's step time (see `walk_report`).
 //! `sc-tools safety-points [ship]` places the ship's extinguisher brackets from its layout and compiled deck into
 //! `data/ships/<ship>/kit.json` (see `safety_points`).
 
 mod alloc;
+mod bayc;
 mod deckc;
 mod dock;
 mod figure;
@@ -113,6 +115,16 @@ fn main() -> ExitCode {
             }
             Err(e) => {
                 eprintln!("deckc: {e}");
+                ExitCode::FAILURE
+            }
+        },
+        Some("bayc") => match bayc::run(Path::new(".")) {
+            Ok(s) => {
+                println!("bayc: {s}");
+                ExitCode::SUCCESS
+            }
+            Err(e) => {
+                eprintln!("bayc: {e}");
                 ExitCode::FAILURE
             }
         },

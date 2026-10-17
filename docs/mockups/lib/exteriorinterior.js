@@ -68,7 +68,9 @@
     const PK = await window.PropKit.create(THREE, K, GLTFLoader, mats, { sets: ["bridge", "suite"], sizes: S.prop_brief_m });
     const group = new THREE.Group(); group.name = "Tern furnished decks"; scene.add(group);
     const material = K.surfaceMaterial(THREE, mats, { lit: false });
-    const { buildRoom } = window.CommandRooms.create(THREE, K, PK, L, S, D, mats, { parent: group, material });
+    // The rooms' baked light (lib/roombake.js), from the page's cache or live, when the page carries the baker.
+    const bake = window.RoomBake ? window.RoomBake.page({ name: "ship-exteriors", THREE, K, LBK: window.LightBake, L, DET: D, pmats: mats }) : null;
+    const { buildRoom } = window.CommandRooms.create(THREE, K, PK, L, S, D, mats, { parent: group, material, bake, onBaked: () => lighting(light) });
     const roomIds = [...new Set(["bridge", "ready_room", "briefing_room", "captains_quarters", "computer_core", "head", "bridge_locker", "a_corridor", "b_spine", "c_spine",...windows.map(w=>w.room)])];
     const rooms = roomIds.map(buildRoom);
     const screens = PK.spaceViews(L, { keep: f => f.kind === "viewscreen" }); group.add(screens);

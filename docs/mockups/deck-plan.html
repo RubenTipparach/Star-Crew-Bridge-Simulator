@@ -105,12 +105,12 @@
 <!-- INLINE data:tern/detailing END -->
 <!-- INLINE data:lighting/fixtures BEGIN -->
 <script id="ship-data-fixtures" type="application/json">
-{"schema":"starcrew.fixtures/1","status":"Proposed (2026-10-07) by openspec/changes/light-baking, design sections 11 and 15. Read by docs/mockups/lighting.html and docs/mockups/deck-plan.html through lightbake.js today, by sc-tools bake once it is built. The photometry is the mockup's, judged on its shots, not measured from a real fixture.","_rules":["A fixture type is what a fixture record (the kit's lamp rule today; deckgen's placement and the detail files later, deck-pipeline section 7) names. The layout holds no lights.","kind point: a light at a position with a radius (soft shadows), intensity_cd straight down its beam, beam_exponent (cos^n falloff off the axis; 0 lights every way), range_m (where its light ends), drop_m (the light's centre under the lens the kit draws).","kind area: an emissive face (a strip, a screen, a glow band) that lights the room: luminance_cd_m2 over the face's area, range_m; a strip also width_m (across the cove) and end_clear_m (kept off each end of its cove).","light names where its colour per state comes from: lamp, strip or kick (ShipKit.LIGHTING's lamp or strip colour and weight in each state, the state palette every mockup shares), role (the station's role colour, steady in every state) or fixed (color_srgb, steady in every state).","emergency: bus (lit on emergency power only when the record is on the emergency bus) or always. emergency_scale multiplies its emergency-power light (an emergency-bus lamp burns brighter than its share; a screen dims).","Units are in the keys. An unknown key is an error; a missing optional key takes the default stated here (emergency_scale 1). tools/lighting_check.py validates this file."],"types":{"ceiling_panel":{"_doc":"A recessed ceiling panel: beam_exponent 8 puts half its intensity inside 23 degrees of the axis, so it draws a pool. The kit's rule puts one in every frame bay, one per 8 m^2 of floor.","kind":"point","intensity_cd":850,"radius_m":0.25,"beam_exponent":8,"range_m":9.0,"drop_m":0.08,"light":"lamp","emergency":"bus","emergency_scale":1.6},"high_bay":{"_doc":"The kit's lamp in a room taller than one deck: the same floor light from 6 m up as a panel gives from 3 m.","kind":"point","intensity_cd":2200,"radius_m":0.3,"beam_exponent":10,"range_m":14.0,"drop_m":0.1,"light":"lamp","emergency":"bus","emergency_scale":1.6},"console_glow":{"_doc":"A console's screens lighting the desk and its operator (the deck plan's stations; the lighting page draws its screens as area emitters of console_screen).","kind":"point","intensity_cd":18,"radius_m":0.25,"beam_exponent":1,"range_m":3.0,"drop_m":0.0,"light":"role","emergency":"always","emergency_scale":0.6},"cove_strip":{"_doc":"A light strip along the middle of every cove the kit builds, and under a mezzanine along its walls.","kind":"area","luminance_cd_m2":1400,"range_m":6.0,"width_m":0.08,"end_clear_m":0.25,"light":"strip","emergency":"always"},"kick_strip":{"_doc":"An indirect strip hidden at the foot of a platform edge (in its toe kick, on a 45 degree chamfer facing out and down) or of a console (openspec/changes/kick-lights): the floor glows, the strip is not seen. Its colour is the state palette's kick colour, the blue of the owner's reference K1 in normal light. Lit on emergency power: it marks the floor edges to the doors.","kind":"area","luminance_cd_m2":3000,"range_m":2.5,"width_m":0.042,"end_clear_m":0.0,"light":"kick","emergency":"always","emergency_scale":0.7},"column_strip":{"_doc":"A vertical light column on the wall at each side of a wall bank, behind the terminals (openspec/changes/kick-lights design 2a; the owner, 2026-10-07: \"vertical lights behind terminals too\", after reference K1's blue light panels beside its consoles). Seen directly; it lights the wall and the bank's fins. Its colour is the state palette's kick colour.","kind":"area","luminance_cd_m2":1500,"range_m":3.0,"width_m":0.05,"end_clear_m":0.0,"light":"kick","emergency":"always","emergency_scale":0.5},"console_screen":{"kind":"area","luminance_cd_m2":160,"range_m":3.5,"light":"role","emergency":"always","emergency_scale":0.6},"viewscreen":{"kind":"area","luminance_cd_m2":45,"range_m":14.0,"light":"fixed","color_srgb":"#6f8fd0","emergency":"always"},"reactor_glow":{"kind":"area","luminance_cd_m2":420,"range_m":9.0,"light":"fixed","color_srgb":"#48d6ff","emergency":"always","emergency_scale":0.2},"indicator_panel":{"kind":"area","luminance_cd_m2":90,"range_m":2.5,"light":"fixed","color_srgb":"#ffb347","emergency":"always"},"bay_ring":{"_doc":"A spacedock bay's general light (openspec/changes/spacedock design 8a): a strip round the bay's wall on every second rib, 80 m apart down E's 620 m bay. Off the emergency bus: red on the station's alert, dark on its emergency supply.","kind":"area","luminance_cd_m2":1500,"range_m":350.0,"width_m":4.0,"end_clear_m":0.0,"light":"strip","emergency":"bus"},"bay_flood":{"_doc":"A spacedock bay's flood (spacedock design 8a): one a berth, on the spine down the bay's axis, aimed at its berth. Warm and steady for the work on alert; out on emergency power. Radius 0: from 190 m a lens's penumbra is narrower than a 4 m cell.","kind":"point","intensity_cd":4000000,"radius_m":0.0,"beam_exponent":6,"range_m":600.0,"drop_m":0.0,"light":"fixed","color_srgb":"#ffe2b8","emergency":"bus"},"berth_work":{"_doc":"A berth's work light (spacedock design 8a): on the pad's corner masts, the portal frames and under the gantry; bright and short. On the emergency bus at 0.6.","kind":"point","intensity_cd":120000,"radius_m":0.0,"beam_exponent":1.5,"range_m":90.0,"drop_m":0.0,"light":"fixed","color_srgb":"#ffd6a0","emergency":"bus","emergency_scale":0.6},"window_tier":{"_doc":"A tier of lit control-room windows on a bay's back wall (spacedock design 8a): soft and warm; a little light on the back wall's foot and the sterns. Always lit, at 0.4 on emergency power.","kind":"area","luminance_cd_m2":150,"range_m":250.0,"light":"fixed","color_srgb":"#ffd9a8","emergency":"always","emergency_scale":0.4}}}
+{"schema":"starcrew.fixtures/1","status":"Proposed (2026-10-07) by openspec/changes/light-baking, design sections 11 and 15. Read by docs/mockups/lighting.html and docs/mockups/deck-plan.html through lightbake.js today, by sc-tools bake once it is built. The photometry is the mockup's, judged on its shots, not measured from a real fixture.","_rules":["A fixture type is what a fixture record (the kit's lamp rule today; deckgen's placement and the detail files later, deck-pipeline section 7) names. The layout holds no lights.","kind point: a light at a position with a radius (soft shadows), intensity_cd straight down its beam, beam_exponent (cos^n falloff off the axis; 0 lights every way), range_m (where its light ends), drop_m (the light's centre under the lens the kit draws).","kind area: an emissive face (a strip, a screen, a glow band) that lights the room: luminance_cd_m2 over the face's area, range_m; a strip also width_m (across the cove) and end_clear_m (kept off each end of its cove).","light names where its colour per state comes from: lamp, strip or kick (ShipKit.LIGHTING's lamp or strip colour and weight in each state, the state palette every mockup shares), role (the station's role colour, steady in every state) or fixed (color_srgb, steady in every state).","emergency: bus (lit on emergency power only when the record is on the emergency bus) or always. emergency_scale multiplies its emergency-power light (an emergency-bus lamp burns brighter than its share; a screen dims).","Units are in the keys. An unknown key is an error; a missing optional key takes the default stated here (emergency_scale 1). tools/lighting_check.py validates this file."],"types":{"ceiling_panel":{"_doc":"A recessed ceiling panel: beam_exponent 8 puts half its intensity inside 23 degrees of the axis, so it draws a pool. The kit's rule puts one in every frame bay, one per 8 m^2 of floor.","kind":"point","intensity_cd":850,"radius_m":0.25,"beam_exponent":8,"range_m":9.0,"drop_m":0.08,"light":"lamp","emergency":"bus","emergency_scale":1.6},"high_bay":{"_doc":"The kit's lamp in a room taller than one deck: the same floor light from 6 m up as a panel gives from 3 m.","kind":"point","intensity_cd":2200,"radius_m":0.3,"beam_exponent":10,"range_m":14.0,"drop_m":0.1,"light":"lamp","emergency":"bus","emergency_scale":1.6},"console_glow":{"_doc":"A console's screens lighting the desk and its operator (the deck plan's stations; the lighting page draws its screens as area emitters of console_screen).","kind":"point","intensity_cd":18,"radius_m":0.25,"beam_exponent":1,"range_m":3.0,"drop_m":0.0,"light":"role","emergency":"always","emergency_scale":0.6},"cove_strip":{"_doc":"A light strip along the middle of every cove the kit builds, and under a mezzanine along its walls.","kind":"area","luminance_cd_m2":1400,"range_m":6.0,"width_m":0.08,"end_clear_m":0.25,"light":"strip","emergency":"always"},"kick_strip":{"_doc":"An indirect strip hidden at the foot of a platform edge (in its toe kick, on a 45 degree chamfer facing out and down) or of a console (openspec/changes/kick-lights): the floor glows, the strip is not seen. Its colour is the state palette's kick colour, the blue of the owner's reference K1 in normal light. Lit on emergency power: it marks the floor edges to the doors.","kind":"area","luminance_cd_m2":3000,"range_m":2.5,"width_m":0.042,"end_clear_m":0.0,"light":"kick","emergency":"always","emergency_scale":0.7},"column_strip":{"_doc":"A vertical light column on the wall at each side of a wall bank, behind the terminals (openspec/changes/kick-lights design 2a; the owner, 2026-10-07: \"vertical lights behind terminals too\", after reference K1's blue light panels beside its consoles). Seen directly; it lights the wall and the bank's fins. Its colour is the state palette's kick colour.","kind":"area","luminance_cd_m2":1500,"range_m":3.0,"width_m":0.05,"end_clear_m":0.0,"light":"kick","emergency":"always","emergency_scale":0.5},"console_screen":{"kind":"area","luminance_cd_m2":160,"range_m":3.5,"light":"role","emergency":"always","emergency_scale":0.6},"viewscreen":{"kind":"area","luminance_cd_m2":45,"range_m":14.0,"light":"fixed","color_srgb":"#6f8fd0","emergency":"always"},"reactor_glow":{"kind":"area","luminance_cd_m2":420,"range_m":9.0,"light":"fixed","color_srgb":"#48d6ff","emergency":"always","emergency_scale":0.2},"indicator_panel":{"kind":"area","luminance_cd_m2":90,"range_m":2.5,"light":"fixed","color_srgb":"#ffb347","emergency":"always"},"bay_ring":{"_doc":"A spacedock bay's general light (openspec/changes/spacedock design 8a): a strip round the bay's wall on every second rib, 80 m apart down E's 620 m bay. Off the emergency bus: red on the station's alert, dark on its emergency supply.","kind":"area","luminance_cd_m2":400,"range_m":350.0,"width_m":4.0,"end_clear_m":0.0,"light":"strip","emergency":"bus"},"spine_flood":{"_doc":"A spacedock bay's high-bay lamp (spacedock design 8a): twelve round the spine every 80 m, each aimed straight out at the bay's round wall, the floor the ships berth on, and throwing a pool about 45 m across on it (the rings staggered by half a step, so the pools lie in a checkerboard with dark between), as a hangar's high-bay lamps pool on its floor. Off the emergency bus; red on alert.","kind":"point","intensity_cd":9000000,"radius_m":0.0,"beam_exponent":200,"range_m":600.0,"drop_m":0.0,"light":"lamp","emergency":"bus"},"hall_flood":{"_doc":"A spacedock hall's high-bay lamp (spacedock design 8a): under the ceiling's gantries in A's round hall and C's drydock, and on the masts down D's cavern, aimed straight down, throwing a pool about 65 m across on the floor from 120-200 m up. Off the emergency bus; red on alert.","kind":"point","intensity_cd":2500000,"radius_m":0.0,"beam_exponent":40,"range_m":450.0,"drop_m":0.0,"light":"lamp","emergency":"bus"},"ring_flood":{"_doc":"A flood on one of B's light rings round its hangar's wall (spacedock design 8a): eight a ring, each aimed across the hangar at its axis, a broad beam that lights the far wall. Off the emergency bus; red on alert.","kind":"point","intensity_cd":4000000,"radius_m":0.0,"beam_exponent":3,"range_m":600.0,"drop_m":0.0,"light":"strip","emergency":"bus"},"axis_lamp":{"_doc":"A lamp on a hangar's axis (B's spine, spacedock design 8a), lighting every way round it. Off the emergency bus.","kind":"point","intensity_cd":3000000,"radius_m":0.0,"beam_exponent":0,"range_m":500.0,"drop_m":0.0,"light":"lamp","emergency":"bus"},"bay_flood":{"_doc":"A spacedock bay's flood (spacedock design 8a): one a berth, on the spine down the bay's axis, aimed at its berth. Warm and steady for the work on alert; out on emergency power. Radius 0: from 190 m a lens's penumbra is narrower than a 4 m cell.","kind":"point","intensity_cd":4000000,"radius_m":0.0,"beam_exponent":6,"range_m":600.0,"drop_m":0.0,"light":"fixed","color_srgb":"#ffe2b8","emergency":"bus"},"berth_work":{"_doc":"A berth's work light (spacedock design 8a): on the pad's corner masts, the portal frames and under the gantry; bright and short. On the emergency bus at 0.6.","kind":"point","intensity_cd":120000,"radius_m":0.0,"beam_exponent":1.5,"range_m":90.0,"drop_m":0.0,"light":"fixed","color_srgb":"#ffd6a0","emergency":"bus","emergency_scale":0.6},"window_tier":{"_doc":"A tier of lit control-room windows on a bay's back wall (spacedock design 8a): soft and warm; a little light on the back wall's foot and the sterns. Always lit, at 0.4 on emergency power.","kind":"area","luminance_cd_m2":150,"range_m":250.0,"light":"fixed","color_srgb":"#ffd9a8","emergency":"always","emergency_scale":0.4}}}
 </script>
 <!-- INLINE data:lighting/fixtures END -->
 <!-- INLINE data:lighting/bake BEGIN -->
 <script id="ship-data-bake" type="application/json">
-{"schema":"starcrew.bake/1","status":"Proposed (2026-10-07) by openspec/changes/light-baking, design sections 11, 12 and 15: the mockup baker's final settings. Read by docs/mockups/lighting.html and docs/mockups/deck-plan.html today, by sc-tools bake once it is built.","_rules":["Every key has a unit or is a count; a present zero means zero. An unknown key is an error. tools/lighting_check.py validates this file.","reference_lux: the irradiance that shows a surface at exactly its texture colour. ambient_scale_lux: ShipKit.LIGHTING's ambient colour times its weight times this is each state's ambient fill in lux, times the baked occlusion.","shadow_samples per lamp per receiver; emitter samples one per emitter_sample_area_m2 and at least one per emitter_sample_spacing_m of its longest edge; ao_rays and ao_radius_m the occlusion; bounces 0, 1 or 2, read from an irradiance cache of cache_spacing_m with cache_gather_rays per point and cache_filter_passes of a tent filter; gather_rays where bounce is gathered per sample (probes); ray_bias_m along the normal; sample_inset_m inside a face's edge; dither on the 8-bit output.","adaptive and max_added_triangles: the engine's subdivision (design section 3), and the lighting page's. mockup: the deck plan's stand-in for it (design section 15), cells no wider than cell_m on floors, walls and ceilings; uncapped_triangles the lighting page's no-cap comparison.","gather_range_m: how far a bounce ray looks for the surface whose light it reads (80 m holds any compartment of a ship; a station's bay is 540 m across).","station: a spacedock bay's bake (openspec/changes/spacedock design 8a): the bay's wall, its ribs and its berths cut to cells no wider than wall_cell_m, rib_cell_m and berth_cell_m; a face under cheap_area_m2 casts shadows but neither sends nor gathers bounce; a part's reflectance is its tint times albedo_scale (the bake does not read the texture's mean). Its probes: a grid probe_coarse_m apart through the bay's air, and round each berth a finer one, probe_fine_m apart, over the box berth_probe_x_m to each side of the berth's axis, berth_probe_down_m toward the wall and berth_probe_up_m toward the bay's axis from the ship's middle, and berth_probe_z_m fore and aft.","presets override these: preview for a quicker bake, station for a bay hundreds of metres across (wide emitter samples, a 20 m occlusion radius, a 16 m cache, bounce read across the bay)."],"seed":1,"reference_lux":100,"ambient_scale_lux":260,"shadow_samples":12,"emitter_sample_area_m2":0.06,"emitter_sample_spacing_m":0.25,"ao_rays":24,"ao_radius_m":0.8,"exterior_ao_radius_m":2.0,"bounces":1,"cache_spacing_m":0.5,"cache_gather_rays":128,"cache_filter_passes":1,"gather_rays":48,"gather_range_m":80.0,"ray_bias_m":0.004,"sample_inset_m":0.01,"dither":true,"adaptive":{"base_m":2.0,"min_m":0.25,"max_error_levels":5},"max_added_triangles":{"default":2000,"bridge":7500},"mockup":{"cell_m":1.0,"uncapped_triangles":60000},"station":{"wall_cell_m":16.0,"rib_cell_m":30.0,"berth_cell_m":8.0,"cheap_area_m2":12.0,"albedo_scale":0.55,"probe_coarse_m":20.0,"probe_fine_m":5.0,"berth_probe_x_m":32.0,"berth_probe_down_m":16.0,"berth_probe_up_m":30.0,"berth_probe_z_m":50.0},"probes":{"spacing_m":1.0,"wall_offset_m":0.5,"invalid_backface_fraction":0.5},"lightmap_texel_m":0.25,"power_loss":{"flicker_s":0.6,"fade_s":0.5},"presets":{"preview":{"shadow_samples":4,"cache_gather_rays":32,"bounces":0,"adaptive":{"max_error_levels":8}},"station":{"shadow_samples":1,"emitter_sample_area_m2":150.0,"emitter_sample_spacing_m":40.0,"ao_rays":12,"ao_radius_m":20.0,"cache_spacing_m":16.0,"cache_gather_rays":64,"gather_rays":32,"gather_range_m":1200.0,"ray_bias_m":0.05,"sample_inset_m":0.05}}}
+{"schema":"starcrew.bake/1","status":"Proposed (2026-10-07) by openspec/changes/light-baking, design sections 11, 12 and 15: the mockup baker's final settings. Read by docs/mockups/lighting.html and docs/mockups/deck-plan.html today, by sc-tools bake once it is built.","_rules":["Every key has a unit or is a count; a present zero means zero. An unknown key is an error. tools/lighting_check.py validates this file.","reference_lux: the irradiance that shows a surface at exactly its texture colour. ambient_scale_lux: ShipKit.LIGHTING's ambient colour times its weight times this is each state's ambient fill in lux, times the baked occlusion.","shadow_samples per lamp per receiver; emitter samples one per emitter_sample_area_m2 and at least one per emitter_sample_spacing_m of its longest edge; ao_rays and ao_radius_m the occlusion; bounces 0, 1 or 2, read from an irradiance cache of cache_spacing_m with cache_gather_rays per point and cache_filter_passes of a tent filter; gather_rays where bounce is gathered per sample (probes); ray_bias_m along the normal; sample_inset_m inside a face's edge; dither on the 8-bit output.","adaptive and max_added_triangles: the engine's subdivision (design section 3), and the lighting page's. mockup: the deck plan's stand-in for it (design section 15), cells no wider than cell_m on floors, walls and ceilings; uncapped_triangles the lighting page's no-cap comparison.","gather_range_m: how far a bounce ray looks for the surface whose light it reads (80 m holds any compartment of a ship; a station's bay is 540 m across).","station: a spacedock bay's bake (openspec/changes/spacedock design 8a): the bay's wall, its ribs and its berths cut to cells no wider than wall_cell_m, rib_cell_m and berth_cell_m (a bay over a kilometre long or across, A's hall and D's cavern, its shell to hall_cell_m); a face under cheap_area_m2 casts shadows but neither sends nor gathers bounce; a part's reflectance is its tint times albedo_scale (the bake does not read the texture's mean). Its probes: a grid probe_coarse_m apart through the bay's air, and round each berth a finer one, probe_fine_m apart, over the box berth_probe_x_m to each side of the berth's axis, berth_probe_down_m toward the wall and berth_probe_up_m toward the bay's axis from the ship's middle, and berth_probe_z_m fore and aft.","presets override these: preview for a quicker bake, station for a bay hundreds of metres across (wide emitter samples, a 20 m occlusion radius, a 16 m cache, bounce read across the bay)."],"seed":1,"reference_lux":100,"ambient_scale_lux":260,"shadow_samples":12,"emitter_sample_area_m2":0.06,"emitter_sample_spacing_m":0.25,"ao_rays":24,"ao_radius_m":0.8,"exterior_ao_radius_m":2.0,"bounces":1,"cache_spacing_m":0.5,"cache_gather_rays":128,"cache_filter_passes":1,"gather_rays":48,"gather_range_m":80.0,"ray_bias_m":0.004,"sample_inset_m":0.01,"dither":true,"adaptive":{"base_m":2.0,"min_m":0.25,"max_error_levels":5},"max_added_triangles":{"default":2000,"bridge":7500},"mockup":{"cell_m":1.0,"uncapped_triangles":60000},"station":{"wall_cell_m":10.0,"hall_cell_m":20.0,"rib_cell_m":30.0,"berth_cell_m":8.0,"cheap_area_m2":12.0,"albedo_scale":0.55,"probe_coarse_m":20.0,"probe_fine_m":5.0,"berth_probe_x_m":32.0,"berth_probe_down_m":16.0,"berth_probe_up_m":30.0,"berth_probe_z_m":50.0},"probes":{"spacing_m":1.0,"wall_offset_m":0.5,"invalid_backface_fraction":0.5},"lightmap_texel_m":0.25,"power_loss":{"flicker_s":0.6,"fade_s":0.5},"presets":{"preview":{"shadow_samples":4,"cache_gather_rays":32,"bounces":0,"adaptive":{"max_error_levels":8}},"station":{"shadow_samples":1,"emitter_sample_area_m2":150.0,"emitter_sample_spacing_m":40.0,"ao_rays":12,"ao_radius_m":20.0,"cache_spacing_m":16.0,"cache_gather_rays":64,"gather_rays":32,"gather_range_m":1200.0,"ray_bias_m":0.05,"sample_inset_m":0.05}}}
 </script>
 <!-- INLINE data:lighting/bake END -->
 <!-- INLINE bakecache:deck-plan-bake BEGIN -->
@@ -2043,9 +2043,10 @@ H4sIAAAAAAACA+y9V28ky7Ymdrp3k+W9YXfTe0+mN8Wid8Wiae8Nu0gWTfvN7u3N2fZ4d8+5g3txNZAd
    * A vertex's tint (geometryOf) multiplies its light. Lamp lenses are painted lit or dark
    * lamp by lamp (the lamps that are not fixed, in order, one lens each); status strips the
    * state's colour; screens keep their tint, brightened. Use with surfaceMaterial({ lit: false }).
-   * The light-baking mockup has the real baker (lightbake.js); this is for pages that only
-   * need rooms to read as lit. opts.gain (default 0.55) scales lamp light; opts.cap (1.6)
-   * clamps a vertex.
+   * Once roombake.js has baked the room (geo.userData.bakedLight, the real bake: shadows,
+   * occlusion, one bounce), its light replaces the quick light, times the tint, and the
+   * lenses, strips and screens are painted on it as before. opts.gain (default 0.55) scales
+   * the quick light's lamps; opts.cap (1.6) clamps a vertex of it.
    */
   function bakeDirect(THREE, geo, lamps, key, opts) {
     opts = opts || {};
@@ -2057,7 +2058,15 @@ H4sIAAAAAAACA+y9V28ky7Ymdrp3k+W9YXfTe0+mN8Wid8Wiae8Nu0gWTfvN7u3N2fZ4d8+5g3txNZAd
       const c = l.fixed ? (l.color || [1, 1, 1]) : [lampC.r * (l.color ? l.color[0] : 1), lampC.g * (l.color ? l.color[1] : 1), lampC.b * (l.color ? l.color[2] : 1)];
       return { l, c };
     });
-    for (let i = 0; i < P.length / 3; i++) {
+    // A room baked by roombake.js (light-baking design 15) carries its light, 9 floats a vertex in the three states:
+    // that light times the vertex's tint replaces the quick light below. A room lit by no lamp at all stays quick.
+    const B = lamps.length ? geo.userData.bakedLight : null, si = ["normal", "red_alert", "emergency"].indexOf(key);
+    if (B && B.length === P.length * 3 && si >= 0) {
+      for (let i = 0; i < P.length / 3; i++) {
+        const o = i * 9 + si * 3;
+        C.setXYZ(i, B[o] * (T ? T[i * 3] : 1), B[o + 1] * (T ? T[i * 3 + 1] : 1), B[o + 2] * (T ? T[i * 3 + 2] : 1));
+      }
+    } else for (let i = 0; i < P.length / 3; i++) {
       let er = 0, eg = 0, eb = 0;
       for (const { l, c } of on) {
         const dx = l.p[0] - P[i * 3], dy = l.p[1] - P[i * 3 + 1], dz = l.p[2] - P[i * 3 + 2], d2 = dx * dx + dy * dy + dz * dz, d = Math.sqrt(d2) || 1e-6;
@@ -5777,6 +5786,292 @@ H4sIAAAAAAACA+y9V28ky7Ymdrp3k+W9YXfTe0+mN8Wid8Wiae8Nu0gWTfvN7u3N2fZ4d8+5g3txNZAd
 })();
 </script>
 <!-- INLINE lib:lightbake END -->
+<!-- INLINE lib:roombake BEGIN -->
+<script>
+/*
+ * roombake.js: the baked light of a ship's compartment, for every mockup that draws one.
+ *
+ * What it owns: turning one room's mesh (ShipKit's buildCompartment and geometryOf, with whatever props a page
+ * places) and its lamps into baked light, by light-baking design 15's method, as the deck plan has baked the Tern
+ * since 2026-10-07: the room's surfaces as patches (each texture layer's mean colour times the vertex tint and a
+ * prop's tint), a leaf closed in every door, the kit's lamps (ceiling panels, high-bay lamps, each console's glow), a
+ * light strip down every cove, the kick strips; then direct light with soft shadows, occlusion and one bounce at
+ * every vertex, in the three lighting states (normal, red alert, emergency) from one set of rays.
+ *
+ * sceneDef, key and bake are the deck plan's own bake (moved here 2026-10-16 from deck-plan.html, unchanged, so its
+ * cache stays good). page() is the same bake for any other page: page.relight(geo, lamps, opts) bakes a room's mesh
+ * (from the page's inlined cache when its key matches, else live, one room at a time) and puts the light on
+ * geo.userData.bakedLight, which ShipKit.bakeDirect then writes instead of its quick light; opts.onBaked() lets the
+ * page re-run its own lighting step. tools/mockups/bake_pages.mjs bakes a page's rooms fresh and writes its cache
+ * (docs/mockups/cache/<page>-bake.bin), as bake_ship.mjs does the deck plan's.
+ *
+ * Why it lives here: it is documentation tooling (CLAUDE.md section 4), like lightbake.js, which it drives; one copy
+ * of the room bake for every page (CLAUDE.md 6.1). A classic script, inlined by tools/mockups/inline.py between
+ * "INLINE lib:roombake" markers, after lib:lightbake. Edit it here, never in a page.
+ *
+ * Units: metres; light as lightbake.js's (lux, then display multipliers 0-2 stored as linear light, (d)^2.2).
+ */
+(function () {
+  "use strict";
+
+  const srgb2lin = (c) => (c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+  const v3 = { add: (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]], sub: (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]], mul: (a, k) => [a[0] * k, a[1] * k, a[2] * k],
+    dot: (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2], cross: (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]] };
+  const unit3 = (a) => v3.mul(a, 1 / (Math.hypot(a[0], a[1], a[2]) || 1));
+  /** Roles that are drawn lights, not surfaces: they neither take nor give baked light. */
+  const DRAWN = ["lamp", "status", "screen", "kick_strip"];
+
+  /** Each texture layer's mean colour, linear, for the bounce: the main array's layers and every bigger array's. */
+  function layerAlbedo(pmats) {
+    const out = new Map();
+    const mean = (data, px, i) => {
+      let r = 0, g = 0, b = 0, n = 0;
+      const off = i * px * px * 4;
+      for (let k = 0; k < px * px; k += 7) { r += srgb2lin(data[off + k * 4] / 255); g += srgb2lin(data[off + k * 4 + 1] / 255); b += srgb2lin(data[off + k * 4 + 2] / 255); n++; }
+      return [r / n, g / n, b / n];
+    };
+    const T = pmats.texture.image;
+    for (let i = 0; i < T.depth; i++) out.set(i, mean(T.data, T.width, i));
+    for (const B of pmats.big || []) { const I = B.texture.image; for (let i = 0; i < I.depth; i++) out.set(B.base + i, mean(I.data, I.width, i)); }
+    return out;
+  }
+
+  /** A rectangle centred at c spanning +-ha along a and +-hb along b, facing facing (as lighting.html's quadPatch). */
+  function quadPatch(LBK, c, a, b, ha, hb, facing, opts) {
+    let u = v3.mul(a, 2 * ha), v = v3.mul(b, 2 * hb);
+    if (v3.dot(v3.cross(u, v), facing) < 0) [u, v] = [v, u];
+    return LBK.patch(v3.sub(c, v3.add(v3.mul(u, 0.5), v3.mul(v, 0.5))), u, v, opts);
+  }
+
+  /**
+   * One room's bake scene definition: its surfaces as patches (each texture layer's mean colour, times its tint and a
+   * prop's tint), door leaves in its doors, its lights and strips. o: { K, LBK, comp, geo, lamps (every lamp: the
+   * kit's, a page's, each console's glow { fixed, axis, roleHex }), openings (buildCompartment's), kicks, coveParts
+   * (the plain cove parts, for the cove strips), props (role -> { tint, glow }), tint (a tint per vertex when the page
+   * keeps it off the geometry), albedo (layerAlbedo), fix (fixtures.json's types), ambient_lux, settings }.
+   */
+  function sceneDef(o) {
+    const { K, LBK } = o, c = o.comp, geo = o.geo, PROPS = o.props || {}, FIX = o.fix;
+    const P = geo.attributes.position.array, N = geo.attributes.normal.array, Ly = geo.attributes.surfLayer.array;
+    const T = o.tint || (geo.attributes.tint ? geo.attributes.tint.array : null), groups = new Map();
+    for (const [role, [v0, n]] of Object.entries(geo.userData.roles)) {
+      if (DRAWN.includes(role) || (PROPS[role] && PROPS[role].glow)) continue;   // drawn lights, not surfaces
+      const pt = PROPS[role] ? PROPS[role].tint : null;
+      for (let v = v0; v < v0 + n; v += 3) {
+        const a = o.albedo.get(Math.round(Ly[v])) || [0.18, 0.18, 0.18];
+        const alb = [0, 1, 2].map((k) => Math.min(0.95, a[k] * (T ? T[v * 3 + k] : 1) * (pt ? [pt.r, pt.g, pt.b][k] : 1)));
+        const key = alb.map((x) => Math.round(x * 50)).join(",");
+        let g = groups.get(key);
+        if (!g) { g = { alb, pos: [], nor: [] }; groups.set(key, g); }
+        for (let k = 0; k < 9; k++) { g.pos.push(P[v * 3 + k]); g.nor.push(N[v * 3 + k]); }
+      }
+    }
+    const patches = [];
+    // A face under 0.1 m^2 (a prop's bevel, a bolt, a rail) casts shadows but its bounce is not worth its cache points.
+    for (const g of groups.values()) for (const p of LBK.patchesFromTriangles(g.pos, g.nor, { albedo: g.alb, receive: false })) { if (p.area < 0.1) p.cheap = true; patches.push(p); }
+    // Doors closed (design section 9): a leaf in every door, hatch and pressure door, as lighting.html draws them.
+    const door = { albedo: [0.12, 0.12, 0.13], receive: false };
+    for (const op of o.openings || []) {
+      const p = op.portal;
+      if (op.floor || !["door", "hatch", "pressure_door"].includes(p.kind)) continue;
+      const f = K.portalFrame(p), out = K.portalOut(p, c.id), cc = f.c, hw = f.w / 2, hh = f.h / 2;
+      patches.push(quadPatch(LBK, v3.add(cc, v3.mul(out, 0.05)), f.t, [0, 1, 0], hw, hh, v3.mul(out, -1), door));
+    }
+    // The lamps: the kit's (ceiling panels, high-bay lamps), the lower floor's, each console's glow.
+    const lights = o.lamps.map((l, i) => {
+      if (l.fixed) {
+        const t = FIX.console_glow;
+        return { id: `${c.id}_glow_${i}`, position_m: l.p.slice(), radius_m: t.radius_m, intensity_cd: t.intensity_cd, range_m: t.range_m,
+          beam: l.axis ? { axis: unit3(l.axis), exponent: t.beam_exponent } : null, states: K.fixtureStates(t, true, l.roleHex || 0x48d6ff) };
+      }
+      const t = FIX[l.tall ? "high_bay" : "ceiling_panel"];
+      return { id: `${c.id}_lamp_${i}`, position_m: [l.p[0], l.p[1] - t.drop_m, l.p[2]], radius_m: t.radius_m, intensity_cd: t.intensity_cd,
+        range_m: t.range_m, beam: { axis: [0, -1, 0], exponent: t.beam_exponent }, states: K.fixtureStates(t, !!l.emergency) };
+    });
+    // A light strip along the middle of every cove (the kit's plain coves), facing into the room, as lighting.html's.
+    const emitters = [], st = FIX.cove_strip;
+    const plain = o.coveParts;
+    if (plain) for (const cove of LBK.patchesFromTriangles(plain.position, plain.normal, {})) {
+      const cs = LBK.patchCorners(cove).slice().sort((a, b) => a[1] - b[1]), A = cs[0], B = cs[1], hi = cs.slice(2);
+      if (cs.length !== 4) continue;   // a cove's mitred end (a triangle) carries no strip
+      const plan = (p, q) => Math.hypot(p[0] - q[0], p[2] - q[2]);
+      const A2 = plan(A, hi[0]) <= plan(A, hi[1]) ? hi[0] : hi[1], B2 = A2 === hi[0] ? hi[1] : hi[0];
+      const edge = Math.hypot(...v3.sub(B, A)), slant = Math.hypot(...v3.sub(A2, A));
+      if (edge < 2 * st.end_clear_m + 0.3) continue;
+      const mix = (a, b, f) => v3.add(a, v3.mul(v3.sub(b, a), f));
+      const Q = (f, g) => v3.add(mix(mix(A, B, g), mix(A2, B2, g), f), v3.mul(cove.n, 0.01));
+      const g0 = st.end_clear_m / edge, g1 = 1 - g0, f0 = 0.5 - st.width_m / 2 / slant, f1 = 0.5 + st.width_m / 2 / slant;
+      const q0 = Q(f0, g0);
+      let U = v3.sub(Q(f0, g1), q0), V = v3.sub(Q(f1, g0), q0);
+      if (v3.dot(v3.cross(U, V), cove.n) < 0) [U, V] = [V, U];
+      emitters.push({ id: `${c.id}_cove_${emitters.length}`, quad: { o: q0, u: U, v: V }, luminance_cd_m2: st.luminance_cd_m2, beam_exponent: 1,
+        range_m: st.range_m, states: K.fixtureStates(st) });
+    }
+    // The kick strips (kick-lights design 4): every platform toe kick's and console's, facing out and down, and the
+    // light columns beside the wall banks.
+    for (const k of o.kicks || []) {
+      const ks = FIX[k.type || "kick_strip"];   // a light column behind a terminal is a column_strip (design 2a)
+      if (k.len < 0.05) continue;
+      emitters.push({ id: `${c.id}_kick_${emitters.length}`, quad: { o: v3.add(k.o, v3.mul(k.n, 0.005)), u: k.u, v: k.v }, luminance_cd_m2: ks.luminance_cd_m2,
+        beam_exponent: 1, range_m: ks.range_m, states: K.fixtureStates(ks) });
+    }
+    return { patches, lights, emitters, ambient_lux: o.ambient_lux, settings: o.settings };
+  }
+
+  /** A room's cache key: FNV-1a over its vertex positions and normals (as bits) and its bake scene's inputs. */
+  function key(LBK, def, geo) {
+    const g = geo.attributes;
+    const pr = (p) => [p.o, p.u, p.v, p.albedo, p.cheap ? 1 : 0, p.cast ? 1 : 0, p.receive ? 1 : 0, p.tri ? 1 : 0, p.area];
+    const text = JSON.stringify({ v: 1, patches: def.patches.map(pr), lights: def.lights, emitters: def.emitters, amb: def.ambient_lux, set: def.settings });
+    const T = new Uint32Array(text.length);
+    for (let i = 0; i < text.length; i++) T[i] = text.charCodeAt(i);
+    return LBK.digest([new Uint32Array(g.position.array.buffer.slice(0)), new Uint32Array(g.normal.array.buffer.slice(0)), T]);
+  }
+
+  /** A room's bake: its lights at every vertex (direct and ambient traced, bounce from the cache), as display
+   *  multipliers in three states (9 floats a vertex, linear), and its stats. roomId seeds the samples. */
+  async function bake(LBK, def, geo, roomId, onProgress) {
+    const BAKE_SET = def.settings;
+    const t0 = performance.now(), S = LBK.scene(def), tScene = performance.now() - t0;
+    await LBK.prepare(S, (f) => onProgress && onProgress(0.5 * f));
+    const P = geo.attributes.position.array, N = geo.attributes.normal.array, nv = P.length / 3;
+    // The cache's points in a 0.5 m grid, for the bounce at a vertex: the nearest ones on its plane, by distance.
+    const C = S.cache, cell = 0.5, grid = new Map(), gk = (x, y, z) => `${Math.floor(x / cell)},${Math.floor(y / cell)},${Math.floor(z / cell)}`;
+    if (S.field) for (let i = 0; i < C.vertexCount; i++) {
+      const k = gk(C.positions[i * 3], C.positions[i * 3 + 1], C.positions[i * 3 + 2]);
+      let l = grid.get(k); if (!l) grid.set(k, (l = [])); l.push(i);
+    }
+    const ref = BAKE_SET.reference_lux, out = new Float32Array(nv * 9), memo = new Map(), tmp = new Float32Array(9);
+    const roomKey = Array.from(roomId).reduce((h, ch) => Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0, 2166136261);
+    const skip = new Uint8Array(nv);
+    for (const role of DRAWN) { const g = geo.userData.roles[role]; if (g) skip.fill(1, g[0], g[0] + g[1]); }
+    const tB = performance.now();
+    let baked = 0;
+    for (let v = 0; v < nv; v++) {
+      if (skip[v]) continue;
+      const px = P[v * 3], py = P[v * 3 + 1], pz = P[v * 3 + 2], nx = N[v * 3], ny = N[v * 3 + 1], nz = N[v * 3 + 2];
+      const mk = `${Math.round(px * 1e3)},${Math.round(py * 1e3)},${Math.round(pz * 1e3)},${Math.round(nx * 100)},${Math.round(ny * 100)},${Math.round(nz * 100)}`;
+      let E = memo.get(mk);
+      if (!E) {
+        tmp.fill(0);
+        const ins = BAKE_SET.inset_m;
+        LBK.irradiance(S, px + nx * ins, py + ny * ins, pz + nz * ins, nx, ny, nz, LBK.hash3(BAKE_SET.seed, roomKey, memo.size), LBK.DIRECT | LBK.AMBIENT, tmp);
+        if (S.field) {   // bounce: inverse-distance weights over the cache points within 0.75 m on this plane
+          let w = 0;
+          const acc = new Float32Array(9), x0 = Math.floor((px - 0.75) / cell), x1 = Math.floor((px + 0.75) / cell);
+          for (let gx = x0; gx <= x1; gx++) for (let gy = Math.floor((py - 0.75) / cell); gy <= Math.floor((py + 0.75) / cell); gy++)
+            for (let gz = Math.floor((pz - 0.75) / cell); gz <= Math.floor((pz + 0.75) / cell); gz++) {
+              for (const i of grid.get(`${gx},${gy},${gz}`) || []) {
+                if (C.normals[i * 3] * nx + C.normals[i * 3 + 1] * ny + C.normals[i * 3 + 2] * nz < 0.9) continue;
+                const dx = C.positions[i * 3] - px, dy = C.positions[i * 3 + 1] - py, dz = C.positions[i * 3 + 2] - pz;
+                if (Math.abs(dx * nx + dy * ny + dz * nz) > 0.05) continue;
+                const d = Math.hypot(dx, dy, dz);
+                if (d > 0.75) continue;
+                const wi = 1 / (d + 0.1);
+                for (let k = 0; k < 9; k++) acc[k] += wi * S.field[i * 9 + k];
+                w += wi;
+              }
+            }
+          if (w > 0) for (let k = 0; k < 9; k++) tmp[k] += acc[k] / w;
+        }
+        E = new Float32Array(9);
+        for (let k = 0; k < 9; k++) E[k] = Math.pow(LBK.encodeLevel(tmp[k] / ref), LBK.GAMMA);
+        memo.set(mk, E);
+      }
+      out.set(E, v * 9);
+      if ((++baked & 255) === 0) { if (onProgress) onProgress(0.5 + 0.5 * v / nv); await new Promise((res) => setTimeout(res, 0)); }
+    }
+    const bytes = new Uint8Array(out.buffer.slice(0));
+    return { light: out, stats: {
+      vertices: memo.size, triangles: nv / 3, patches: S.patches.length, lamps: S.lights.length, strips: S.emitters.length,
+      cachePoints: C.vertexCount, rays: Object.assign({}, S.rays), sceneMs: Math.round(tScene), cacheMs: Math.round(S.prepareMs || 0),
+      verticesMs: Math.round(performance.now() - tB), ms: Math.round(performance.now() - t0),
+      digest: LBK.digest([bytes]),
+    } };
+  }
+
+  /** Light (9 floats a vertex, linear display multipliers) to cache bytes and back, as the deck plan's cache keeps them. */
+  const toBytes = (light) => { const b = new Uint8Array(light.length); for (let i = 0; i < b.length; i++) b[i] = Math.max(0, Math.min(255, Math.round((Math.pow(light[i], 1 / 2.2) / 2) * 255))); return b; };
+  const fromBytes = (d, off, n) => { const out = new Float32Array(n); for (let i = 0; i < n; i++) out[i] = Math.pow((d[off + i] / 255) * 2, 2.2); return out; };
+
+  /**
+   * One page's room bakes. ctx: { name (the page; its cache is "<name>-bake"), THREE, K, LBK, L (the layout the rooms
+   * were built from), DET (detailing), pmats }. relight(geo, lamps, opts) queues a room: opts { id (stable within the
+   * page), comp (its compartment, for the door leaves' side and the plain coves), openings, kicks, props, tint,
+   * pmats (the texture array it is drawn in), L and DET (its layout and detailing), each when not the page's;
+   * coveParts (its plain coves, built from L and DET when not given), onBaked }. It returns a promise of the light. The page's whole bake: window.MOCKUP_BAKING() (a promise shoot.mjs
+   * waits for before its shots), window.MOCKUP_ROOMBAKE (done, stats, export for tools/mockups/bake_pages.mjs).
+   * ?bake=0 keeps the quick light; ?bake=fresh or ?bake=rooms ignores the cache.
+   */
+  function page(ctx) {
+    const { THREE, K, LBK } = ctx, q = new URLSearchParams(location.search);
+    // ?bake=rooms: the rooms fresh, whatever else the page bakes from its own caches (the spacedock's bays).
+    const OFF = q.get("bake") === "0", FRESH = q.get("bake") === "fresh" || q.get("bake") === "rooms";
+    const LD = K.lightingData(), FIX = LD.fixtures.types, SET = K.bakeSettings(), AMB = K.ambientLux(), ALB = new Map();
+    /** Each texture array's layer means, once (a page may draw rooms in more than one array). */
+    const albedoOf = (pm) => { if (!ALB.has(pm)) ALB.set(pm, layerAlbedo(pm)); return ALB.get(pm); };
+    const cacheP = FRESH || OFF ? Promise.resolve(null) : LBK.readBakeCache(ctx.name + "-bake");
+    const OUT = new Map(), STATS = new Map(), all = [];
+    let chain = Promise.resolve(), pending = 0;
+    const badge = document.createElement("div");
+    badge.style.cssText = "position:fixed;left:50%;transform:translateX(-50%);top:8px;z-index:40;padding:4px 10px;border-radius:6px;background:rgba(8,11,16,.8);" +
+      "border:1px solid #2a3340;color:#9fb0c4;font:600 12px system-ui,sans-serif;pointer-events:none;display:none";
+    document.body.appendChild(badge);
+    const label = (t) => { badge.textContent = t; badge.style.display = t ? "" : "none"; };
+    function relight(geo, lamps, opts) {
+      opts = opts || {};
+      if (OFF) return Promise.resolve(null);
+      const id = opts.id || "room" + all.length;
+      pending++;
+      const job = (chain = chain.then(async () => {
+        const LL = opts.L || ctx.L, DD = opts.DET || ctx.DET;
+        const coveParts = opts.coveParts || (opts.comp && LL ? (K.buildCompartment(THREE, LL, opts.comp, { detailing: DD, skipKinds: ["bay_door"] }).parts.cove || null) : null);
+        const def = sceneDef({ K, LBK, comp: opts.comp || { id }, geo, lamps, openings: opts.openings, kicks: opts.kicks, coveParts, props: opts.props,
+          tint: opts.tint, albedo: albedoOf(opts.pmats || ctx.pmats), fix: FIX, ambient_lux: AMB, settings: SET });
+        const k = key(LBK, def, geo), cache = await cacheP, e = cache && cache.index.rooms && cache.index.rooms[id];
+        let light;
+        const again = OUT.get(id);   // a room the page built again, unchanged, takes the light it baked the first time
+        if (e && e.key === k && e.count === geo.attributes.position.count * 9) { light = fromBytes(cache.data, e.offset, e.count); STATS.set(id, Object.assign({ cached: true }, e.stats)); }
+        else if (again && again.key === k && again.light.length === geo.attributes.position.count * 9) light = again.light;
+        else {
+          const r = await bake(LBK, def, geo, opts.comp ? opts.comp.id : id, (f) => label(`Baking ${id}: ${Math.round(f * 100)}% (${pending} to go)`));
+          light = r.light; STATS.set(id, r.stats); OUT.set(id, { key: k, light, stats: r.stats });
+        }
+        geo.userData.bakedLight = light;
+        pending--;
+        label(pending ? `Baking: ${pending} rooms to go` : "");
+        if (opts.onBaked) opts.onBaked(light);
+        return light;
+      }));
+      all.push(job);
+      return job;
+    }
+    window.MOCKUP_BAKING = () => Promise.all(all);
+    window.MOCKUP_ROOMBAKE = {
+      /** The cache's name: docs/mockups/cache/<name>-bake.bin. */
+      name: ctx.name,
+      done: () => pending === 0,
+      stats: () => Object.fromEntries(STATS),
+      /** The rooms baked live here: { rooms: { id: { key, offset, count, stats } }, b64 }. */
+      export: () => {
+        const rooms = {}, chunks = [];
+        let off = 0;
+        for (const id of [...OUT.keys()].sort()) { const o = OUT.get(id), b = toBytes(o.light); rooms[id] = { key: o.key, offset: off, count: b.length, stats: o.stats }; chunks.push(b); off += b.length; }
+        const allB = new Uint8Array(off);
+        let p = 0;
+        for (const c of chunks) { allB.set(c, p); p += c.length; }
+        let s = "";
+        for (let i = 0; i < allB.length; i += 0x8000) s += String.fromCharCode(...allB.subarray(i, i + 0x8000));
+        return { rooms, b64: btoa(s) };
+      },
+    };
+    return { relight, off: OFF };
+  }
+
+  window.RoomBake = { DRAWN, layerAlbedo, sceneDef, key, bake, page, toBytes, fromBytes };
+})();
+</script>
+<!-- INLINE lib:roombake END -->
 <!-- INLINE lib:firespread BEGIN -->
 <script>
 /*
@@ -10261,158 +10556,23 @@ function plasmaGeometry() {
 // baker (design section 10).
 const LBK = window.LightBake;
 const FIX = K.lightingData().fixtures.types, BAKE_SET = K.bakeSettings(), AMB_LUX = K.ambientLux();
-const srgb2lin = (c) => (c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
-/** Each texture layer's mean colour, linear, for the bounce: the main array's layers and every bigger array's. */
-const LAYER_ALBEDO = (() => {
-  const out = new Map();
-  const mean = (data, px, i) => {
-    let r = 0, g = 0, b = 0, n = 0;
-    const off = i * px * px * 4;
-    for (let k = 0; k < px * px; k += 7) { r += srgb2lin(data[off + k * 4] / 255); g += srgb2lin(data[off + k * 4 + 1] / 255); b += srgb2lin(data[off + k * 4 + 2] / 255); n++; }
-    return [r / n, g / n, b / n];
-  };
-  const T = pmats.texture.image;
-  for (let i = 0; i < T.depth; i++) out.set(i, mean(T.data, T.width, i));
-  for (const B of pmats.big || []) { const I = B.texture.image; for (let i = 0; i < I.depth; i++) out.set(B.base + i, mean(I.data, I.width, i)); }
-  return out;
-})();
-const v3 = { add: (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]], sub: (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]], mul: (a, k) => [a[0] * k, a[1] * k, a[2] * k],
-  dot: (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2], cross: (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]] };
-const unit3 = (a) => v3.mul(a, 1 / (Math.hypot(a[0], a[1], a[2]) || 1));
-/** A rectangle centred at c spanning +-ha along a and +-hb along b, facing facing (as lighting.html's quadPatch). */
-function quadPatch(c, a, b, ha, hb, facing, opts) {
-  let u = v3.mul(a, 2 * ha), v = v3.mul(b, 2 * hb);
-  if (v3.dot(v3.cross(u, v), facing) < 0) [u, v] = [v, u];
-  return LBK.patch(v3.sub(c, v3.add(v3.mul(u, 0.5), v3.mul(v, 0.5))), u, v, opts);
-}
-/** One room's bake scene: its surfaces as patches (each texture layer's mean colour, times a prop's tint), door leaves
- * in its doors, its lights and strips. */
+/** Each texture layer's mean colour, linear, for the bounce (lib/roombake.js). */
+const LAYER_ALBEDO = RoomBake.layerAlbedo(pmats);
+/**
+ * One room's bake scene (lib/roombake.js, the room bake every page shares): its surfaces as patches (each texture
+ * layer's mean colour, times a prop's tint), door leaves in its doors, its lights and strips; defOnly gives the
+ * definition, else the scene.
+ */
 function bakeScene(r, defOnly) {
-  const c = r.comp, geo = r.geo, P = geo.attributes.position.array, N = geo.attributes.normal.array, Ly = geo.attributes.surfLayer.array;
-  const T = geo.attributes.tint ? geo.attributes.tint.array : null, groups = new Map();
-  for (const [role, [v0, n]] of Object.entries(geo.userData.roles)) {
-    if (role === "lamp" || role === "status" || role === "screen" || role === "kick_strip" || (PROPS[role] && PROPS[role].glow)) continue;   // drawn lights, not surfaces
-    const pt = PROPS[role] ? PROPS[role].tint : null;
-    for (let v = v0; v < v0 + n; v += 3) {
-      const a = LAYER_ALBEDO.get(Math.round(Ly[v])) || [0.18, 0.18, 0.18];
-      const alb = [0, 1, 2].map((k) => Math.min(0.95, a[k] * (T ? T[v * 3 + k] : 1) * (pt ? [pt.r, pt.g, pt.b][k] : 1)));
-      const key = alb.map((x) => Math.round(x * 50)).join(",");
-      let g = groups.get(key);
-      if (!g) { g = { alb, pos: [], nor: [] }; groups.set(key, g); }
-      for (let k = 0; k < 9; k++) { g.pos.push(P[v * 3 + k]); g.nor.push(N[v * 3 + k]); }
-    }
-  }
-  const patches = [];
-  // A face under 0.1 m^2 (a prop's bevel, a bolt, a rail) casts shadows but its bounce is not worth its cache points.
-  for (const g of groups.values()) for (const p of LBK.patchesFromTriangles(g.pos, g.nor, { albedo: g.alb, receive: false })) { if (p.area < 0.1) p.cheap = true; patches.push(p); }
-  // Doors closed (design section 9): a leaf in every door, hatch and pressure door, as lighting.html draws them.
-  const door = { albedo: [0.12, 0.12, 0.13], receive: false };
-  for (const op of r.openings || []) {
-    const p = op.portal;
-    if (op.floor || !["door", "hatch", "pressure_door"].includes(p.kind)) continue;
-    const f = K.portalFrame(p), out = K.portalOut(p, c.id), cc = f.c, hw = f.w / 2, hh = f.h / 2;
-    patches.push(quadPatch(v3.add(cc, v3.mul(out, 0.05)), f.t, [0, 1, 0], hw, hh, v3.mul(out, -1), door));
-  }
-  // The lamps: the kit's (ceiling panels, high-bay lamps), the lower floor's, each console's glow.
-  const lights = r.allLamps.map((l, i) => {
-    if (l.fixed) {
-      const t = FIX.console_glow;
-      return { id: `${c.id}_glow_${i}`, position_m: l.p.slice(), radius_m: t.radius_m, intensity_cd: t.intensity_cd, range_m: t.range_m,
-        beam: l.axis ? { axis: unit3(l.axis), exponent: t.beam_exponent } : null, states: K.fixtureStates(t, true, l.roleHex || 0x48d6ff) };
-    }
-    const t = FIX[l.tall ? "high_bay" : "ceiling_panel"];
-    return { id: `${c.id}_lamp_${i}`, position_m: [l.p[0], l.p[1] - t.drop_m, l.p[2]], radius_m: t.radius_m, intensity_cd: t.intensity_cd,
-      range_m: t.range_m, beam: { axis: [0, -1, 0], exponent: t.beam_exponent }, states: K.fixtureStates(t, !!l.emergency) };
-  });
-  // A light strip along the middle of every cove (the kit's plain coves), facing into the room, as lighting.html's.
-  const emitters = [], st = FIX.cove_strip;
-  const plain = K.buildCompartment(THREE, L, c, { detailing: DET, skipKinds: ["bay_door"], wallFixtures: wallFixturesOf(c.id) }).parts.cove;
-  if (plain) for (const cove of LBK.patchesFromTriangles(plain.position, plain.normal, {})) {
-    const cs = LBK.patchCorners(cove).slice().sort((a, b) => a[1] - b[1]), A = cs[0], B = cs[1], hi = cs.slice(2);
-    if (cs.length !== 4) continue;   // a cove's mitred end (a triangle) carries no strip
-    const plan = (p, q) => Math.hypot(p[0] - q[0], p[2] - q[2]);
-    const A2 = plan(A, hi[0]) <= plan(A, hi[1]) ? hi[0] : hi[1], B2 = A2 === hi[0] ? hi[1] : hi[0];
-    const edge = Math.hypot(...v3.sub(B, A)), slant = Math.hypot(...v3.sub(A2, A));
-    if (edge < 2 * st.end_clear_m + 0.3) continue;
-    const mix = (a, b, f) => v3.add(a, v3.mul(v3.sub(b, a), f));
-    const Q = (f, g) => v3.add(mix(mix(A, B, g), mix(A2, B2, g), f), v3.mul(cove.n, 0.01));
-    const g0 = st.end_clear_m / edge, g1 = 1 - g0, f0 = 0.5 - st.width_m / 2 / slant, f1 = 0.5 + st.width_m / 2 / slant;
-    const o = Q(f0, g0);
-    let U = v3.sub(Q(f0, g1), o), V = v3.sub(Q(f1, g0), o);
-    if (v3.dot(v3.cross(U, V), cove.n) < 0) [U, V] = [V, U];
-    emitters.push({ id: `${c.id}_cove_${emitters.length}`, quad: { o, u: U, v: V }, luminance_cd_m2: st.luminance_cd_m2, beam_exponent: 1,
-      range_m: st.range_m, states: K.fixtureStates(st) });
-  }
-  // The kick strips (kick-lights design 4): every platform toe kick's and console's, facing out and down, and the
-  // light columns beside the wall banks.
-  for (const k of r.kicks || []) {
-    const ks = FIX[k.type || "kick_strip"];   // a light column behind a terminal is a column_strip (design 2a)
-    if (k.len < 0.05) continue;
-    emitters.push({ id: `${c.id}_kick_${emitters.length}`, quad: { o: v3.add(k.o, v3.mul(k.n, 0.005)), u: k.u, v: k.v }, luminance_cd_m2: ks.luminance_cd_m2,
-      beam_exponent: 1, range_m: ks.range_m, states: K.fixtureStates(ks) });
-  }
-  const def = { patches, lights, emitters, ambient_lux: AMB_LUX, settings: BAKE_SET };
+  const c = r.comp;
+  const coveParts = K.buildCompartment(THREE, L, c, { detailing: DET, skipKinds: ["bay_door"], wallFixtures: wallFixturesOf(c.id) }).parts.cove || null;
+  const def = RoomBake.sceneDef({ K, LBK, comp: c, geo: r.geo, lamps: r.allLamps, openings: r.openings, kicks: r.kicks, coveParts, props: PROPS,
+    albedo: LAYER_ALBEDO, fix: FIX, ambient_lux: AMB_LUX, settings: BAKE_SET });
   return defOnly ? def : LBK.scene(def);
 }
-/** A room's bake: its lights at every vertex (direct and ambient traced, bounce from the cache), as display multipliers
- * in three states (9 floats a vertex), and its stats. */
-async function bakeRoom(r, onProgress) {
-  const t0 = performance.now(), S = bakeScene(r), tScene = performance.now() - t0;
-  await LBK.prepare(S, (f) => onProgress && onProgress(0.5 * f));
-  const geo = r.geo, P = geo.attributes.position.array, N = geo.attributes.normal.array, nv = P.length / 3;
-  // The cache's points in a 0.5 m grid, for the bounce at a vertex: the nearest ones on its plane, by distance.
-  const C = S.cache, cell = 0.5, grid = new Map(), gk = (x, y, z) => `${Math.floor(x / cell)},${Math.floor(y / cell)},${Math.floor(z / cell)}`;
-  if (S.field) for (let i = 0; i < C.vertexCount; i++) {
-    const k = gk(C.positions[i * 3], C.positions[i * 3 + 1], C.positions[i * 3 + 2]);
-    let l = grid.get(k); if (!l) grid.set(k, (l = [])); l.push(i);
-  }
-  const ref = BAKE_SET.reference_lux, out = new Float32Array(nv * 9), memo = new Map(), tmp = new Float32Array(9);
-  const roomKey = Array.from(r.comp.id).reduce((h, ch) => Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0, 2166136261);
-  const skip = new Uint8Array(nv);
-  for (const role of ["lamp", "status", "screen", "kick_strip"]) { const g = geo.userData.roles[role]; if (g) skip.fill(1, g[0], g[0] + g[1]); }
-  const tB = performance.now();
-  let baked = 0;
-  for (let v = 0; v < nv; v++) {
-    if (skip[v]) continue;
-    const px = P[v * 3], py = P[v * 3 + 1], pz = P[v * 3 + 2], nx = N[v * 3], ny = N[v * 3 + 1], nz = N[v * 3 + 2];
-    const mk = `${Math.round(px * 1e3)},${Math.round(py * 1e3)},${Math.round(pz * 1e3)},${Math.round(nx * 100)},${Math.round(ny * 100)},${Math.round(nz * 100)}`;
-    let E = memo.get(mk);
-    if (!E) {
-      tmp.fill(0);
-      const ins = BAKE_SET.inset_m;
-      LBK.irradiance(S, px + nx * ins, py + ny * ins, pz + nz * ins, nx, ny, nz, LBK.hash3(BAKE_SET.seed, roomKey, memo.size), LBK.DIRECT | LBK.AMBIENT, tmp);
-      if (S.field) {   // bounce: inverse-distance weights over the cache points within 0.75 m on this plane
-        let w = 0;
-        const acc = new Float32Array(9), x0 = Math.floor((px - 0.75) / cell), x1 = Math.floor((px + 0.75) / cell);
-        for (let gx = x0; gx <= x1; gx++) for (let gy = Math.floor((py - 0.75) / cell); gy <= Math.floor((py + 0.75) / cell); gy++)
-          for (let gz = Math.floor((pz - 0.75) / cell); gz <= Math.floor((pz + 0.75) / cell); gz++) {
-            for (const i of grid.get(`${gx},${gy},${gz}`) || []) {
-              if (C.normals[i * 3] * nx + C.normals[i * 3 + 1] * ny + C.normals[i * 3 + 2] * nz < 0.9) continue;
-              const dx = C.positions[i * 3] - px, dy = C.positions[i * 3 + 1] - py, dz = C.positions[i * 3 + 2] - pz;
-              if (Math.abs(dx * nx + dy * ny + dz * nz) > 0.05) continue;
-              const d = Math.hypot(dx, dy, dz);
-              if (d > 0.75) continue;
-              const wi = 1 / (d + 0.1);
-              for (let k = 0; k < 9; k++) acc[k] += wi * S.field[i * 9 + k];
-              w += wi;
-            }
-          }
-        if (w > 0) for (let k = 0; k < 9; k++) tmp[k] += acc[k] / w;
-      }
-      E = new Float32Array(9);
-      for (let k = 0; k < 9; k++) E[k] = Math.pow(LBK.encodeLevel(tmp[k] / ref), LBK.GAMMA);
-      memo.set(mk, E);
-    }
-    out.set(E, v * 9);
-    if ((++baked & 255) === 0) { if (onProgress) onProgress(0.5 + 0.5 * v / nv); await new Promise((res) => setTimeout(res, 0)); }
-  }
-  const bytes = new Uint8Array(out.buffer.slice(0));
-  return { light: out, stats: {
-    vertices: memo.size, triangles: nv / 3, patches: S.patches.length, lamps: S.lights.length, strips: S.emitters.length,
-    cachePoints: C.vertexCount, rays: Object.assign({}, S.rays), sceneMs: Math.round(tScene), cacheMs: Math.round(S.prepareMs || 0),
-    verticesMs: Math.round(performance.now() - tB), ms: Math.round(performance.now() - t0),
-    digest: LBK.digest([bytes]),
-  } };
+/** A room's bake: its lights at every vertex in three states (9 floats a vertex), and its stats (lib/roombake.js). */
+function bakeRoom(r, onProgress) {
+  return RoomBake.bake(LBK, bakeScene(r, true), r.geo, r.comp.id, onProgress);
 }
 // ------------------------------------------------------------------ the bake cache
 // The light is baked once and kept (the owner, 2026-10-07: "can we cache those results?"): tools/mockups/bake_ship.mjs
@@ -10426,12 +10586,7 @@ const FRESH = new URLSearchParams(location.search).get("bake") === "fresh";
 const LIGHT_OUT = new Map();   // room id -> { key, light } of every room baked live here, for --write-cache
 /** A room's cache key: FNV-1a over its vertex positions and normals (as bits) and its bake scene's inputs. */
 function bakeKey(r) {
-  const def = bakeScene(r, true), g = r.geo.attributes;
-  const pr = (p) => [p.o, p.u, p.v, p.albedo, p.cheap ? 1 : 0, p.cast ? 1 : 0, p.receive ? 1 : 0, p.tri ? 1 : 0, p.area];
-  const text = JSON.stringify({ v: 1, patches: def.patches.map(pr), lights: def.lights, emitters: def.emitters, amb: def.ambient_lux, set: def.settings });
-  const T = new Uint32Array(text.length);
-  for (let i = 0; i < text.length; i++) T[i] = text.charCodeAt(i);
-  return LBK.digest([new Uint32Array(g.position.array.buffer.slice(0)), new Uint32Array(g.normal.array.buffer.slice(0)), T]);
+  return RoomBake.key(LBK, bakeScene(r, true), r.geo);
 }
 /** The inlined cache: { version, rooms: { id: { key, offset, count, stats } }, data } or null when there is none. */
 async function loadBakeCache() {

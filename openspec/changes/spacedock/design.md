@@ -286,6 +286,7 @@ decks are and nothing new is invented for it.
   | Fixture | Kind (LB 11) | Where | Light |
   | --- | --- | --- | --- |
   | `bay_ring` | area, a strip round the bay's wall | Every 80 m down the bay's 620 m, on the wall's ribs | Cool white, the bay's general light |
+  | `spine_flood` | point, narrow beam (cos^200) | Twelve round the spine at each ring's station, every other ring turned half a step, aimed straight out at the wall | The bay's high-bay lamps: a checkerboard of pools about 45 m across on the wall the ships berth on, dark between (added 2026-10-16, when the owner could not see the bake: "where baked lighting") |
   | `bay_flood` | point, beam down to the wall | On the eight gantries under the axis, aimed at the berth rows | Warm white floods: the pools the ships lie in |
   | `berth_work` | point, wide beam | Four at each berth's pad corners (the flood masts) and two on each portal frame | Bright, short range: the pier, the clamps and the hull under them |
   | `window_tier` | area, emissive | The back wall's tiers of control-room windows and the hub's | Soft, warm: lit offices; it lights the back wall a little |
@@ -315,16 +316,17 @@ decks are and nothing new is invented for it.
   lit window tiers; in the alert state the red strips; through the throat on the way out, the rings sliding past.
 - **The mockup first** (built 2026-10-15). `docs/mockups/spacedock.html` bakes E's bay on load with the mockup baker
   (`docs/mockups/lib/lightbake.js`, the one the deck plan uses, by the `light-baking` skill) and the `station` preset
-  of `data/lighting/bake.json`: 80 point fixtures (a `bay_flood` for each of the eight berths, on a spine down the
-  axis; nine `berth_work` a berth: the four corner masts, two on each portal frame, one under the gantry) and 98 area
-  fixtures (seven `bay_ring`s, each as twelve 30 degree strips, and fourteen `window_tier`s), with shadows from the
+  of `data/lighting/bake.json`: 164 point fixtures (84 `spine_flood`s; a `bay_flood` for each of the eight berths, on
+  the spine down the axis; nine `berth_work` a berth: the four corner masts, two on each portal frame, one under the
+  gantry) and 98 area fixtures (seven `bay_ring`s, each as twelve 30 degree strips, and fourteen `window_tier`s), with shadows from the
   ribs, the spine, the piers, the frames and the gantries, occlusion over 20 m and one bounce read across the bay. The
-  wall is cut to 16 m cells, the ribs to 30 m and the berths to 8 m (`bake.json` `station`; 4 m and 10 m made 93,000
-  vertices). The state buttons (Normal, Alert, Emergency) swap the three sets and the fixtures' faces (the rings red
+  wall is cut to 10 m cells, the ribs to 30 m and the berths to 8 m (`bake.json` `station`), and plated in the pale
+  pearl: the first bake (2026-10-15) lit the wall evenly from the rings, and under the deck plate's dark tread its
+  light could not be seen at all. "Light only" shows the bake without its textures. The state buttons (Normal, Alert, Emergency) swap the three sets and the fixtures' faces (the rings red
   on alert; every fixture off its supply dark on emergency). **The probes** (2026-10-16, the owner: "do it, so ships
   get proper lighting inside stations"): a 20 m grid through the bay's air (27 x 27 x 31 points) and a 5 m grid round
   each of the eight berths (the box 32 m to each side of the berth's axis, 16 m toward the wall and 30 m toward the
-  axis from the ship's middle, 50 m fore and aft; `bake.json` `station`), 55,023 probes, 48,486 of them in the air (a
+  axis from the ship's middle, 50 m fore and aft; `bake.json` `station`), 55,023 probes, 48,495 of them in the air (a
   probe outside the bay's wall or inside a pier, a frame or the spine is invalid and its neighbours fill in). Every
   hull in the bay, the Tern's, the docked ships' and the concept hulls', is lit at each vertex from the probes round
   it by the engine's own rule (`sc-core` `probes.rs` `sample_ship`: trilinear over the eight round a point, invalid
@@ -337,14 +339,85 @@ decks are and nothing new is invented for it.
   (`node tools/mockups/bake_spacedock.mjs` rewrites it; `?bake=fresh` bakes live). The shots are
   `docs/screenshots/mockups/spacedock-E-bay*.png`, `spacedock-E-window*.png` and `spacedock-E-crossing*.png`;
   `?bake=0` keeps the stand-in light.
-- **Cost** (section 9), measured from the mockup's bake: no draw and no texture added; the baked inside is 54,265
-  vertices and 38,997 triangles (the stand-in was about 15,500), its three colour sets 0.62 MB (4 bytes a set a
+- **All five bays** (2026-10-16, the owner: "bake all of them"). A, B, C and D are baked the same way as E: each
+  version's lamps are fixtures (A's gantry and ceiling floods, C's gantry lamps and D's masts as `hall_flood`, high-bay
+  lamps aimed down that pool on the floor; B's wall rings as `ring_flood`s aimed across the hangar and its spine's
+  `axis_lamp`s; every berth's `berth_work`), each shell faces into its bay (a flat box drawn both ways, C's walls,
+  keeps only the face toward the hall), each bay has its probe grids (20 m through its air, 5 m round each berth) and
+  its air test, and A's 1.7 km hall and D's cavern take 20 m cells (`bake.json` `station` `hall_cell_m`). The floors
+  and walls the ships lie over are plated in the pale pearl, as E's, so the light shows. The state buttons and Light
+  only work in every version. One cache holds all five (8.6 MB); `bake_spacedock.mjs` bakes them in about 10 minutes
+  here. Measured:
+
+  | Bay | Lamps | Baked triangles | Vertices | Probes (in the air) |
+  | --- | ---: | ---: | ---: | ---: |
+  | A Bastion | 152 | 70,389 | 91,966 | 96,742 (83,089) |
+  | B Wheel | 123 | 47,739 | 54,789 | 50,130 (45,706) |
+  | C Drydock | 118 | 73,440 | 53,928 | 46,430 (45,085) |
+  | D Hollow | 82 | 57,401 | 58,539 | 78,426 (53,733) |
+  | E O'Neill Pair | 164 and 98 strips | 55,305 | 64,149 | 55,023 (48,495) |
+
+- **Cost** (section 9), measured from the mockup's bake: no draw and no texture added; the baked inside is 64,149
+  vertices and 55,305 triangles (the stand-in was about 15,500), its three colour sets 0.74 MB (4 bytes a set a
   vertex); the probes 55 bytes each (`probes.rs`), 55,023 of them 3.0 MB uncompressed, client only, held while the
   Tern is at that station (the 5 m berth grids are 32,424 of them: 10 m round the berths would cut the probes to about
   27,000 and 1.5 MB, to be judged on the shots). At run time one blend a vertex for the inside and, for a hull, a
   probe lookup a vertex when it moves (the engine may light a hull per object instead, from one cube at its middle,
-  if the per-vertex cost shows on the Pi). The whole bake, inside and probes, took about 130 s and 49 million rays on
+  if the per-vertex cost shows on the Pi). The whole bake, inside and probes, took about 180 s and 59 million rays on
   this cloud machine's CPU in one browser thread: not a Pi 5 and not the station build's baker.
+
+## 8b. The bay's bake in the engine
+
+The owner, 2026-10-16: "when youre done, implement all this in the game". The engine has no baker yet (`light-baking`
+design 10), and the Tern's decks reach it the same way: the deck plan bakes them, `tools/deck/export_deck.mjs` carries
+the result across and `sc-tools deckc` packs it. The bay takes that road, so the bay in the game is the bay the owner
+saw in the mockup, its light included, and the mockup stays the one implementation of the bay's geometry and fixtures
+until the station generator grows its own (CLAUDE.md 6.1; tasks 2.3).
+
+- **Export.** `tools/stations/export_bays.mjs` opens `docs/mockups/spacedock.html` headless, waits for the bays' bakes
+  (from `docs/mockups/cache/spacedock-bake.bin`, seconds when it matches) and calls the page's
+  `SPACEDOCK_EXPORT_BAYS(["E"])`. Per version it writes into `build/stations/`: the baked inside (positions in the
+  station's frame, normals, texture coordinates in layer spans, layers, indices, and the three states' colours as the
+  linear multipliers the page draws, its paints included), the fixtures' faces (the glow mesh, its three states' colours
+  as `restateGlow` sets them), the probe grids (`origin_m`, `spacing_m`, `dims`, 54 bytes of cube and a valid byte a
+  probe) and the texture layers the inside samples, cut out of the panel array. Only E by default: A-D are drawn as
+  placeholders with their doors shut (tasks 2.3), so no one can see into them; `--versions A,B,C,D,E` exports them all
+  for the day their generators land.
+- **Pack.** `sc-tools bayc` writes `compiled/stations.bays` (gitignored, like the deck): `sc-core::bay`'s format, magic
+  `SCBY`, a JSON index and the blobs. Each mesh is packed with the deck's one vertex packer (`sc-core::vertex`) and
+  colour byte (`deckc`'s), its positions about its own centre and divided by a per-mesh scale so the bay's 620 m fit
+  the vertex's +/-32 (E's inside at 32: 3 cm steps). Its texture is a small array of its own (the layers it uses, a full
+  mip chain), so the station needs nothing from the deck file. The browser build does not carry it: it draws no
+  station yet (the stations' textures under `assets/` are not in its file system), and the file would add 3.0 MB
+  gzipped to every load; it joins `tools/web/release.sh` with the stations.
+- **Draw.** The client loads the file when it is there (`stations.rs`); without it the stand-in light of 2.4 shows,
+  and it says so once. E's inside is then the baked bay plus the engine's own throat (not in the mockup's bake yet),
+  its glow the mockup's fixtures' faces plus the throat's and the mouth's rings. The station's state weights pick the
+  normal, alert or emergency colours, as a deck's compartment does (only normal until the station has an alert of its
+  own: tasks 2.6). Two draws more than the stand-in: the baked inside and its glow, beside the throat's own two.
+- **The Tern's own berth stays clear overhead** (found 2026-10-16 in the first engine captures): the mockup's berths
+  carry two portal frames and a gantry across the ship 24-36 m up, and the Tern's departure rises straight off the wall
+  (patrol-mission 4.1), so it would have flown up through its own. As the engine's stand-in already did, the Tern's
+  berth keeps its columns and its gantry stands upright at the berth's side: no beam over the ship, the frames' work
+  lights on the columns' heads and the gantry's at its head. Every other berth keeps its frames and gantry.
+- **The hulls from the probes.** Inside the bay a hull takes the cube the probes give at its middle (`sc-core::probes`
+  `sample_ship`, the deck crew's rule), turned into the hull's own frame, instead of the stand-in "light from its own
+  up". It needs no new shader: the hull's relight (patrol-mission 11.3) already divides the exterior bake's light out
+  and multiplies an ambient cube in (`relight`'s tint, nebula-skies 6), so the cube rides in the tint with the star off:
+  `colour = baked x cube(n) / light_baked(n)`. A pool's light is held under `hull_probe_max` (data), as the mockup holds
+  it, since a hull's texture carries its own shading. **The throat** has no probes: there the hull's light runs from the
+  cube at the iris to the star's over the throat (iris to mouth), as a straight blend of the two (both are linear in the
+  shader's light term), so leaving the station the light changes as the Tern comes out into the sun (8a).
+- **One cube a hull, not one a vertex.** The mockup lights each vertex; the engine lights each hull from the cube at its
+  middle (8a allowed it: "the engine may light a hull per object instead"), so a Heron in its berth's pool is lit as
+  the pool is at its middle, and the Tern crossing the bay changes as a whole. A per-vertex light would need the hull's
+  colours rewritten when it moves, or a probe lookup in the shader (a texture of probes), and is the next step if the
+  owner wants the pools to slide along a hull.
+- **Cost** (section 9): E's baked inside replaces the stand-in's bay: 55,305 triangles and 64,149 vertices (82,390 once packed, where a texture shift splits a vertex: 2.3 MB at 28
+  bytes, against the stand-in's about 15,500 triangles), the glow mesh as the mockup's (about 3,300 triangles); the
+  probes 55,023 at 55 bytes, 3.0 MB of client memory while the station is loaded; the texture six 256 px layers with
+  their mips (about 0.35 MB a layer, 2.1 MB). Two draws added (the baked inside and its glow, beside the throat's). Per frame, a probe lookup for each hull in the bay (eight at most):
+  nothing measurable. `compiled/stations.bays` is 8.6 MB (3.0 MB gzipped). Not measured on a Pi.
 
 ## 9. The Pi 5 budget
 
@@ -355,23 +428,25 @@ mockup's meshes (`docs/mockups/spacedock.html`):
 
 | Version | Outside | Inside (baked) | Glow | Doors | Station draws | Docked ships at LOD 1 |
 | --- | ---: | ---: | ---: | ---: | ---: | --- |
-| A Bastion | 4,308 | 19,504 | 6,444 | 480 | 3 (the mockup draws 8 leaves apart) | 7 ships, about 10,000 triangles, 7 draws |
-| B Wheel | 662 | 12,204 | 4,476 | 120 | 3 | 7 ships, about 10,000 triangles, 7 draws |
-| C Drydock | 910 | 16,012 | 3,576 | 120 | 3 | 8 ships, about 11,500 triangles, 8 draws |
-| D Hollow | 5,162 | 14,340 | 3,588 | 120 | 3 | 7 ships, about 10,000 triangles, 7 draws |
-| E O'Neill Pair: hub and round bay | about 600 (the hub's drum, mouth, back and seal collar) | 38,997 baked (with eight gantries and the spine; 8a) | about 3,300 (the rings, the floods, the hub's lights, the ships' running lights) | 8 (eight iris leaves) | 3 (the mockup draws the leaves apart) | 6 ships, about 8,700 triangles, 6 draws |
+| A Bastion | 4,308 | 70,389 baked | 6,444 | 480 | 3 (the mockup draws 8 leaves apart) | 7 ships, about 10,000 triangles, 7 draws |
+| B Wheel | 662 | 47,739 baked | 4,476 | 120 | 3 | 7 ships, about 10,000 triangles, 7 draws |
+| C Drydock | 910 | 73,440 baked | 3,576 | 120 | 3 | 8 ships, about 11,500 triangles, 8 draws |
+| D Hollow | 5,162 | 57,401 baked | 3,588 | 120 | 3 | 7 ships, about 10,000 triangles, 7 draws |
+| E O'Neill Pair: hub and round bay | about 600 (the hub's drum, mouth, back and seal collar) | 55,305 baked (with eight gantries and the spine; 8a) | about 3,300 (the rings, the floods, the hub's lights, the ships' running lights) | 8 (eight iris leaves) | 3 (the mockup draws the leaves apart) | 6 ships, about 8,700 triangles, 6 draws |
 | E O'Neill Pair: the throat | 128 (its wall) and 9,952 (its light rings and strips, the dome's rings) | | | | 21 (the mockup draws each ring and strip apart; built, 2) | |
 | E O'Neill Pair: the two cylinders | about 96,000 (48,000 a cylinder: shell, land, glazing, two domes outside and in, the inner domes' greebles, about 3,500 a dome, the seal collars, 70 cumulus of 320 triangles, 22,400, spine, three mirrors, farm ring) and the rods' 60 | | | | 30 (15 a cylinder) and the rods' 1 | |
 
-Station totals: A 30,700, B 17,500, C 20,600, D 23,200, E about 123,000 triangles (E's are 64 draws: a cylinder is 15,
+Station totals before the bake: A 30,700, B 17,500, C 20,600, D 23,200, E about 123,000 triangles (E's are 64 draws: a cylinder is 15,
 its outside, land, glazing, domes, greebles, cumulus, spine and mirrors each their own material; a built E would merge
 the opaque ones by material, about 7 a cylinder, and the port's rings into one). The cumulus are the biggest share
 (44,800 for the pair): fewer or simpler puffs, or puffs drawn only in the cylinder the camera is in or looking into, are
 the first cut. The mockup's busiest E view, outside with both cylinders, the planet and the docked ships, is about
 131,000 triangles and 92 draws, against 200,000 and 300; inside a cylinder about 86,000 and 76. With the docked ships, the Tern at full detail
-(4,440 triangles, 7 draws) and the deck the crew stand in, the worst berthed frame is under 60,000 triangles and 40
-draws for every version: under a third of the frame's triangles and an eighth of its draws. A is the dearest (its
-cap's ribs and its round hall's fine cells for the bake); B the cheapest.
+(4,440 triangles, 7 draws) and the deck the crew stand in, the worst berthed frame was under 60,000 triangles and 40
+draws for every version before the bake. Baked (section 8a, its cells), the inside alone is 48,000-73,000 triangles,
+and the mockup's bay views read 63,000-104,000 triangles and under 35 draws (A's the dearest, B's the cheapest),
+against 200,000 and 300: still about half the frame. Coarser cells on the bays' plain walls are the first cut if a
+measured Pi frame needs it.
 
 - **Inside the bay** the outside's mesh is behind the walls: a portal cull (deck-pipeline's) leaves the inside, the
   glow and the docked ships, so a berthed frame draws about half the station.
@@ -449,3 +524,7 @@ becomes E.
 | S8 | E's cylinders: their size and spin | 6.4 km by 1.8 km at 1 rpm (1 g at the floor), smaller than Island Three, the pair 9.5 km apart so the petals clear; textures are atlases, not layers of the array, so no layer is renumbered. Recommendation taken (ask only with screenshots) |
 | S9 | E's port: which end, and does every cylinder have one | Cylinder 0's sunward dome only (section 5a, why the sunward end); the other cylinder's axis keeps its bearing. Recommendation taken (ask only with screenshots) |
 | S11 | How the bay is lit (owner, 2026-10-15: "we should have some baked lighting in the interior hanger bay") | Baked, by `light-baking`'s rules: the bay's rings, floods, berth work lights and window tiers as fixtures, three states, probes lighting every ship in the bay including the Tern's hull (section 8a). Recommendation taken (ask only with screenshots) |
+| S12 | A hull in the bay: lit from one probe cube at its middle, or at every vertex as the mockup does (the pools sliding along it as it crosses the bay) | One cube a hull, until a Pi measurement shows a light per vertex is affordable (8b); compare `docs/screenshots/engine/stations/10-baked-bay-tern-in-its-berth.jpg` with `docs/screenshots/mockups/spacedock-E-crossing.png`. Recommendation taken; the owner's to change on those screenshots |
+| S13 | The Tern's own berth in E: the mockup's portal frames and gantry over it, or open overhead | Open overhead: its departure rises straight off the wall (patrol-mission 4.1), so it would fly through them (8b; `spacedock-E-bay.png`). Recommendation taken (it follows a decided rule) |
+| S14 | The berths' probe grids: 5 m (55,023 probes, 3.0 MB) or 10 m (about 27,000, 1.5 MB) | 5 m until the Pi's memory measurement says otherwise. Recommendation taken (ask only with screenshots) |
+| S15 | The browser build: carry `compiled/stations.bays` (3.0 MB gzipped a load) | Not until the browser build draws stations (their textures are not in its file system). Recommendation taken (ask only with screenshots) |

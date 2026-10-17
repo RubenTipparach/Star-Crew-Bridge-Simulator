@@ -3,8 +3,12 @@
  */
 (function () {
   "use strict";
-  /** Create a room builder. parent receives the room meshes; material is the shared baked surface. */
-  function create(THREE, K, PK, L, S, D, pmats, { parent: scene, material: baked }) {
+  /**
+   * Create a room builder. parent receives the room meshes; material is the shared baked surface; bake (a
+   * RoomBake.page) bakes each room's light for real (lib/roombake.js), and onBaked(cid) tells the page a room's sets
+   * have been taken again from it, to repaint.
+   */
+  function create(THREE, K, PK, L, S, D, pmats, { parent: scene, material: baked, bake, onBaked }) {
     const FLOOR = L.decks.find(d => d.id === "A").floor_y_m;
     const SHELL_ROLES = ["floor", "wall", "ceiling", "cove", "platform"];
     const STATES = ["normal", "red_alert", "emergency"];
@@ -70,6 +74,11 @@
       const geo = K.geometryOf(THREE, parts, pmats, K.finishOf(comp, D));
       const sets = {};
       for (const k of STATES) { K.bakeDirect(THREE, geo, lamps, k); sets[k] = geo.attributes.color.array.slice(); }
+      // The room's baked light, from the page's cache or live; then its sets again (the console faces keep the quick light).
+      if (bake) bake.relight(geo, lamps, { id: cid, comp, openings: built.openings, onBaked: () => {
+        for (const k of STATES) { K.bakeDirect(THREE, geo, lamps, k); sets[k] = geo.attributes.color.array.slice(); }
+        if (onBaked) onBaked(cid);
+      } });
       const mesh = new THREE.Mesh(geo, baked);
       scene.add(mesh);
       let faces = null, faceSets = null;

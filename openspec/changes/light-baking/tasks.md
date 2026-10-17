@@ -21,6 +21,7 @@ on is engine work, taken on a separate request once the owner has answered G1 to
 - [x] 1.10 `tools/mockups/bake_ship.mjs`: the ship bake report in `docs/benchmarks/<date>-tern-bake/` and shots of named rooms in the three states, looked at.
 - [ ] 1.11 Engineering's lower floor on red alert and emergency power (design section 15, point 4): its lamps under the mezzanine on the emergency bus and the reactor glow lighting its base, judged on `walk-eng-lower` in the three states.
 - [x] 1.12 The bake cached (design section 15, point 5; the owner: "can we cache those results?"): `bake_ship.mjs --write-cache`, `docs/mockups/cache/deck-plan-bake.bin`, the page's keys, `inline.py --check` on the baker's digest.
+- [x] 1.13 Every mockup's rooms baked (design section 15a, the owner 2026-10-16: "bake all of them"): the room bake shared in `docs/mockups/lib/roombake.js` (the deck plan's, unchanged), `ShipKit.bakeDirect` writing it, a cache per page by `tools/mockups/bake_pages.mjs`, `shoot.mjs` waiting for it.
 
 ## 2. Data
 
@@ -55,6 +56,9 @@ on is engine work, taken on a separate request once the owner has answered G1 to
   `probeCube` and the back-face test, cached in `tools/deck/cache/deck-plan-probes.bin`; the deck file's
   probes (version 5); `sc_core::probes` sampling with tests; the `deck_probe` program; the bot figures lit by
   it, with captures of a bot in a lit and a dark room in three states.
+- [ ] 5.3b Craft in a station's bay (spacedock design 8b, 2026-10-16): the bay's probes from the mockup's bake
+  in `compiled/stations.bays`, a hull lit from the cube at its middle through the hull's relight (no new shader);
+  a light per vertex on a hull still to come.
 - [ ] 5.4 Power-loss flicker from `bake.json`, seeded from the session seed, compartment and tick.
 - [ ] 5.5 Debug views (design.md section 12).
 

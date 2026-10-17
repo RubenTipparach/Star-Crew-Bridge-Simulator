@@ -132,15 +132,22 @@ fn to_srgb(x: f32) -> f32 {
 pub fn sky_tint(r: &Renderer, turn: Quat) -> [[f32; 3]; 6] {
     let Some((cube, strength)) = r.sky().1 else { return sc_render::NO_TINT };
     let norm = to_srgb(strength).max(1e-4);
-    let axes = [Vec3::X, -Vec3::X, Vec3::Y, -Vec3::Y, Vec3::Z, -Vec3::Z];
-    axes.map(|a| {
-        // The face's way in the sky's frame, and the sky's light there (Half-Life 2's ambient cube).
-        let d = turn * a;
-        let d2 = d * d;
-        let pick = |v: f32, pos: usize| if v >= 0.0 { cube[pos] } else { cube[pos + 1] };
-        let (x, y, z) = (pick(d.x, 0), pick(d.y, 2), pick(d.z, 4));
-        [0, 1, 2].map(|c| to_srgb(d2.x * x[c] + d2.y * y[c] + d2.z * z[c]) / norm)
-    })
+    turn_cube(&cube, turn).map(|l| l.map(|c| to_srgb(c) / norm))
+}
+
+/// An ambient cube's light on a face whose normal is `n` in the cube's frame (unit length): each axis's colour weighted
+/// by the normal's square along it (Half-Life 2's ambient cube; `deck.glsl`'s `deck_probe_vs` and the sky's tint).
+pub fn cube_at(cube: &[[f32; 3]; 6], n: Vec3) -> [f32; 3] {
+    let n2 = n * n;
+    let pick = |v: f32, pos: usize| if v >= 0.0 { cube[pos] } else { cube[pos + 1] };
+    let (x, y, z) = (pick(n.x, 0), pick(n.y, 2), pick(n.z, 4));
+    [0, 1, 2].map(|c| n2.x * x[c] + n2.y * y[c] + n2.z * z[c])
+}
+
+/// `cube` (in a frame F) as a cube in a frame G turned into F by `turn`: each of G's axes takes F's cube's light along
+/// it. Exact for a turn by quarter turns, a blend between axes otherwise (as the sky's tint and a bay's probes need).
+pub fn turn_cube(cube: &[[f32; 3]; 6], turn: Quat) -> [[f32; 3]; 6] {
+    [Vec3::X, -Vec3::X, Vec3::Y, -Vec3::Y, Vec3::Z, -Vec3::Z].map(|a| cube_at(cube, turn * a))
 }
 
 /// The exterior seen from `eye` (system frame) in a patrol's system (patrol-mission design 11.2): the star's direction,

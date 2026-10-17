@@ -30,6 +30,7 @@ use sc_net::transport::{Dial, Impair};
 use sc_render::{DeckProgram, Indices, Mesh, Renderer, Target};
 
 use crate::console;
+use crate::hull::HullLight;
 use crate::seat::{Input, PointerEv, Seat, SeatAsk};
 use crate::ships3d;
 use crate::ui::Ui;
@@ -1238,7 +1239,6 @@ impl DrillApp {
         let proj = sc_render::depth::outside_lens(vfov as f32, FEED.0 as f32 / FEED.1 as f32);
         let view_m = glam::camera::rh::view::look_to_mat4(Vec3::ZERO, fwd.as_vec3(), up.as_vec3());
         let (ext_now, stations, roof) = self.outside_now(ships.map(|x| &x.2));
-        let hull_light = self.hull_light(roof);
         let world = World {
             meshes: &self.meshes,
             exterior: &ext_now,
@@ -1256,10 +1256,9 @@ impl DrillApp {
         if let (true, Some(h)) = (shot.hull, self.bridge.as_ref().and_then(|b| b.hull())) {
             let q = rot.as_quat();
             let in_ship = shot.eye;
-            // The sky's sun from where the Tern is (one sun outside, design 11.3), or the bay's floods under a roof.
-            let (light, k) = hull_light.unwrap_or((crate::outside::sun_in_ship(&ext_now, q), 1.0));
-            let sky = hull_light.is_none().then_some(q);
-            h.draw_lit(&mut self.r, &self.feed, proj * view_m * Mat4::from_quat(q), in_ship.to_array(), light, k, sky);
+            // The sky's sun from where the Tern is (one sun outside, design 11.3), or the bay's light under a roof.
+            let light = self.hull_light(roof, &ext_now, q);
+            h.draw_lit(&mut self.r, &self.feed, proj * view_m * Mat4::from_quat(q), in_ship.to_array(), &light);
         }
         self.r.end_pass();
         self.r.begin_3d(&self.blank, [0.0, 0.0, 0.0, 1.0]);
@@ -1270,23 +1269,26 @@ impl DrillApp {
 impl DrillApp {
     /// The outside of this frame (patrol-mission design 11): in a patrol the sky from the system file as seen from
     /// the Tern, and the stations within reach (`StationsView::draw_m`); in the drill the exterior's sky and the relay
-    /// at the mission's waypoint. Also whether the Tern is under a station's roof (in Tamsin Station's bay or throat),
-    /// where its hull is lit by the floods instead of the star (design 12b).
-    fn outside_now(&self, snap: Option<&Snapshot>) -> (ExteriorData, Vec<(Shown, DVec3, Quat)>, bool) {
+    /// at the mission's waypoint. Also where the Tern is when it is under a station's roof (in Tamsin Station's bay or
+    /// throat), where its hull is lit by the bay instead of the star (design 12b; spacedock design 8b).
+    fn outside_now(&self, snap: Option<&Snapshot>) -> (ExteriorData, Vec<(Shown, DVec3, Quat)>, Option<Roof>) {
         let (Some(p), Some(d)) = (snap.and_then(|s| s.patrol.as_ref()), self.data.patrol.as_ref()) else {
             let relay = (Shown::Relay, DVec3::from_array(self.data.mission.waypoint_m), Quat::IDENTITY);
-            return (self.exterior.clone(), vec![relay], false);
+            return (self.exterior.clone(), vec![relay], None);
         };
         let tern = snap.and_then(|s| s.ships.first()).map_or(DVec3::ZERO, |t| t.pos);
         let ext = crate::outside::exterior_at(&self.exterior, &d.system, p.origin + tern);
         let mut stations = Vec::new();
-        let mut roof = false;
+        let mut roof = None;
         if let Some(v) = self.meshes.stations.as_ref() {
             for (i, st) in d.system.stations.iter().enumerate() {
                 let at = d.system.station_pos(st) - p.origin;
                 if (at - tern).length() <= v.draw_m() {
                     let rot = d.system.station_rot(st);
-                    roof |= v.under_roof(i, rot.inverse() * (tern - at));
+                    let here = rot.inverse() * (tern - at);
+                    if v.under_roof(i, here) {
+                        roof = Some(Roof { station: i, at: here, rot: rot.as_quat() });
+                    }
                     stations.push((Shown::Station(i), at, rot.as_quat()));
                 }
             }
@@ -1298,11 +1300,23 @@ impl DrillApp {
         (ext, stations, roof)
     }
 
-    /// The light on the Tern's hull from outside: under a station's roof the floods from its own up (design 12b),
-    /// otherwise none (the sky's sun).
-    fn hull_light(&self, roof: bool) -> Option<(Vec3, f32)> {
-        roof.then(|| self.meshes.stations.as_ref().map(crate::stations::StationsView::ship_light)).flatten()
+    /// The light on the Tern's hull, its attitude `q` (ship frame to the system's): the sky's sun from where it is
+    /// (`ext`, design 11.3), or under a station's roof the bay's (`StationsView::hull_light`: its probes, or the
+    /// stand-in from its own up; down the throat, giving way to the star).
+    fn hull_light(&self, roof: Option<Roof>, ext: &ExteriorData, q: Quat) -> HullLight {
+        let star = HullLight::star(&self.r, crate::outside::sun_in_ship(ext, q), Some(q));
+        let (Some(roof), Some(v)) = (roof, self.meshes.stations.as_ref()) else { return star };
+        v.hull_light(roof.station, roof.at, roof.rot.inverse() * q, star).unwrap_or(star)
     }
+}
+
+/// Where the Tern is when it is under a station's roof: the station (the system file's order), the Tern's place in the
+/// station's frame (metres) and the station's attitude (its frame to the system's).
+#[derive(Debug, Clone, Copy)]
+struct Roof {
+    station: usize,
+    at: DVec3,
+    rot: Quat,
 }
 
 /// The relay is drawn within this of the Tern, metres (design 11.2: beyond, a point; later): well inside
@@ -1676,7 +1690,7 @@ impl DrillApp {
 
 impl DrillApp {
     /// The patrol's scripted shots (patrol-mission design 12b, spacedock tasks 2.9): berthed in Tamsin Station's bay,
-    /// out of the bridge's port and starboard windows and ahead to the throat; in the throat on the way out; then
+    /// out of the bridge's port and starboard windows, ahead to the throat, and from out in the bay at the nearest docked ship and back at the Tern; in the throat on the way out; then
     /// Tamsin Station seen from 14 km off once the Tern is clear, and along the same line from 76 km, near the edge of
     /// its draw distance, where the whole station must still stand in front of the sky (sky-behind-solids 2). Each
     /// stands its eye one frame, then is taken.
@@ -1708,12 +1722,32 @@ impl DrillApp {
             e
         };
         let want: Option<(&str, ShotEye)> = if berthed {
+            // From the port window toward the nearest docked ship, lit by the bay's probes (spacedock design 8b).
+            let si = d.system.stations.iter().position(|s| std::ptr::eq(s, st));
+            let heron = self.meshes.stations.as_ref().zip(si).and_then(|(v, i)| {
+                v.docked(i)
+                    .iter()
+                    .map(|m| m.w_axis.truncate())
+                    .min_by(|a, b| (*a - here).length().total_cmp(&(*b - here).length()))
+            });
+            // An eye out in the bay between the two, 40 m up toward the axis, on the docked ship; then the Tern's own hull.
+            let to_ship = |v: DVec3| t.rot.inverse() * (rot * v);
+            let look_from = |eye_st: DVec3, at_st: DVec3| -> ShotEye {
+                let dir = to_ship(at_st - eye_st).normalize();
+                (to_ship(eye_st - here).to_array(), dir.x.atan2(dir.z) as f32, dir.y.asin() as f32)
+            };
+            let toward_axis = -DVec3::new(here.x, here.y, 0.0).normalize_or_zero();
+            let bay_eye = heron.map(|h| here + (h - here) * 0.45 + toward_axis * 40.0);
             [
-                ("p1-berth-port", window(Window::BridgePort, 0.12)),
-                ("p2-berth-starboard", window(Window::BridgeStbd, 0.12)),
-                ("p3-berth-ahead", ahead(window(Window::BridgePort, 0.12))),
+                ("p1-berth-port", Some(window(Window::BridgePort, 0.12))),
+                ("p2-berth-starboard", Some(window(Window::BridgeStbd, 0.12))),
+                ("p3-berth-ahead", Some(ahead(window(Window::BridgePort, 0.12)))),
+                ("p3b-bay-docked-ship", bay_eye.zip(heron).map(|(e, h)| look_from(e, h))),
+                // Above and aft of the Tern, so the bay's spine on the axis stays behind the eye.
+                ("p3c-bay-tern-hull", Some(look_from(here + toward_axis * 70.0 - DVec3::Z * 90.0, here))),
             ]
             .into_iter()
+            .filter_map(|(n, e)| e.map(|e| (n, e)))
             .find(|(n, _)| !self.shots_taken.contains(&format!("{n}.png")))
         } else if here.z > 480.0 && here.z < 600.0 && here.x.hypot(here.y) < 60.0 {
             Some(("p4-throat", window(Window::BridgePort, 0.3)))
@@ -2164,7 +2198,7 @@ impl App for DrillApp {
                 // The bridge's eye in the system's frame, where the Hound, bolts and bursts are.
                 let eye_out = ships.as_ref().map(|(t, _, _)| t.pos + t.rot * DVec3::from_array(eye));
                 let (ext_now, stations, roof) = self.outside_now(ships.as_ref().map(|x| &x.2));
-                let hull_light = self.hull_light(roof);
+                let hull_light = self.hull_light(roof, &ext_now, attitude);
                 let world = World {
                     meshes: &self.meshes,
                     exterior: &ext_now,
@@ -2181,7 +2215,7 @@ impl App for DrillApp {
                     attitude,
                     lighting: if red { [0.0, 1.0, 0.0] } else { [1.0, 0.0, 0.0] },
                     screen: Some((&self.feed, self.exterior.viewscreen.scanlines as f32)),
-                    hull_light,
+                    hull_light: Some(hull_light),
                     objects: Box::new(move |r, t, vp| {
                         if let Some(e) = eye_out {
                             world.draw_objects(r, t, vp, e, seen);
