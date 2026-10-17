@@ -90,9 +90,9 @@ of their own, so a page may rewrite a panel's contents freely.
 
 ## Keep in mind
 
-- **A mockup is not a Pi measurement.** The meter shows the triangles and draw calls the design
-  would spend; the frame rate is a desktop's, and the page says so.
-- **No shadow maps, no post-processing** that the Pi 5 renderer will not have; they also fail on
+- **The meter shows what the page draws** (triangles and draw calls); the Pi 5 budget it was
+  read against is retired (CLAUDE.md 2, owner 2026-10-17).
+- **No shadow maps, no post-processing** that the engine's renderer will not have; they also fail on
   SwiftShader.
 - **Screens and consoles** are HTML and CSS overlays in fixed-size panels (CLAUDE.md 10), not
   textures rendered every frame.

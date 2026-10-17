@@ -3,8 +3,9 @@
 Star Crew is a starship bridge simulator played online with friends. A core crew of four,
 possibly more, runs one ship: they walk a full 3D bridge and the decks behind it, sit at
 stations, route power, keep the air breathable, repair damage, man or automate turrets, load
-missiles and launch fighters. It runs on a **custom engine** whose floor is a **Raspberry Pi 5
-with 1 GB of RAM**, with a 4 GB Pi 5 as the main server, in a low-poly style.
+missiles and launch fighters. It runs on a **custom engine**, on the desktop and in the browser,
+in a low-poly style. Raspberry Pi 5s are machines for testing multiplayer, not a performance target
+(section 2).
 
 These rules are binding. When a rule here conflicts with a general habit, a design doc or a
 tool's default, this file wins. They were adapted from the owner's other projects
@@ -31,7 +32,7 @@ for the same reason.
 Contents:
 
 1. Owner direction (standing instructions)
-2. The Raspberry Pi 5 floor
+2. Performance, and what the Raspberry Pis are for
 3. Spec-driven work: OpenSpec
 4. Write it up before touching code
 5. Writing style
@@ -70,11 +71,11 @@ From the owner's brief, 2026-10-04. Quotes are the owner's words.
 - **A custom engine.** "Ideally a custom engine because our ship needs to decouple the bridge
   and internal ship aspects from the exterior of the ship."
 - **Low poly.** "I'm all for low poly aesthetics."
-- **The hard requirement.** "I want this to run on pi3 1gb ram! So definitely bsp style level
-  design would be on the table!", corrected the same day: **"I'm sorry we're running on a pi5
-  1gb-4gb, 4 GB can be used as main server too"** (section 2). The target is a Raspberry Pi 5:
-  1 GB is the client floor, and a 4 GB Pi 5 can be the main server. Brush-built, portal-culled
-  decks stay the approach.
+- **The Pi is not a performance target** (owner, 2026-10-17: "disregard pi measurements, we dont
+  care about pi performance, they are for testing multiplayer"). This replaces the first brief's
+  hard requirement ("I want this to run on pi3 1gb ram!", then "we're running on a pi5 1gb-4gb, 4 GB
+  can be used as main server too"). Section 2 says what follows. Brush-built, portal-culled decks
+  stay the approach: they are how the decks are made, not a concession to the Pi.
 - **The stack is decided, and the graphics stay modest** (owner, 2026-10-04, on the
   engine-stack recommendation): "That's fine..this game doesn't need high end graphics. Your
   stack sounds like a solid plan". The engine is Rust with SDL3 and sokol_gfx on OpenGL ES 3.0
@@ -122,35 +123,29 @@ From the owner's brief, 2026-10-04. Quotes are the owner's words.
   separate "tour" holds the walking while the game holds the consoles. Picking a station from a menu
   or a tab may walk the body there, never teleport the view into the console.
 
-## 2. The Raspberry Pi 5 floor
+## 2. Performance, and what the Raspberry Pis are for
 
-**Hard requirement** (owner, 2026-10-04: "we're running on a pi5 1gb-4gb, 4 GB can be used as
-main server too"). The client runs on a **Raspberry Pi 5 with 1 GB of RAM**: four Cortex-A76
-cores at 2.4 GHz, LPDDR4X shared between the CPU and the GPU, and a VideoCore VII GPU with
-OpenGL ES 3.1 and Vulkan. A **4 GB Pi 5 can be the main server**, running the authoritative
-simulation headless. A design that only works on a desktop is not a design for this game. (The
-first designs were written for a Pi 3 the same morning; anything still saying "Pi 3" is stale.)
+**The Pi 5s test multiplayer; they are not the game's floor** (owner, 2026-10-17: "disregard pi
+measurements, we dont care about pi performance, they are for testing multiplayer"). Until then
+the rule was a 1 GB Pi 5 client with a budget table every change spent against; that rule is
+retired, and anything that still calls a Pi 5 budget a limit is stale.
 
-- **Memory is the hard limit, not speed.** On the 1 GB client the OS, the GPU's allocations and
-  the game share 1 GB. Every process has a fixed allocation in the budget table.
-- **The renderer's feature floor is OpenGL ES 3.0** (GLSL ES 3.00): instancing, vertex array
-  objects, 32-bit indices, multiple render targets, uniform buffers and texture arrays are
-  allowed. Compute, geometry and tessellation shaders and float render targets are not assumed.
-  An extension is used only behind a fallback that has been measured on a Pi 5.
-- **Every change states its Pi 5 budget.** A change that adds geometry, draw calls, memory,
-  render targets, simulation work or network traffic says what it spends against the budget
-  table in `openspec/changes/engine-stack/design.md` ("The Pi 5 budget"), and the table is the
-  one source for those numbers. When the table moves into `openspec/specs/`, the rule follows
-  it. The budgets are ceilings: low poly is the style.
-- **The budget is provisional until measured on a Pi.** The numbers start as estimates from
-  published figures. The first engine step is a probe that measures them on real hardware, and
-  the table is corrected from that measurement, never the other way round.
-- **Desktop numbers are never the measure.** A desktop frame time, a three.js mockup's frame
-  rate or a cloud session's lavapipe render says nothing about the Pi. Mockups show the budget
-  they would spend (section 11), not that it fits.
-- **Memory is a budget, not a hope.** The client, the server and the GPU each have a fixed
-  allocation in the table. Allocate up front, use arenas and pools for per-frame and
-  per-entity data, and fail loudly at startup when a ship or a scene does not fit.
+- **No Pi measurements.** Nothing waits on a frame time, memory figure or load measured on a Pi,
+  and no design is held back or cut down for one. The Pi probe and the "Pi 5 budget" tables in
+  the changes stay as history, not as ceilings.
+- **The Pis run multiplayer tests**: a client, a server or a browser in a networking test
+  (`netcode-and-sessions`, `matchmaker`, `lobby`), as any other connected machine does
+  (section 12).
+- **The game targets the desktop and the browser.** The renderer stays on OpenGL ES 3.0
+  (GLSL ES 3.00) because the browser build runs on WebGL 2: compute, geometry and tessellation
+  shaders and float render targets are not assumed there.
+- **Spend sensibly, and say what it costs.** A change that adds a lot of geometry, memory,
+  download or network traffic says roughly what it adds, in plain numbers, so a cost the browser
+  or the network will feel is seen. It is information, not a gate.
+- **The look stays modest and low poly** (section 1, "this game doesn't need high end graphics"):
+  that is the style, not a hardware limit.
+- **Memory is still allocated up front.** Arenas and pools for per-frame and per-entity data, and a
+  loud failure at startup when a ship or a scene does not load, as good engine practice.
 
 ## 3. Spec-driven work: OpenSpec
 
@@ -164,7 +159,7 @@ point (adopted from Pale-Blue-Dot and Undercity):
   certain the plan is.
 - **`openspec/changes/<name>/` is what is designed but not built.** It holds:
   - `proposal.md`: why, and what changes;
-  - `design.md`: how, with the numbers, the formulas and the Pi 5 budget it spends;
+  - `design.md`: how, with the numbers, the formulas and roughly what it costs;
   - `tasks.md`: the checklist;
   - spec deltas under `specs/<capability>/spec.md`, using `## ADDED / MODIFIED / REMOVED
     Requirements`, with `### Requirement:` headings, SHALL statements and `#### Scenario:`
@@ -201,7 +196,7 @@ A change argued in a document can be read, disagreed with and redirected for the
 reading it. The same change argued in a diff has already been made.
 
 **One exception: a measurement instrument**, meaning code whose only job is to produce a number
-the write-up needs (the Pi 5 probe, a layout checker that reports volumes).
+the write-up needs (a layout checker that reports volumes, a network soak test).
 - Say in the write-up what is measured and why before writing it.
 - Keep it to the instrument. Never let "I needed to measure" carry a behaviour change in with it.
 
@@ -400,7 +395,7 @@ becomes.
 - **Surfaces take Material Maker textures** (owner, 2026-10-05: "apply textures from our
   material maker skills"). Every material is a Material Maker graph, rendered and
   post-processed into a small layer of one texture array: 128 x 128 px, 64 px per metre
-  inside and 32 on the hull, relief baked into the colour because the Pi 5 does no per-pixel
+  inside and 32 on the hull, relief baked into the colour because the look does no per-pixel
   lighting, nearest sampling up close and mipmaps at a distance, the emission mask in alpha.
   `data/materials/materials.json` is the one source; `openspec/changes/surface-materials` the
   design; the `material-maker` skill says how to make one and judge it on the contact sheet.
@@ -429,8 +424,8 @@ becomes.
   and of wear layered on top once it can run.
 - **Meshes are files built by committed generators** (star-crew-64 and Undercity). A generator
   writes the source mesh deterministically; the build bakes it.
-- **Every asset has a triangle budget** in the Pi 5 table, and the build refuses one over
-  budget.
+- **Every asset has a triangle budget** in its data, and the build refuses one over budget
+  (the numbers are the style's, no longer the Pi's: section 2).
 
 ## 10. UI work
 
@@ -487,9 +482,8 @@ Adopted from Undercity section 8 and star-crew-64's UI text rules.
   should have lighting at night"). A ship interior is lit by its own lamps, screens and
   strips, and every mockup of an interior shows at least the normal and the red-alert lighting
   states. Space is dark; the sun is one light.
-- **They show their Pi 5 cost.** Each mockup displays its visible triangles and draw calls
-  against the Pi 5 budget, from `renderer.info`. It says plainly that a desktop frame rate is
-  not a Pi measurement.
+- **They show what they draw.** A mockup may display its visible triangles and draw calls from
+  `renderer.info`; the Pi 5 budget it used to be measured against is retired (section 2).
 - **They present a change.** Each mockup names the OpenSpec change it presents, and its legend
   numbers match the layout's points of interest.
 - **They are seen before they are shown.** Screenshot every mockup headless
@@ -515,8 +509,7 @@ Before claiming anything is done, run what applies:
 | Engine, and every row above | `scripts/check.sh` (format, clippy with warnings as errors, the workspace's tests with the headless render tests, then the rows above, the shader modules and the engine data) |
 
 - **Know what is proven.** Distinguish implemented, validated and proposed work in docs, PRs
-  and replies. A design is not a feature, a green test is not a visual sign-off, and a mockup
-  is not a Pi measurement.
+  and replies. A design is not a feature, and a green test is not a visual sign-off.
 - **Every major step ends in a capture the owner can check**, before the next step starts
   (Pale-Blue-Dot and Undercity). Screenshots in `docs/screenshots/` stand in for video until
   the owner asks for video; a video, when made, names what each shot shows.
@@ -525,12 +518,12 @@ Before claiming anything is done, run what applies:
   MUST WALK AROUND THE SHIP TO DO STUFF, TO FIX STUFF"). A playtest recording follows a body through
   the 3D ship: walking to a station, sitting, the console, standing, walking to the next job. A take
   that cuts from dashboard to dashboard is not a playtest and is not sent.
-- **Performance is measured on the Pi, the repeatable way.** A release build, real time,
-  nothing else running; old build against new interleaved in the same sitting; machine,
+- **Performance, when it is measured, is measured the repeatable way**, on the most powerful
+  connected machine (never a Pi, section 2). A release build, real time, nothing else running; old build against new interleaved in the same sitting; machine,
   resolution, build, repeats, percentiles and the spread between repeats reported. A
   difference smaller than the spread is not a result. Never call an unmeasured design a
   speedup (Pale-Blue-Dot's `perf-measure`).
-- **Cloud sessions** have no GPU and no Pi. They don't measure frame time; say so in the PR.
+- **Cloud sessions** have no GPU. They don't measure frame time; say so in the PR.
   They do render: headless captures of what changed go in `docs/screenshots/`.
 - **Test on real hardware when it is connected** (owner, 2026-10-10: "if we have sessions
   connected/agents connected that have access to physical hardware, we shall use those for
@@ -545,9 +538,8 @@ Before claiming anything is done, run what applies:
     building, the test suites, running the game and its captures. Powerful is judged from what
     each session reports of its machine (CPU, GPU, memory). Every other connected device is a
     network-test machine: a client or a server in a networking test.
-  - **The Pi still measures the Pi.** Section 2's budget is measured on a Pi 5 and nowhere else:
-    the probe and any frame time, memory or load number the budget table quotes run on the Pi,
-    whichever device is most powerful. That is a measurement on the target, not primary testing.
+  - **The Pis are for multiplayer** (owner, 2026-10-17, section 2): a connected Pi joins networking
+    tests as a client or a server; it is never asked for a performance measurement.
 
 ## 13. Working with the owner
 
@@ -577,7 +569,7 @@ Before claiming anything is done, run what applies:
   A PR is looked at when the owner asks, when its own events arrive, or as part of work in hand.
 - **The cloud session coordinates the others** (owner, 2026-10-10: "my plan is to have this cloud
   message other sessions to coordinate networking efforts in the future"). Networking work runs
-  on several machines at once: the Pi 5 (client floor, probe, main server), the owner's PC, a
+  on several machines at once: the Pi 5s (a client or a server in the test), the owner's PC, a
   browser. Each machine runs its own Claude Code session (`claude remote-control` in the repo),
   and the cloud session hands each one its part by message and collects the results.
   - **Messages carry the ask; git carries the results.** A message says what to run and on
