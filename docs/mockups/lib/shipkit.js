@@ -4,8 +4,8 @@
  * Every Star Crew mockup reads the same layout (data/ships/<id>/layout.json), so
  * the bridge, the deck plan, the systems view and the exterior cannot disagree
  * about where a room or a door is (CLAUDE.md sections 8 and 11). This file is
- * the shared interpretation of that layout: palette, lighting states, the Pi 5
- * budget meter, room shells with door openings cut, the generated detail (frames,
+ * the shared interpretation of that layout: palette, lighting states, the draw
+ * meter, room shells with door openings cut, the generated detail (frames,
  * coves, trims, door frames, conduits, lamps), the Material Maker texture array,
  * the hull loft and labels.
  *
@@ -44,20 +44,8 @@
     return JSON.parse(el.textContent);
   }
 
-  /**
-   * The Raspberry Pi 5 (1 GB) budget a mockup is measured against. These are
-   * the provisional numbers from openspec/changes/engine-stack/design.md,
-   * "The Pi 5 budget"; that table is the source, and this copy is checked
-   * against its marker by tools/mockups/inline.py --check.
-   */
-  const PI_BUDGET = {
-    board: "Pi 5 (1 GB)",
-    triangles: 200000,       // visible triangles per frame, all passes
-    drawCalls: 300,          // draw calls per frame, all passes
-    textureMB: 96,           // texture memory
-    viewscreenPx: [1024, 512], // render-to-texture size for the main viewscreen
-    frameMs: 16.7,           // 60 frames a second target (33.3 ms floor), 3D at 1280x720
-  };
+  /** The main viewscreen's render-to-texture size, pixels (the engine's viewscreen feed). */
+  const VIEWSCREEN_PX = [1024, 512];
 
   /** Named colour roles. Mockups use roles, not hex values (CLAUDE.md section 10). */
   const PALETTE = {
@@ -2661,19 +2649,20 @@
     return s;
   }
 
-  // ------------------------------------------------------------ budget HUD
+  // ------------------------------------------------------------ draw meter
 
   /**
-   * The Pi 5 cost meter every mockup shows (CLAUDE.md section 11). Call
+   * The draw meter a mockup shows (CLAUDE.md section 11): what the page draws, as counts, against no
+   * budget (CLAUDE.md section 2: there is no Pi budget). Call
    * hud.beginFrame(renderer) before the frame's first render and
    * hud.endFrame(renderer) after its last; it sums every pass (a viewscreen's
    * render-to-texture included). Set hud.textureBytes (loadMaterials' bytes) to
    * add the texture memory line.
    */
-  function budgetHud(opts) {
+  function drawHud(opts) {
     opts = opts || {};
     const el = document.createElement("div");
-    el.className = "pi-budget";
+    el.className = "draw-meter";
     el.style.cssText = [
       "position:fixed", "right:12px", "bottom:12px", "z-index:20", "font:12px/1.35 ui-monospace,Menlo,Consolas,monospace",
       "color:#d8e2ec", "background:rgba(6,9,14,0.82)", "border:1px solid #2b3540", "border-radius:6px", "padding:8px 10px",
@@ -2681,11 +2670,6 @@
     ].join(";");
     document.body.appendChild(el);
     let frames = 0, acc = { t: 0, c: 0 }, last = performance.now(), shown = { t: 0, c: 0, fps: 0 };
-    const bar = (v, max) => {
-      const f = Math.min(1, v / max);
-      const color = v > max ? "#ff5252" : v > 0.8 * max ? "#ffb300" : "#66bb6a";
-      return `<div style="height:5px;background:#1c242d;border-radius:3px;margin:2px 0 5px"><div style="height:5px;width:${(f * 100).toFixed(1)}%;background:${color};border-radius:3px"></div></div>`;
-    };
     const hud = {
       el, textureBytes: opts.textureBytes || 0,
       beginFrame(renderer) { renderer.info.autoReset = false; renderer.info.reset(); },
@@ -2702,14 +2686,13 @@
       read() { return { triangles: shown.t, drawCalls: shown.c, textureMB: hud.textureBytes / 1048576 }; },
     };
     function render() {
-      const b = PI_BUDGET, mb = hud.textureBytes / 1048576;
+      const mb = hud.textureBytes / 1048576;
       el.innerHTML =
-        `<div style="font-weight:700;margin-bottom:4px">${PI_BUDGET.board} budget (provisional)</div>` +
-        `triangles ${shown.t.toLocaleString()} / ${b.triangles.toLocaleString()}${bar(shown.t, b.triangles)}` +
-        `draw calls ${shown.c} / ${b.drawCalls}${bar(shown.c, b.drawCalls)}` +
-        (mb ? `textures ${mb.toFixed(2)} / ${b.textureMB} MB${bar(mb, b.textureMB)}` : "") +
-        `<div style="color:#8a98a8">desktop ${shown.fps.toFixed(0)} fps: not a Pi measurement</div>` +
-        (opts.note ? `<div style="color:#8a98a8">${opts.note}</div>` : "");
+        `<div style="font-weight:700;margin-bottom:4px">Draws</div>` +
+        `<div>triangles ${shown.t.toLocaleString()}</div>` +
+        `<div>draw calls ${shown.c}</div>` +
+        (mb ? `<div>textures ${mb.toFixed(2)} MB</div>` : "") +
+        (opts.note ? `<div style="color:#8a98a8;margin-top:4px">${opts.note}</div>` : "");
     }
     return hud;
   }
@@ -2717,8 +2700,7 @@
   // -------------------------------------------------------- mockup plumbing
 
   /**
-   * Standard page chrome: title block naming the change the mockup presents,
-   * and the "mockup, not a Pi measurement" disclaimer.
+   * Standard page chrome: title block naming the change the mockup presents.
    */
   function titleBlock(opts) {
     const el = document.createElement("div");
@@ -2727,7 +2709,7 @@
     el.innerHTML =
       `<div style="font-weight:700;font-size:15px">${opts.title}</div>` +
       `<div style="color:#9fb0c0">${opts.subtitle || ""}</div>` +
-      `<div style="color:#7f8fa0;margin-top:4px">Presents <code>${opts.change}</code>. A three.js mockup on a desktop GPU: it shows layout and look, not Pi 5 performance.</div>`;
+      `<div style="color:#7f8fa0;margin-top:4px">Presents <code>${opts.change}</code>. A three.js mockup: it shows layout and look.</div>`;
     document.body.appendChild(el);
     return el;
   }
@@ -2750,7 +2732,7 @@
   /**
    * A small close button on each of a page's floating panels, so a viewer on a phone can clear the
    * view (owner, 2026-10-06: "There's lots of popups, cluttered on my phone. Add little x marks so I
-   * can close some of these and get a better view"). The panels are the title block, the Pi 5 meter
+   * can close some of these and get a better view"). The panels are the title block, the draw meter
    * and, by convention, any element of class controls, info, legend or route, id side, or with a
    * data-closable attribute (CLOSABLE). A closed panel is hidden, never removed, and a "Show panels"
    * pill at the top brings them all back; which ones a viewer closed is remembered in their own
@@ -2758,7 +2740,7 @@
    * panel's top right corner every frame, so a page that rewrites a panel's contents (the meter, an
    * info panel) never loses its button. markReady() calls it once, after the page has built its panels.
    */
-  const CLOSABLE = ".mockup-title, .pi-budget, .controls, .info, .legend, .route, #side, [data-closable]";
+  const CLOSABLE = ".mockup-title, .draw-meter, .controls, .info, .legend, .route, #side, [data-closable]";
   const PHONE_PX = 760;   // the pages' own narrow-screen breakpoint
   function panelChrome() {
     if (panelChrome.done || typeof document === "undefined") return;
@@ -2816,7 +2798,7 @@
 
   window.ShipKit = {
     version: 2,
-    layout, shipData, PI_BUDGET, PALETTE, LIGHTING,
+    layout, shipData, VIEWSCREEN_PX, PALETTE, LIGHTING,
     lightingData, fixtureStates, bakeSettings, ambientLux, bakeCap, hexLinear,
     byId, compartment, applyPatch, portalsOf, stationsIn, systemsIn, deckById,
     // plan geometry
@@ -2829,7 +2811,7 @@
     loadPanels, panelsData, panelBands, panelBays, fnv1a, decodePng, panelLayerList, panelLayerName, walkwayPaths,
     Builder, subdivideParts, buildPlatforms, platformCovers, kickOutline, edgeBands, buildSpiralStair, spiralReach, spiralCorners, buildLiftCar, buildFitout, platformRows,
     // hull, labels, chrome
-    hullGeometry, hullHalfWidth, label, budgetHud, titleBlock, registerShots, markReady, panelChrome,
+    hullGeometry, hullHalfWidth, label, drawHud, titleBlock, registerShots, markReady, panelChrome,
     rectMinusHoles, intervalMinus, worldUv,
   };
 })();

@@ -130,6 +130,11 @@ measurements, we dont care about pi performance, they are for testing multiplaye
 the rule was a 1 GB Pi 5 client with a budget table every change spent against; that rule is
 retired, and anything that still calls a Pi 5 budget a limit is stale.
 
+**There is no Pi budget. It is banned** (owner, 2026-10-17: "claude md should ve banned this pi
+budget requirement", "there is not pi budget req"). No mockup, page, tool, test, check, skill,
+design or code comment measures anything against a Pi budget, shows a "Pi 5 budget" meter or bar,
+or fails a build or a page against one. Never add one back, under that name or any other.
+
 - **No Pi measurements.** Nothing waits on a frame time, memory figure or load measured on a Pi,
   and no design is held back or cut down for one. The Pi probe and the "Pi 5 budget" tables in
   the changes stay as history, not as ceilings.
@@ -483,7 +488,8 @@ Adopted from Undercity section 8 and star-crew-64's UI text rules.
   strips, and every mockup of an interior shows at least the normal and the red-alert lighting
   states. Space is dark; the sun is one light.
 - **They show what they draw.** A mockup may display its visible triangles and draw calls from
-  `renderer.info`; the Pi 5 budget it used to be measured against is retired (section 2).
+  `renderer.info`, as plain counts (the draw meter). There is no budget bar and no Pi label on it
+  (section 2: the Pi budget is banned).
 - **They present a change.** Each mockup names the OpenSpec change it presents, and its legend
   numbers match the layout's points of interest.
 - **They are seen before they are shown.** Screenshot every mockup headless

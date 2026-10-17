@@ -47,8 +47,8 @@ const L = K.layout();
 K.titleBlock({ title: "Template", subtitle: L.ship.name + ", " + L.ship.class, change: "reference-ship-tern" });
 // The Material Maker layers, as the one texture array the engine will use (surface-materials).
 const mats = await K.loadMaterials(THREE);
-const hud = K.budgetHud({ textureBytes: mats.bytes });
-window.MOCKUP_BUDGET = () => hud.read();
+const hud = K.drawHud({ textureBytes: mats.bytes });
+window.MOCKUP_DRAWS = () => hud.read();
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));

@@ -14,7 +14,7 @@ layer is; this file does what they say, in this order:
   1. load the graph's maps from the raw directory (both namings, see load_maps);
   2. recolour (optional "ramp"): luminance, stretched between two percentiles of the material,
      mapped onto a dark-to-light colour ramp and blended with the original by "ramp_mix";
-  3. relief bake: the Pi 5 renderer has no per-pixel lighting, so the normal map and occlusion
+  3. relief bake: the look has no per-pixel lighting, so the normal map and occlusion
      are baked into the albedo under one fixed key light (bake_relief);
   4. fit the layer: tile the graph k x k (or take 1/k of it) so the layer spans its "span_m",
      then Lanczos-downsample with wrap-around so the layer itself tiles without a seam;
@@ -30,7 +30,7 @@ timestamps, stable order. Run it twice and compare hashes; the last line prints 
 Provenance: adapted from fps-game-demo (Undercity/Brushfire) revision f6cd25c,
 tools/material_maker/postprocess.py: the raw export naming, the Lanczos downsample, the normal
 renormalisation and the luminance ramp come from there. Undercity writes Godot PBR materials at
-1024 px; Star Crew bakes relief into a small albedo layer instead (no PBR on a Pi 5,
+1024 px; Star Crew bakes relief into a small albedo layer instead (no PBR in the look,
 openspec/changes/engine-stack design section 5).
 
 Usage:
@@ -503,7 +503,7 @@ def main():
             warnings.append(f"{m['name']}: seam ratio {max(sx, sy):.2f} above {SEAM_WARN}; look at its 3 x 3 tiling")
     print("-" * len(head))
     print(f"{len(built)} layers of {px} x {px} RGBA8 with mips in one texture array: {total:,} bytes "
-          f"({total / 2**20:.2f} MiB); the Pi 5 texture budget is openspec/changes/engine-stack design section 5")
+          f"({total / 2**20:.2f} MiB)")
     print(f"raw maps from: {', '.join(sorted({label for _, _, label, _ in built}))} in {os.path.relpath(args.raw, ROOT)}")
     print(f"contact sheet: {os.path.relpath(SHEET_PATH, ROOT)}")
     for w in warnings:

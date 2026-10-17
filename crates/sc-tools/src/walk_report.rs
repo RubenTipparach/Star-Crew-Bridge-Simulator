@@ -1,6 +1,5 @@
-//! `sc-tools walk-report`: what the walk costs (deck-pipeline 13a, "The Pi 5 budget"). A measurement instrument
-//! (CLAUDE.md 4): it changes nothing, it reports the heap the walk world holds and the time a body's step takes,
-//! for the budget table's walk row once the same command runs on a Pi 5.
+//! `sc-tools walk-report`: what the walk costs (deck-pipeline 13a). A measurement instrument (CLAUDE.md 4): it
+//! changes nothing, it reports the heap the walk world holds and the time a body's step takes.
 //!
 //! Memory is counted by `sc-tools`' counting allocator (main.rs): the bytes live on the heap after each stage,
 //! and the most at once while the walk world is built. Time is a body walking the deck's start round for a minute

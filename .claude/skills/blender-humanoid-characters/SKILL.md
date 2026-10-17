@@ -16,7 +16,7 @@ crew bodies from a table, headless and reproducible.
 What does not apply here:
 - **Its budgets.** Undercity's bodies (53-bone rig, 1024 px atlases) are a desktop's. A Star
   Crew avatar is at most 3,000 triangles and 48 bones, with palette colours instead of atlases
-  (`openspec/changes/engine-stack/design.md`, "The Pi 5 budget"; `crew-on-deck`). A body built
+  (`crew-on-deck`; the style's numbers, not a Pi's: CLAUDE.md 2). A body built
   with this kit must be decimated and re-rigged to that budget.
 - **The Godot tail** (retargeting to SkeletonProfileHumanoid, Jolt ragdolls, `.tscn` scenes):
   Star Crew has a custom engine with baked animation clips.

@@ -120,7 +120,7 @@
     ]
   },
   "preview_cubes_linear": {
-    "_doc": "Illustrative offline six-face irradiance, ordered +X,-X,+Y,-Y,+Z,-Z in game axes. These are review probes, not compiled deck probes or a Pi measurement.",
+    "_doc": "Illustrative offline six-face irradiance, ordered +X,-X,+Y,-Y,+Z,-Z in game axes. These are review probes, not compiled deck probes.",
     "normal": [
       [
         0.68,

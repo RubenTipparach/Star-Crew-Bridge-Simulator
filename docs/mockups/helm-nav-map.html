@@ -516,7 +516,7 @@ function draw() {
   s += statusStrip(S);
   document.getElementById("screen").innerHTML = s;
   for (const b of document.querySelectorAll("#bar button[data-k]")) b.classList.toggle("on", b.dataset.k === state);
-  document.getElementById("cost").textContent = `UI: ${calls} draw items in SVG (the engine batches them into the console's 16 calls) · a 2D mockup, not a Pi measurement · presents helm-nav-map`;
+  document.getElementById("cost").textContent = `UI: ${calls} draw items in SVG (the engine batches them into the console's 16 calls) · presents helm-nav-map`;
 }
 const bar = document.getElementById("bar");
 bar.innerHTML = "<b>Helm NAV map</b>";

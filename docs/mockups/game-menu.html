@@ -123,9 +123,9 @@
 
 </div></div></div>
 <div class="note" id="note"></div>
-<div class="cost">UI cost on the Pi 5 (designs, not measurements): the nameplates are one draw call (one egui layer, one clip
+<div class="cost">UI cost (designs, not measurements): the nameplates are one draw call (one egui layer, one clip
 rectangle, the font atlas), about 1,000 triangles for 16 names; the menu is 1-2 draw calls and under 1,500 triangles
-while open, none while closed. A desktop frame rate is not a Pi measurement.</div>
+while open, none while closed.</div>
 <script>
   const states = [...document.querySelectorAll('.state')];
   const tabs = document.getElementById('tabs'), note = document.getElementById('note');

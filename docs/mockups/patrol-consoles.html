@@ -132,7 +132,7 @@ function draw() {
   s += t(668, 622, 15, C.dim, "a held order lights green until Helm acts on it", "start");
 
   // What this page is, in the free corner of the Science panel (a mockup's note, not part of any console).
-  const note = ["Presents patrol-mission design 7: for approval", "before any is built; the NPC crew play them now.", `UI cost: ${calls + 3} draw calls, not a Pi measurement.`];
+  const note = ["Presents patrol-mission design 7: for approval", "before any is built; the NPC crew play them now.", `UI cost: ${calls + 3} draw calls.`];
   note.forEach((line, i) => { s += t(36, 560 + i * 20, 14, C.dim, line, "start"); });
   document.getElementById("screen").innerHTML = s;
   for (const b of document.querySelectorAll("button[data-k]")) b.classList.toggle("on", b.dataset.k === state);

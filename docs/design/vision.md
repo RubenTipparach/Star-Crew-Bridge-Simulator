@@ -31,7 +31,8 @@ vertex lit, brush built and portal culled, in the tradition of Quake and Descent
    problem to solve: helm turns the bow so tactical's tubes bear; engineering's power budget
    decides whether shields or turrets win; flight ops cannot launch until the bay is empty of
    air, and the bay cannot empty while someone stands in it unsuited.
-5. **Runs on a 1 GB Pi 5.** Every design states its cost against the Pi 5 budget.
+5. **Runs on the desktop and in the browser.** Every design says roughly what it costs, as information;
+   there is no Pi budget (the Pi 5s test multiplayer, CLAUDE.md section 2).
 
 ## A session
 
@@ -99,7 +100,7 @@ a lift pad in the hangar.
 
 | Change | What it designs |
 | --- | --- |
-| `engine-stack` | The custom engine: language, platform layer, renderer floor, crate layout, the Pi 5 budget table. |
+| `engine-stack` | The custom engine: language, platform layer, renderer floor, crate layout (its Pi 5 budget table is history: CLAUDE.md section 2). |
 | `ship-frames` | Decoupling the interior from the exterior: frames, rendering composition, hand-off of craft. |
 | `deck-pipeline` | Brush-style decks compiled to compartments, portals, collision and baked vertex light. |
 | `light-baking` | The static light baker: shadows, emissive surfaces, bounce, vertex lighting or lightmaps, light probes, the three lighting states. |

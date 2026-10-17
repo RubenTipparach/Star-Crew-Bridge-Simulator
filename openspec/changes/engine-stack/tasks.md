@@ -39,4 +39,4 @@ measurement instrument and comes first.
 
 ## 4. Move to specs
 
-- [ ] 4.1 When 2.6 and 3.1 are done, move the `engine-platform` requirements that are then true into `openspec/specs/engine-platform/spec.md`, each with the check that proves it, and move the `pi-budget` marker with them.
+- [ ] 4.1 When 2.6 and 3.1 are done, move the `engine-platform` requirements that are then true into `openspec/specs/engine-platform/spec.md`, each with the check that proves it.

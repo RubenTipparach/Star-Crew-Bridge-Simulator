@@ -6,12 +6,13 @@
  * docs/mockups/cache/spacedock-bake.bin, or baked live where it does not match), calls the page's
  * window.SPACEDOCK_EXPORT_BAYS(versions) and writes build/stations/: export.json (the index) and one .bin file per
  * array: each version's baked inside and its fixtures' faces (positions in the station's frame, normals, texture
- * coordinates, layers, the three states' colours as linear multipliers), the inside's indices, its probe grids, and the
- * texture layers they sample. `cargo run -p sc-tools -- bayc` packs them into compiled/stations.bays. The geometry and
+ * coordinates, layers, the three states' colours as linear multipliers), the inside's indices, its probe grids; for A-D
+ * also the outside with its doors shut (its paints as colours, a glow flag a vertex) and the poses of its docked ships;
+ * and the texture layers they all sample. `cargo run -p sc-tools -- bayc` packs them into compiled/stations.bays. The geometry and
  * the light are the mockup's own (the one implementation until the station generator bakes its own, tasks 2.3); this
  * tool only carries them across, as tools/deck/export_deck.mjs does for the decks.
  *
- * Usage: node tools/stations/export_bays.mjs [--versions E] [--timeout-min 30]
+ * Usage: node tools/stations/export_bays.mjs [--versions A,B,C,D,E] [--timeout-min 30]
  */
 import { createRequire } from "node:module";
 import { execSync } from "node:child_process";
@@ -29,7 +30,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", ".
 const CACHE = path.join(ROOT, "tools", "mockups", ".cache");
 const args = process.argv.slice(2);
 const opt = (name, dflt) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : dflt; };
-const versions = opt("--versions", "E").split(",").map((v) => v.trim()).filter(Boolean);
+const versions = opt("--versions", "A,B,C,D,E").split(",").map((v) => v.trim()).filter(Boolean);
 const timeoutMin = Number(opt("--timeout-min", "30"));
 if (!versions.every((v) => /^[A-E]$/.test(v))) throw new Error(`--versions: ${versions.join(",")}: each is one of A-E`);
 
@@ -79,6 +80,8 @@ const index = {
     digest: b.digest,
     inside: mesh(`${b.version}.inside`, b.inside, ["position", "normal", "uv", "layer", "index", "c0", "c1", "c2"]),
     glow: mesh(`${b.version}.glow`, b.glow, ["position", "normal", "uv", "layer", "c0", "c1", "c2"]),
+    outside: b.outside ? mesh(`${b.version}.outside`, b.outside, ["position", "normal", "uv", "layer", "c0", "c1", "c2", "glow"]) : null,
+    docked: b.docked,
     grids: b.grids.map((g, k) => ({ origin_m: g.origin_m, spacing_m: g.spacing_m, dims: g.dims,
       cubes: put(`${b.version}.grid${k}.cubes.bin`, g.cubes), valid: put(`${b.version}.grid${k}.valid.bin`, g.valid) })),
   })),

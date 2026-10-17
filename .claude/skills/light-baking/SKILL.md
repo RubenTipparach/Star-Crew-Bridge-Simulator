@@ -53,7 +53,7 @@ emergency power cost nothing extra to bake. Stored as three `RGBA8` vertex colou
 - **Every bake states its cost** (CLAUDE.md 2, information, not a gate): triangles added, bytes, and the residual if a
   cap was reached.
 - **Numbers say what they are**: a bake time from the mockup is this machine's CPU in one browser
-  thread, not a Pi 5 and not the engine baker.
+  thread, not the engine baker.
 
 ## The whole ship (the deck plan)
 
@@ -102,11 +102,12 @@ The ships are not in the scene: the bay's probe grids light them (20 m through t
 `node tools/mockups/bake_spacedock.mjs` (about 10 minutes here for the five) and commit the cache. `?bake=fresh` bakes live,
 `?bake=0` keeps the stand-in. Its shots wait for the bake (`spacedock-E-bay*`, `-E-window*`, `-E-crossing*`).
 
-**In the engine** (spacedock design 8b): `node tools/stations/export_bays.mjs` (E by default, `--versions` for more)
-carries the baked inside, its fixtures' faces, the probes and their texture layers into `build/stations/`, and
-`cargo run --release -p sc-tools -- bayc` packs them into `compiled/stations.bays` (gitignored). The client draws E's bay
-from it and lights the Tern's hull and the docked ships from its probes, one cube a hull; without the file it shows the
-stand-in and says so. After rebaking the bay, run both again before judging the game. The patrol's headless shots
+**In the engine** (spacedock design 8b): `node tools/stations/export_bays.mjs` (all five by default, `--versions` to
+choose) carries the baked insides, their fixtures' faces, the probes, A-D's outsides with their doors shut and their
+docked ships, and the texture layers into `build/stations/`, and `cargo run --release -p sc-tools -- bayc` packs them
+into `compiled/stations.bays` (gitignored). The client draws every station from it and lights the Tern's hull and the
+docked ships at each vertex from their bay's probes; without the file it shows the stand-ins and says so.
+`sc-client --headless --station-shots DIR` draws all five from the mockup's cameras. After rebaking the bay, run both again before judging the game. The patrol's headless shots
 (`sc-client --headless --solo --bot --mission patrol-shoals --station helm --shots DIR`) include `p3b-bay-docked-ship`
 and `p3c-bay-tern-hull`, taken from out in the bay; run them once without the file to compare with the stand-in.
 
@@ -123,7 +124,7 @@ uses it on the Tern's bridge and engineering. It is documentation tooling, not e
    lightmap, Split with any two); State (Normal, Red alert, Emergency power, Power loss); Bounces;
    Texel size; Toggles (AO in the bake on or off, Debug: occlusion only, Debug: vertex wireframe
    or lightmap texel checker, the probe-lit crew figure). The panel on the right gives triangles, vertices, bytes, atlas size, bake time,
-   rays, residual and digest; the meter gives what it draws (the Pi 5 budget is retired, CLAUDE.md 2).
+   rays, residual and digest; the meter gives what it draws (there is no Pi budget, CLAUDE.md 2).
 3. **Place or tune a lamp**: fixture types and their photometry are `data/lighting/fixtures.json`
    (a ceiling panel 850 cd, a high-bay lamp 2,200 cd); placement is the kit's lamp rule
    (`ShipKit.lampsFor`, from `data/ships/tern/detailing.json` `lamps`: a panel in every frame bay,
@@ -199,10 +200,10 @@ residual and the AO-only view.
   placement and detail files.
 - Do not bake neighbouring compartments into one scene or bake doors open.
 - Do not add shadow maps, per-pixel fixture lighting or a post-processing pass for interiors; they
-  are out of the Pi 5 budget and out of the style.
+  are out of the style.
 - Do not use `Math.random`, time or thread order in a bake; seed from stable ids.
 - Do not hand-edit between INLINE markers; edit `lib/lightbake.js` and run the inliner.
-- Do not quote a mockup bake time as a Pi 5 or engine number.
+- Do not quote a mockup bake time as an engine number.
 - Do not adopt lightmaps, change the vertex format or change CLAUDE.md section 9 without the owner's
   answer to G1.
 - No em or en dashes in pages, data or docs (CLAUDE.md 5).

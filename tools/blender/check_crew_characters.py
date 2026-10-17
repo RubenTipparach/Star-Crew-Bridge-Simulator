@@ -138,7 +138,7 @@ def main():
         rejection("a connected but pinched underarm is rejected","underarm contour",change_mesh=pinched_underarm,rig_check=True),
     ]
     report = {"schema":"starcrew.character-checks/1","verified_artifacts":verified,
-        "checks":failures,"scope":"Exported review assets and rejection cases. Posed clothing and source IK controls are checked separately in rig-validation.json. Engine adoption, live deck probes and Pi measurements remain pending."}
+        "checks":failures,"scope":"Exported review assets and rejection cases. Posed clothing and source IK controls are checked separately in rig-validation.json. Engine adoption and live deck probes remain pending."}
     target = ROOT/"docs/screenshots/crew-characters/validation.json"
     target.parent.mkdir(parents=True,exist_ok=True)
     target.write_text(json.dumps(report,indent=2)+"\n",encoding="utf-8")

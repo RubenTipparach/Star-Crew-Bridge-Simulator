@@ -72,6 +72,8 @@ for (const file of pages) {
   const name = path.basename(file, ".html");
   // A cloud session reaches the CDN through a TLS-inspecting proxy whose CA Chromium does not carry.
   const page = await browser.newPage({ viewport: { width: W, height: H }, ignoreHTTPSErrors: true });
+  // A heavy page under software GL (swiftshader, a cloud session) can take over 30 s for one shot.
+  page.setDefaultTimeout(180000);
   const errors = [];
   await serveCdnFromCache(page);
   page.on("pageerror", (e) => errors.push(String(e)));
@@ -106,8 +108,8 @@ for (const file of pages) {
     await page.screenshot({ path: out, timeout: 120000 });
     taken.push(path.relative(ROOT, out));
   }
-  const budget = await page.evaluate(() => (window.MOCKUP_BUDGET ? window.MOCKUP_BUDGET() : null));
-  console.log(`${path.relative(ROOT, file)}: ${taken.length} shots` + (budget ? `, ${budget.triangles} triangles, ${budget.drawCalls} draw calls` : ""));
+  const draws = await page.evaluate(() => (window.MOCKUP_DRAWS ? window.MOCKUP_DRAWS() : null));
+  console.log(`${path.relative(ROOT, file)}: ${taken.length} shots` + (draws ? `, ${draws.triangles} triangles, ${draws.drawCalls} draw calls` : ""));
   for (const t of taken) console.log(`  ${t}`);
   for (const e of errors) { console.log(`  ERROR ${e}`); failed = true; }
   await page.close();

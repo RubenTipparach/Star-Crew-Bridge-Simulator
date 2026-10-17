@@ -36,7 +36,8 @@ can actually enter rather than something flimsy. I want there to be multiple shi
 - [ ] 2.3 The station generators (committed generators, CLAUDE.md 9), one per version, E first: outside, inside and
   doors in three draws within design 9's budget, and a far model each; the data checks of design 10. (2026-10-15: E's
   generator, `crates/sc-client/src/stations.rs`, outside, inside and glow in three draws, 18,264 triangles; its iris's
-  leaves, the habitats' land and clouds and a far model still to come. A-D are placeholders: their outsides only.)
+  leaves, the habitats' land and clouds and a far model still to come. 2026-10-17: A-D are the mockup's stations,
+  whole, from `compiled/stations.bays` (design 8b), in place of the placeholders; their own generators still to come.)
 - [ ] 2.4 The bays' bakes (design 8a), E first: the rings, floods, berth work lights and window tiers as fixtures in
   `data/lighting/fixtures.json`'s format, placed by rule from `spacedock.json`; baked into the insides' vertex colours in
   the three states; first in `docs/mockups/spacedock.html` with `lightbake.js` and its shots, then in the station
@@ -44,16 +45,16 @@ can actually enter rather than something flimsy. I want there to be multiple shi
   probes on the ships, shots. In the engine (2026-10-15): a stand-in, the fixtures in `data/space/station_models.json`
   baked at load without shadows. In the engine (2026-10-16, design 8b): E's bay is the mockup's bake, carried across
   by `tools/stations/export_bays.mjs` and `sc-tools bayc` into `compiled/stations.bays` (`sc-core::bay`) and drawn
-  in place of the stand-in's bay, its fixtures' faces with it. Left: the throat, A-D in the engine (their generators,
-  2.3), and the station generator's own bake.
+  in place of the stand-in's bay, its fixtures' faces with it. 2026-10-17: the throat baked with E's bay (its rings and
+  strips as fixtures, the probes to the mouth), and all five bays in the engine. Left: the station generators' own bake.
 - [ ] 2.5 The docked ships placed from the berths at their middle level of detail; the bay's probes lighting them and
   the Tern's hull while it is in the bay, giving way to the star over the throat (design 8a; `patrol-mission` 11.3's
   relight follows). Mockup done for E's bay's probes (2026-10-16): the 20 m and 5 m grids, every hull lit at each vertex
   by `probes.rs`'s rule, the crossing view. In the engine (2026-10-15): E's two Herons, drawn with the Tern's full model
   lit from their own up; the Osprey and the Federation concepts have no engine model, so their berths stand empty.
   In the engine (2026-10-16, design 8b): the Tern's hull and the Herons are lit from the bay's probes, one cube a
-  hull at its middle, and down the throat the Tern's light runs from the iris's cube to the star's. Left: a light per
-  vertex on the hulls (8b), and the bay's probes in the mockup's throat.
+  hull at its middle, and down the throat the Tern's light runs from the iris's cube to the star's. 2026-10-17 (S12): every
+  hull lit at each vertex from its bay's probes, in every version, and down the throat blended into the star's per vertex.
 - [ ] 2.6 The doors and iris (traffic control's clearance, 20 s to open and close) and the bay's speed limit on the
   server; FN 10's dock autopilot with a berth as its port.
 - [ ] 2.7 Measure E's per-pixel shaders on the Pi (S7) and write the result into `engine-stack`'s budget table before
@@ -65,4 +66,5 @@ can actually enter rather than something flimsy. I want there to be multiple shi
   and the pair from outside, in `docs/screenshots/engine/stations/`; entering waits for docking, patrol-mission.
   2026-10-16, with the mockup's bake (design 8b), on a cloud machine with no GPU: 7-11, the bay out of the port window
   and ahead, a docked Heron and the Tern in its berth from out in the bay (each beside the stand-in's, `9-stand-in-*`,
-  `10-stand-in-*`), and leaving through the throat.)
+  `10-stand-in-*`), and leaving through the throat. 2026-10-17: `sc-client --headless --station-shots DIR` draws all five
+  from the mockup's cameras, outside and in their bays: `docs/screenshots/engine/stations/12-*`.)

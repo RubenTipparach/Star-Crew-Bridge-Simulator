@@ -57,6 +57,16 @@
       "kind": "area", "luminance_cd_m2": 400, "range_m": 350.0, "width_m": 4.0, "end_clear_m": 0.0,
       "light": "strip", "emergency": "bus"
     },
+    "throat_ring": {
+      "_doc": "A ring of light round E's throat (spacedock design 5a and 8b): every 40 m from the mouth to the iris, the run of light a ship leaves down. Off the emergency bus: red on the station's alert, dark on its emergency supply.",
+      "kind": "area", "luminance_cd_m2": 600, "range_m": 200.0, "width_m": 3.0, "end_clear_m": 0.0,
+      "light": "strip", "emergency": "bus"
+    },
+    "throat_strip": {
+      "_doc": "One of the eight lit strips down E's throat from the iris to the mouth (spacedock design 5a and 8b): they keep the throat's wall lit between its rings. Always lit, at 0.4 on emergency power, so a ship can still see its way out.",
+      "kind": "area", "luminance_cd_m2": 300, "range_m": 200.0, "width_m": 5.0, "end_clear_m": 0.0,
+      "light": "strip", "emergency": "always", "emergency_scale": 0.4
+    },
     "spine_flood": {
       "_doc": "A spacedock bay's high-bay lamp (spacedock design 8a): twelve round the spine every 80 m, each aimed straight out at the bay's round wall, the floor the ships berth on, and throwing a pool about 45 m across on it (the rings staggered by half a step, so the pools lie in a checkerboard with dark between), as a hangar's high-bay lamps pool on its floor. Off the emergency bus; red on alert.",
       "kind": "point", "intensity_cd": 9000000, "radius_m": 0.0, "beam_exponent": 200, "range_m": 600.0, "drop_m": 0.0,

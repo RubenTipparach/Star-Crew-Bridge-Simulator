@@ -10,6 +10,11 @@
 //! (`BaysIndex`), then the blobs the index points into: vertices, indices (u32), texture mip levels and the light probes
 //! (`crate::probes::PROBE_BYTES` each). A mesh's stored positions are its metres about its `origin_m` divided by its
 //! `scale`, so a bay hundreds of metres long fits the vertex's +/-32; its probes are in the station's frame, metres.
+//!
+//! Version 2 adds a station's outside (with its doors shut) for the versions the engine draws whole from the mockup
+//! (A-D): its colours are its paints, lit by the star when the client loads it, a colour's alpha 0 where the part is its
+//! own light and 128 where its face looks into the bay (lit by the bay's probes instead); and the poses of its docked
+//! ships.
 
 use serde::{Deserialize, Serialize};
 
@@ -20,7 +25,7 @@ use crate::vertex::DECK_VERTEX_BYTES;
 /// The file's magic number.
 pub const MAGIC: &[u8; 4] = b"SCBY";
 /// The format version this build reads and writes.
-pub const VERSION: u32 = 1;
+pub const VERSION: u32 = 2;
 
 /// One mesh in the file.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -54,6 +59,20 @@ pub struct Bay {
     pub glow: BayMesh,
     /// Its light probe grids, the finest first (`crate::probes::sample_ship` keeps the first of equal weight).
     pub grids: Vec<DeckProbes>,
+    /// The station's outside and its shut doors (A-D), its colours the paints; none where the engine builds its own.
+    pub outside: Option<BayMesh>,
+    /// The ships docked at its berths.
+    pub docked: Vec<BayDocked>,
+}
+
+/// A ship docked at a berth.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct BayDocked {
+    /// Its key in `data/space/spacedock.json` `fleet`.
+    pub fleet: String,
+    /// Its frame in the station's (its middle and attitude), column-major.
+    pub pose: [f64; 16],
 }
 
 /// The texture array: square RGBA8 layers with a full mip chain, largest first.
@@ -154,7 +173,11 @@ pub fn read(bytes: &[u8]) -> Result<Bays<'_>, BaysError> {
         return Err(e("the vertex blob is not whole 28-byte vertices".into()));
     }
     for b in &index.bays {
-        for (what, m) in [("inside", &b.inside), ("glow", &b.glow)] {
+        if b.docked.iter().any(|d| d.pose.iter().any(|x| !x.is_finite())) {
+            return Err(e(format!("bay {}: a docked ship's pose is not finite", b.version)));
+        }
+        for (what, m) in [("inside", Some(&b.inside)), ("glow", Some(&b.glow)), ("outside", b.outside.as_ref())] {
+            let Some(m) = m else { continue };
             let v_end = m.vertex_offset + u64::from(m.vertex_count) * DECK_VERTEX_BYTES as u64;
             if v_end > index.vertex_bytes || m.index_offset + u64::from(m.index_count) > index.index_count {
                 return Err(e(format!("bay {}: its {what} points outside the file", b.version)));
@@ -273,6 +296,8 @@ mod tests {
                 inside: mesh(0, 3, 0, 3),
                 glow: mesh(DECK_VERTEX_BYTES as u64 * 3, 3, 3, 3),
                 grids: vec![DeckProbes { origin_m: [0.0, 0.0, 0.0], spacing_m: 20.0, dims: [2, 1, 1], first: 0 }],
+                outside: None,
+                docked: vec![BayDocked { fleet: "heron".into(), pose: [1.0; 16] }],
             }],
             textures: BayTextures { size_px: 2, layers: 1, mip_offsets: vec![0, 16] },
             vertex_bytes: vertices.len() as u64,
@@ -314,5 +339,8 @@ mod tests {
         let mut bytes = write(&index, &v, &i, &t, &p);
         bytes[4] = 9;
         assert!(read(&bytes).is_err(), "another version is refused, never misread");
+        let (mut index, v, i, t, p) = sample();
+        index.bays[0].docked[0].pose[3] = f64::NAN;
+        assert!(read(&write(&index, &v, &i, &t, &p)).is_err(), "a pose that is not finite is refused");
     }
 }

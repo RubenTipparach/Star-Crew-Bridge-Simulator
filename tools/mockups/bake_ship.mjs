@@ -11,7 +11,7 @@
  * docs/screenshots/mockups/bake/, with one comparison strip a view (quick, normal, red alert, emergency power).
  *
  * A measurement instrument (CLAUDE.md section 4): it changes nothing. Times are this machine's CPU in one browser
- * thread with software rendering: never a Pi 5 number, never the engine baker's (CLAUDE.md 12).
+ * thread with software rendering: never the engine baker's (CLAUDE.md 12).
  *
  * Usage: node tools/mockups/bake_ship.mjs [--date YYYY-MM-DD] [--views a,b] [--no-shots] [--timeout-min 60]
  *        [--page docs/mockups/x.html] [--name tern-bake] [--shots-dir docs/screenshots/mockups/bake] [--no-quick]
@@ -117,7 +117,7 @@ const totals = { compartments: rows.length, floor_m2: +sum("floor_m2").toFixed(1
 fs.mkdirSync(OUT, { recursive: true });
 const settings = JSON.parse(fs.readFileSync(path.join(ROOT, "data", "lighting", "bake.json"), "utf8"));
 const report = { schema: "starcrew.bake-report/1", date, page: "docs/mockups/deck-plan.html", generator: "tools/mockups/bake_ship.mjs",
-  machine: "Claude Code cloud container, headless Chromium with SwiftShader, one browser thread; not a Pi 5 and not the engine baker",
+  machine: "Claude Code cloud container, headless Chromium with SwiftShader, one browser thread; not the engine baker",
   settings: { seed: settings.seed, reference_lux: settings.reference_lux, shadow_samples: settings.shadow_samples, ao_rays: settings.ao_rays,
     bounces: settings.bounces, cache_spacing_m: settings.cache_spacing_m, cache_gather_rays: settings.cache_gather_rays, cell_m: settings.mockup.cell_m },
   totals, compartments: rows };
@@ -127,7 +127,7 @@ const md = [
   `# Tern bake, ${date}`, "",
   "Written by `tools/mockups/bake_ship.mjs` (openspec/changes/light-baking, design section 15): the deck plan baking every compartment with",
   "`lightbake.js`, alone, doors closed, the three lighting states from one set of rays, at `data/lighting/bake.json`'s final settings,",
-  `the shell split to ${settings.mockup.cell_m} m cells. ${report.machine}. **Times say nothing about a Pi 5 or the engine baker.**`, "",
+  `the shell split to ${settings.mockup.cell_m} m cells. ${report.machine}. **Times say nothing about the engine baker.**`, "",
   `Totals: ${totals.compartments} compartments, ${fmt(totals.floor_m2)} m^2 of floor, ${totals.lamps} lamps (${totals.emergencyLamps} on the emergency bus), ${totals.strips} cove strips;`,
   `${fmt(totals.roomTriangles)} triangles in the rooms, ${fmt(totals.splitAdded)} of them added by the split; ${fmt(totals.vertices)} vertices baked; ${fmt(totals.rays)} rays;`,
   `${(totals.bakeMs / 1000).toFixed(0)} s of baking (${totals.wall_s} s from opening the page).`, "",

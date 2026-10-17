@@ -366,58 +366,67 @@ decks are and nothing new is invented for it.
   if the per-vertex cost shows on the Pi). The whole bake, inside and probes, took about 180 s and 59 million rays on
   this cloud machine's CPU in one browser thread: not a Pi 5 and not the station build's baker.
 
-## 8b. The bay's bake in the engine
+## 8b. The stations' bake in the engine
 
-The owner, 2026-10-16: "when youre done, implement all this in the game". The engine has no baker yet (`light-baking`
-design 10), and the Tern's decks reach it the same way: the deck plan bakes them, `tools/deck/export_deck.mjs` carries
-the result across and `sc-tools deckc` packs it. The bay takes that road, so the bay in the game is the bay the owner
-saw in the mockup, its light included, and the mockup stays the one implementation of the bay's geometry and fixtures
-until the station generator grows its own (CLAUDE.md 6.1; tasks 2.3).
+The owner, 2026-10-16: "when youre done, implement all this in the game", and 2026-10-17, on the open questions: "ok go
+do it, disregard pi measurements, we dont care about pi performance" (CLAUDE.md 2). The engine has no baker yet
+(`light-baking` design 10), and the Tern's decks reach it the same way: the deck plan bakes them,
+`tools/deck/export_deck.mjs` carries the result across and `sc-tools deckc` packs it. The stations take that road, so
+each station in the game is the one the owner saw in the mockup, its light included, and the mockup stays the one
+implementation of their geometry and fixtures until the station generators grow their own (CLAUDE.md 6.1; tasks 2.3).
 
 - **Export.** `tools/stations/export_bays.mjs` opens `docs/mockups/spacedock.html` headless, waits for the bays' bakes
   (from `docs/mockups/cache/spacedock-bake.bin`, seconds when it matches) and calls the page's
-  `SPACEDOCK_EXPORT_BAYS(["E"])`. Per version it writes into `build/stations/`: the baked inside (positions in the
-  station's frame, normals, texture coordinates in layer spans, layers, indices, and the three states' colours as the
-  linear multipliers the page draws, its paints included), the fixtures' faces (the glow mesh, its three states' colours
-  as `restateGlow` sets them), the probe grids (`origin_m`, `spacing_m`, `dims`, 54 bytes of cube and a valid byte a
-  probe) and the texture layers the inside samples, cut out of the panel array. Only E by default: A-D are drawn as
-  placeholders with their doors shut (tasks 2.3), so no one can see into them; `--versions A,B,C,D,E` exports them all
-  for the day their generators land.
+  `SPACEDOCK_EXPORT_BAYS(["A", "B", "C", "D", "E"])`. Per version it writes into `build/stations/`: the baked inside
+  (positions in the station's frame, normals, texture coordinates in layer spans, layers, indices, and the three states'
+  colours as the linear multipliers the page draws, its paints included), the fixtures' faces (the glow mesh, its three
+  states' colours as `restateGlow` sets them) and the probe grids (`origin_m`, `spacing_m`, `dims`, 54 bytes of cube and
+  a valid byte a probe). For A-D also the outside with its doors shut (its paints as colours; a flag a vertex: its own
+  light, a face looking into the bay's air, or the outside proper) and the poses of its docked ships by their fleet key.
+  And the texture layers all of them sample, cut out of the panel array.
 - **Pack.** `sc-tools bayc` writes `compiled/stations.bays` (gitignored, like the deck): `sc-core::bay`'s format, magic
-  `SCBY`, a JSON index and the blobs. Each mesh is packed with the deck's one vertex packer (`sc-core::vertex`) and
-  colour byte (`deckc`'s), its positions about its own centre and divided by a per-mesh scale so the bay's 620 m fit
-  the vertex's +/-32 (E's inside at 32: 3 cm steps). Its texture is a small array of its own (the layers it uses, a full
-  mip chain), so the station needs nothing from the deck file. The browser build does not carry it: it draws no
-  station yet (the stations' textures under `assets/` are not in its file system), and the file would add 3.0 MB
-  gzipped to every load; it joins `tools/web/release.sh` with the stations.
-- **Draw.** The client loads the file when it is there (`stations.rs`); without it the stand-in light of 2.4 shows,
-  and it says so once. E's inside is then the baked bay plus the engine's own throat (not in the mockup's bake yet),
-  its glow the mockup's fixtures' faces plus the throat's and the mouth's rings. The station's state weights pick the
-  normal, alert or emergency colours, as a deck's compartment does (only normal until the station has an alert of its
-  own: tasks 2.6). Two draws more than the stand-in: the baked inside and its glow, beside the throat's own two.
+  `SCBY`, version 2, a JSON index and the blobs. Each mesh is packed with the deck's one vertex packer (`sc-core::vertex`)
+  and colour byte (`deckc`'s), its positions about its own centre and divided by the smallest power of two that fits
+  them in the vertex's +/-32 (E's inside at 16: 1.6 cm steps; A's 1.7 km hall at 32); a panel spanning more than 30
+  texture repeats is halved until it fits, so the picture is unchanged. The outside's flag rides in a colour's alpha
+  (0 its own light, 128 facing into the bay). Its texture is a small array of its own (six 256 px layers with a full mip
+  chain), so the stations need nothing from the deck file.
+- **Draw** (`stations.rs`). The client loads the file when it is there; without it the stand-ins show, and it says so.
+  **E** keeps its own outside (the pair, the hub, the mouth's ring and the dome's guide rings); its bay and its throat
+  are the file's. **A-D** are the file's whole: the placeholders give way, keeping only their beacons. Their outsides'
+  paints are lit at load by the star and Tamsin's earthshine from where each station stands (the rule E's outside is
+  lit by), and a face looking into the bay (a shut door's inner face) by the bay's probes in front of it instead, since
+  no star reaches it. The station's state weights pick the normal, alert or emergency colours, as a deck's compartment
+  does (only normal until a station has an alert of its own: tasks 2.6).
+- **The throat is baked with the bay** (2026-10-17): its wall, its rings every 40 m (`throat_ring`) and its eight
+  strips (`throat_strip`) are in E's bake, the iris open as when a ship passes, and the probe grid runs from the back
+  wall to the mouth. The engine's stand-in throat is gone.
 - **The Tern's own berth stays clear overhead** (found 2026-10-16 in the first engine captures): the mockup's berths
   carry two portal frames and a gantry across the ship 24-36 m up, and the Tern's departure rises straight off the wall
   (patrol-mission 4.1), so it would have flown up through its own. As the engine's stand-in already did, the Tern's
   berth keeps its columns and its gantry stands upright at the berth's side: no beam over the ship, the frames' work
   lights on the columns' heads and the gantry's at its head. Every other berth keeps its frames and gantry.
-- **The hulls from the probes.** Inside the bay a hull takes the cube the probes give at its middle (`sc-core::probes`
-  `sample_ship`, the deck crew's rule), turned into the hull's own frame, instead of the stand-in "light from its own
-  up". It needs no new shader: the hull's relight (patrol-mission 11.3) already divides the exterior bake's light out
-  and multiplies an ambient cube in (`relight`'s tint, nebula-skies 6), so the cube rides in the tint with the star off:
-  `colour = baked x cube(n) / light_baked(n)`. A pool's light is held under `hull_probe_max` (data), as the mockup holds
-  it, since a hull's texture carries its own shading. **The throat** has no probes: there the hull's light runs from the
-  cube at the iris to the star's over the throat (iris to mouth), as a straight blend of the two (both are linear in the
-  shader's light term), so leaving the station the light changes as the Tern comes out into the sun (8a).
-- **One cube a hull, not one a vertex.** The mockup lights each vertex; the engine lights each hull from the cube at its
-  middle (8a allowed it: "the engine may light a hull per object instead"), so a Heron in its berth's pool is lit as
-  the pool is at its middle, and the Tern crossing the bay changes as a whole. A per-vertex light would need the hull's
-  colours rewritten when it moves, or a probe lookup in the shader (a texture of probes), and is the next step if the
-  owner wants the pools to slide along a hull.
-- **Cost** (section 9): E's baked inside replaces the stand-in's bay: 55,305 triangles and 64,149 vertices (82,390 once packed, where a texture shift splits a vertex: 2.3 MB at 28
-  bytes, against the stand-in's about 15,500 triangles), the glow mesh as the mockup's (about 3,300 triangles); the
-  probes 55,023 at 55 bytes, 3.0 MB of client memory while the station is loaded; the texture six 256 px layers with
-  their mips (about 0.35 MB a layer, 2.1 MB). Two draws added (the baked inside and its glow, beside the throat's). Per frame, a probe lookup for each hull in the bay (eight at most):
-  nothing measurable. `compiled/stations.bays` is 8.6 MB (3.0 MB gzipped). Not measured on a Pi.
+- **Every hull in a bay is lit at each vertex from the probes** (S12, the owner's go-ahead, 2026-10-17), as the mockup
+  lights it: the Tern and every docked Tern-class ship (the Herons in their liveries) in every version's bay. For each
+  place a hull stands, `hull.rs` makes a copy of its mesh whose colours carry the light: each vertex's exterior bake
+  divided out and the probes' cube at that vertex multiplied in (`sc-core::probes` `sample_ship`, the deck crew's rule;
+  each axis held under `hull_probe_max`, data, since a hull's texture carries its own shading). Down E's throat the
+  star's light takes a share rising from 0 at the iris to 1 at the mouth, blended per vertex the way the shader's
+  relight lights a hull outside, so the Tern comes out into the sun. A docked ship's copy is made once; the Tern's is
+  made again when it has moved a metre or turned a hundredth (twelve copies kept, the least recently drawn giving way).
+  No shader changed and no buffer is rewritten.
+- **Seeing them** (tasks 2.9): A-D lie far off the patrol's route, so `sc-client --headless --station-shots DIR` draws
+  every station with the game's `StationsView`, outside and from inside its bay, from the mockup's own cameras
+  (`CAMS`), the Tern-class ships at their berths; the patrol's headless shots show E's bay from the bridge's windows and
+  from out in the bay (`p3b`, `p3c`).
+- **Two-sided where the page is** (found 2026-10-17 in the engine captures: the bays' ring strips were missing): the page
+  draws the glow and the outsides two-sided and the engine culls back faces, so the export sends each of their triangles
+  both ways, the turned copy with its normal turned (and its outside flag judged for that side).
+- **Cost** (information, CLAUDE.md 2): `compiled/stations.bays` is 49.1 MB (all five: insides 47,700-73,400 triangles
+  each, the glows and A-D's outsides two-sided, 338,000 probes in all); a station's meshes and probes are held while the system is
+  loaded. A probe-lit hull copy is the hull's vertex buffer again (about 0.4 MB each, twelve at most); making one is a
+  probe lookup a vertex. The browser build does not carry the file: it cannot reach the patrol yet (a solo game there
+  is the Hound drill and the lobby has no mission choice), so no station is ever drawn there (S15).
 
 ## 9. The Pi 5 budget
 
@@ -524,7 +533,7 @@ becomes E.
 | S8 | E's cylinders: their size and spin | 6.4 km by 1.8 km at 1 rpm (1 g at the floor), smaller than Island Three, the pair 9.5 km apart so the petals clear; textures are atlases, not layers of the array, so no layer is renumbered. Recommendation taken (ask only with screenshots) |
 | S9 | E's port: which end, and does every cylinder have one | Cylinder 0's sunward dome only (section 5a, why the sunward end); the other cylinder's axis keeps its bearing. Recommendation taken (ask only with screenshots) |
 | S11 | How the bay is lit (owner, 2026-10-15: "we should have some baked lighting in the interior hanger bay") | Baked, by `light-baking`'s rules: the bay's rings, floods, berth work lights and window tiers as fixtures, three states, probes lighting every ship in the bay including the Tern's hull (section 8a). Recommendation taken (ask only with screenshots) |
-| S12 | A hull in the bay: lit from one probe cube at its middle, or at every vertex as the mockup does (the pools sliding along it as it crosses the bay) | One cube a hull, until a Pi measurement shows a light per vertex is affordable (8b); compare `docs/screenshots/engine/stations/10-baked-bay-tern-in-its-berth.jpg` with `docs/screenshots/mockups/spacedock-E-crossing.png`. Recommendation taken; the owner's to change on those screenshots |
+| S12 | A hull in the bay: lit from one probe cube at its middle, or at every vertex as the mockup does (the pools sliding along it as it crosses the bay) | **Decided by the owner**, 2026-10-17: "ok go do it, disregard pi measurements". Every vertex, in every bay (8b) |
 | S13 | The Tern's own berth in E: the mockup's portal frames and gantry over it, or open overhead | Open overhead: its departure rises straight off the wall (patrol-mission 4.1), so it would fly through them (8b; `spacedock-E-bay.png`). Recommendation taken (it follows a decided rule) |
-| S14 | The berths' probe grids: 5 m (55,023 probes, 3.0 MB) or 10 m (about 27,000, 1.5 MB) | 5 m until the Pi's memory measurement says otherwise. Recommendation taken (ask only with screenshots) |
-| S15 | The browser build: carry `compiled/stations.bays` (3.0 MB gzipped a load) | Not until the browser build draws stations (their textures are not in its file system). Recommendation taken (ask only with screenshots) |
+| S14 | The berths' probe grids: 5 m (55,023 probes, 3.0 MB) or 10 m (about 27,000, 1.5 MB) | 5 m: the Pi is not a performance target (owner, 2026-10-17, CLAUDE.md 2) |
+| S15 | The browser build: carry `compiled/stations.bays` | Not until the browser build can reach the patrol (a solo game there is the Hound drill and the lobby has no mission choice, so no station is drawn there); then it ships the file and the stations' textures with it. Recommendation taken (ask only with screenshots) |
