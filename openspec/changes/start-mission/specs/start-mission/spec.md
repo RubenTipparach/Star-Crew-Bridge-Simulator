@@ -2,14 +2,23 @@
 
 ## ADDED Requirements
 
-### Requirement: The round starts by itself when everyone is ready
+### Requirement: The round waits in Muster until START MISSION is pressed
 
-In Muster the drill SHALL move to Countdown once at least one player is seated, every seated player is ready, and, on
-foot, every person aboard is seated.
+In Muster the drill SHALL NOT move to Countdown by itself, however many are seated and ready. It SHALL move to
+Countdown only on a START MISSION request the server takes. READY SHALL stay a signal shown to the captain, not a
+trigger.
 
-#### Scenario: Everyone sits
-- **WHEN** the last person aboard sits at their station in Muster
-- **THEN** the countdown begins without anyone pressing START MISSION
+#### Scenario: Everyone sits and is ready
+- **WHEN** every person aboard is seated and ready in Muster and nobody presses START MISSION
+- **THEN** the drill stays in Muster and no countdown is shown
+
+#### Scenario: Sitting down on foot
+- **WHEN** the last person aboard sits at their station in Muster on foot
+- **THEN** they are marked ready and the drill stays in Muster
+
+#### Scenario: START MISSION is pressed
+- **WHEN** the player who may start presses START MISSION in Muster
+- **THEN** the countdown begins, and only then does the briefing show "Launch in"
 
 ### Requirement: The captain may start the mission without waiting
 
