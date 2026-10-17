@@ -72,6 +72,8 @@ for (const file of pages) {
   const name = path.basename(file, ".html");
   // A cloud session reaches the CDN through a TLS-inspecting proxy whose CA Chromium does not carry.
   const page = await browser.newPage({ viewport: { width: W, height: H }, ignoreHTTPSErrors: true });
+  // A heavy page under software GL (swiftshader, a cloud session) can take over 30 s for one shot.
+  page.setDefaultTimeout(180000);
   const errors = [];
   await serveCdnFromCache(page);
   page.on("pageerror", (e) => errors.push(String(e)));
