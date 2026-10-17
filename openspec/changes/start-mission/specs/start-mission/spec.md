@@ -6,7 +6,7 @@
 
 In Muster the drill SHALL NOT move to Countdown by itself, however many are seated and ready. It SHALL move to
 Countdown only on a START MISSION request the server takes. READY SHALL stay a signal shown to the captain, not a
-trigger.
+trigger. A bot SHALL be refused while a person is aboard; in a crew of bots alone a seated bot MAY start it.
 
 #### Scenario: Everyone sits and is ready
 - **WHEN** every person aboard is seated and ready in Muster and nobody presses START MISSION
@@ -24,7 +24,7 @@ trigger.
 
 In Muster the server SHALL move the drill to Countdown when a seated person sends START MISSION and either holds the
 captain's seat or no person holds it, whoever else is ready or seated. It SHALL refuse the request, changing nothing,
-from a bot, from a person not seated, from a seated person while another person holds the captain's seat, and outside
+from a bot while a person is aboard, from anyone not seated, from a seated person while another person holds the captain's seat, and outside
 Muster.
 
 #### Scenario: The captain starts with the crew still walking

@@ -33,10 +33,13 @@ Now:
   the press (as they already did: the briefing draws them only in Countdown). The briefing's READY in single player no
   longer says "Crew sitting down" (which promised a start when the crew sat): pressed, it reads "Ready", as it does in
   a crew.
-- **A bot never starts a round**, and a drill of bots alone waits in Muster forever, as a drill with nobody aboard
-  does. Every tool that used to let the round start by itself presses START MISSION as a player would: the scripted
-  `--shots` runs and the playtest already press the chip once it shows; the browser smoke (`tools/web/smoke.mjs`)
-  presses it; headless tests call `Drill::start_mission` or send `ClientMsg::StartMission`.
+- **A bot never starts a round a person is in.** With a person aboard, START MISSION is always a person's. A crew
+  of bots alone (a networking test's rig of `sc-bot`s, a scripted capture's `--bot`) has nobody to press it, so there
+  a bot presses it once every seated member has read the briefing (section 2's table). Every tool that used to let
+  the round start by itself presses START MISSION as a player would: the scripted `--shots` runs already press the
+  chip once it shows; the playtest presses it a moment after it shows; the browser smoke (`tools/web/smoke.mjs`)
+  clicks it, and taps it in its `--touch` run; headless tests call `Drill::start_mission` or send
+  `ClientMsg::StartMission`.
 - **On touch** the chip is the control: it sits in the console's title band, 202 x 24 lp, a finger's tap on it sends
   the request (the band's hit areas take a tap as a click), and no keyboard is needed. The smoke's `--touch` run
   presses it with a tap.
@@ -52,7 +55,7 @@ A request is taken only when all of these hold, else refused and nothing changes
 | Check | Refused with |
 | --- | --- |
 | The drill is in Muster (in Countdown the start is already under way) | `WrongPhase` ("Not now") |
-| The sender is a person, not a bot client | `NotYourStation` |
+| The sender is a person, or a bot in a crew with no person aboard | `NotYourStation` |
 | The sender is seated at a station (the control is on a console) | `NotYourStation` |
 | The sender holds the captain's seat, or no person holds it | `CaptainsCall` ("Captain's call") |
 
@@ -62,7 +65,7 @@ The last row is the owner's "captain can start", made to hold in every crew:
 - **No person is captain** (an NPC or automation holds the seat): any seated person may start. In single player that is
   the player, at any seat: "it doesnt matter".
 
-A bot never starts a round: it is ready once seated, which the chip's count shows.
+A bot never starts a round a person is in: it is ready once seated, which the chip's count shows.
 
 ## 3. One rule
 

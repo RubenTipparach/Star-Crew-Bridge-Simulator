@@ -250,6 +250,8 @@ pub struct DrillApp {
     bridge: Option<crate::drill_bridge::BridgeView>,
     /// The overview of the bridge is up (V).
     overview: bool,
+    /// `--playtest`: when START MISSION first showed, and when the script last pressed it (local seconds).
+    playtest_start: Option<(f64, f64)>,
     /// The scripted shots: since when this player's body, and another's, has been seen walking.
     walk_seen: (Option<f64>, Option<f64>),
     /// The game menu on Esc (game-menu), and the options it sets.
@@ -464,6 +466,7 @@ impl DrillApp {
             main_rig: console::rig::FeedRig::default(),
             bridge: None,
             overview: args_watch,
+            playtest_start: None,
             walk_seen: (None, None),
             menu: Default::default(),
             options: crate::options::Options::load(),
@@ -871,6 +874,22 @@ impl DrillApp {
         // A UI run presses READY itself, after its menus are shot over the briefing (design 18a).
         if muster && self.tour.is_none() && self.session.as_ref().is_some_and(|s| !s.ready()) {
             self.ready_held = true;
+        }
+        // The round waits for START MISSION (start-mission 1): the script presses it 5 s after the chip shows, as a
+        // player who read the band would (and a recording sees the round wait), and again each 2 s while it stays up
+        // (a press lost to a reconnect).
+        let shown = muster && self.start_seen.is_some();
+        let seen =
+            if shown { *self.playtest_start.get_or_insert((self.time_s, f64::NEG_INFINITY)) } else { (0.0, 0.0) };
+        if shown && self.time_s - seen.0 >= 5.0 && self.time_s - seen.1 >= 2.0 {
+            if let Some(s) = self.session.as_ref() {
+                println!("sc-client: playtest: pressed START MISSION");
+                s.start_mission();
+            }
+            self.playtest_start = Some((seen.0, self.time_s));
+        }
+        if !shown {
+            self.playtest_start = None;
         }
         if at.stand {
             if st == Station::Engineering {
@@ -2442,7 +2461,15 @@ impl App for DrillApp {
             if let Some(v) = console_view.as_ref() {
                 // A long press's finger is the hover on a touch screen (touch-controls 4): the tip shows there.
                 let hover = finger_hover.or_else(|| ctx.input(|i| i.pointer.hover_pos()));
-                painted = Some(console::paint(ctx, v, true, hover));
+                let p = console::paint(ctx, v, true, hover);
+                // START MISSION is said where it is drawn, so the browser's smoke test can press it by thumb.
+                if v.start.is_some() {
+                    let want = Some(console::kit::Hit::Act(console::kit::Act::Start));
+                    if let Some(r) = p.0.regions.iter().rev().find(|r| r.hit == want) {
+                        crate::ui::mark_rect(ctx, "START MISSION", r.rect);
+                    }
+                }
+                painted = Some(p);
                 ctx.input(|i| {
                     for e in &i.events {
                         match e {
@@ -2505,6 +2532,7 @@ impl App for DrillApp {
         let mut start_now = start_shown && !self.menu.open() && self.pressed.contains(&self.bindings.start_key);
         if let Some((hits, _)) = painted.as_ref().filter(|_| start_shown) {
             if crate::seat::band_pressed(hits, &self.pointer, &crate::console::kit::Act::Start) {
+                println!("sc-client: ui clicked START MISSION");
                 self.pointer.clear();
                 start_now = true;
             }

@@ -7,7 +7,8 @@
  * (SwiftShader), waits for the front menu, presses Enter (Single Player) and Enter again (Beam aboard), and reads the
  * client's console. Beam aboard hosts the drill in the page on the local link: the test passes when the page says it
  * hosts single player, the bridge for the crew on foot is loaded, and, once the body has walked up the corridor on the
- * keys and sat at the first seat in reach (the round waits for it on foot), the round runs as far as Engage, with no
+ * keys and sat at the first seat in reach, and START MISSION is clicked where the engine drew it (the round never
+ * starts by itself: openspec/changes/start-mission design 1), the round runs as far as Engage, with no
  * fallback and no page error. "no ship (" means the client fell back to first light's test room (a missing data
  * file did exactly that on 2026-10-13, and the release still went out, because nothing ran the page before pushing
  * it); "no bridge to walk" or "no walk on foot" means the game came up without the ship to walk.
@@ -167,6 +168,17 @@ async function playByTouch() {
     sat = after(n, "sc-client: sat at ");
   }
   if (!sat) throw new Error("USE never sat the body down");
+  // The round waits for START MISSION (start-mission 1): a tap on the chip where the engine drew it in the title band.
+  await page.waitForTimeout(1500);
+  await snap("5b-start-mission.png");
+  let started = false;
+  for (let tries = 0; tries < 3 && !started; tries++) {
+    const m = lines.length;
+    await tapAt("START MISSION");
+    for (let i = 0; i < 20 && !after(m, "sc-client: ui clicked START MISSION"); i++) await page.waitForTimeout(250);
+    started = after(m, "sc-client: ui clicked START MISSION");
+  }
+  if (!started) throw new Error("a tap on START MISSION did not land");
   await wait(() => lines.some((l) => /sc-client: round \d+ Engage/.test(l)), "the round to reach Engage");
   await page.waitForTimeout(2000);
   await snap("6-seated-the-console.png");
@@ -329,6 +341,18 @@ try {
       await page.keyboard.press("e");
       await page.waitForTimeout(4000);
     }
+    // The round waits for START MISSION (start-mission 1): click it where the engine drew it.
+    const where = (label) => {
+      const re = new RegExp(`^sc-client: ui ${label} at (-?\\d+) (-?\\d+) (\\d+) (\\d+)$`);
+      const l = lines.filter((x) => re.test(x)).pop();
+      return l ? l.match(re).slice(1, 5).map(Number) : null;
+    };
+    for (let tries = 0; tries < 6 && !lines.some((l) => l.includes("sc-client: ui clicked START MISSION")) && !broken(); tries++) {
+      await page.waitForTimeout(2000);
+      const r = where("START MISSION");
+      if (r) await page.mouse.click(r[0] + r[2] / 2, r[1] + r[3] / 2);
+    }
+    if (!lines.some((l) => l.includes("sc-client: ui clicked START MISSION"))) throw new Error("START MISSION was never pressed");
     await wait(() => engaged() || broken(), "the round to reach Engage");
     if (shot) await page.screenshot({ path: shot });
     if (broken() || !hosted() || !engaged()) {

@@ -1814,6 +1814,8 @@ mod tests {
         d.claim(t, Station::Tactical).unwrap();
         d.set_ready(h, true).unwrap();
         d.set_ready(t, true).unwrap();
+        // The round waits for START MISSION (start-mission 1): no person is captain, so the helm presses it.
+        d.start_mission(h).unwrap();
         for _ in 0..(TICK_HZ as usize * 10) {
             d.step();
             if d.phase == Phase::Engage {
