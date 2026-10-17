@@ -97,6 +97,8 @@ pub struct GameMenu {
     rows: Vec<Row>,
     /// When it opened, egui's clock: the scrim and the panel come in over `panel_in` (design 8).
     opened: Option<f64>,
+    /// The focus slab's slide (design 18a), with the list it slides on.
+    slide: (String, crate::motion::Slide),
 }
 
 // Not derived: `web` is true in the browser build, where clippy (run for the desktop) does not look.
@@ -109,6 +111,7 @@ impl Default for GameMenu {
             screen: crate::options::Screen::default(),
             rows: rows(false),
             opened: None,
+            slide: Default::default(),
         }
     }
 }
@@ -187,7 +190,7 @@ impl GameMenu {
         self.rows = rows(v.seated);
         let now = ctx.input(|i| i.time);
         let since = *self.opened.get_or_insert(now);
-        let fade = ((now - since) * 1000.0 / f64::from(look().f.motion_ms.panel_in)).clamp(0.0, 1.0) as f32;
+        let fade = crate::motion::eased(now - since, look().f.motion_ms.panel_in, look().f.motion_ease.panel_in);
         let (up, down, enter) = ctx.input(|i| {
             (
                 i.key_pressed(egui::Key::ArrowUp) || i.key_pressed(egui::Key::ArrowLeft),
@@ -243,13 +246,27 @@ impl GameMenu {
                 focus = (focus + 1) % n;
             }
             let mut pressed = enter.then_some(focus);
-            for (i, w) in words.iter().enumerate() {
+            // The pointer moves the focus first, so the slab is drawn under the item that has it (design 18a); a new
+            // list (another page) starts its slab where its focus is.
+            let hits: Vec<egui::Response> = words
+                .iter()
+                .enumerate()
+                .map(|(i, w)| {
+                    let r = hit(ui, k.r(64.0, 306.0 + i as f32 * item_h, 520.0, item_h), w);
+                    if r.hovered() && ui.input(|inp| inp.pointer.delta() != Vec2::ZERO) {
+                        focus = i;
+                    }
+                    r
+                })
+                .collect();
+            let list = words.join("|");
+            if self.slide.0 != list {
+                self.slide = (list, crate::motion::Slide::default());
+            }
+            k.focus_slab(&mut self.slide.1, 64.0, 306.0 + focus as f32 * item_h, 520.0, ui.input(|i| i.time));
+            for (i, (w, r)) in words.iter().zip(&hits).enumerate() {
                 let y = 306.0 + i as f32 * item_h;
-                let r = hit(ui, k.r(64.0, y, 520.0, item_h), w);
-                if r.hovered() && ui.input(|inp| inp.pointer.delta() != Vec2::ZERO) {
-                    focus = i;
-                }
-                k.item(64.0, y, 520.0, w, i == focus, Role::Title);
+                k.item(64.0, y, w, i == focus, Role::Title);
                 if r.clicked() {
                     pressed = Some(i);
                 }

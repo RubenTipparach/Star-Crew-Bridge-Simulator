@@ -4990,7 +4990,7 @@
 <div id="tip"></div>
 <div id="tripb"></div>
 <div id="hitb"></div>
-<div id="viewsw"><button type="button" data-v="3d" data-tip="The ship in 3D">3D</button><button type="button" data-v="2d" data-tip="The schematic as a circuit board, a board a deck">2D</button></div>
+<div id="viewsw"><button type="button" data-v="3d" data-tip="The ship in 3D">3D</button><button type="button" data-v="2d" data-tip="The power plan, one board a deck">2D</button></div>
 <button id="collapse" type="button" data-tip="Collapse: back to the Engineering console's side panel"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14h6v6M20 10h-6V4M10 14l-7 7M14 10l7-7"/></svg>CONSOLE</button>
 <script type="module">
 import * as THREE from "three";
@@ -5265,14 +5265,14 @@ function status() {
   const rcol = rv.tripped ? C.danger : rv.live >= rv.limit ? C.emergency : C.text;
   STATUS.innerHTML =
     (st.alert === "red_alert" ? `<span class="alert" data-tip="Red alert"></span>` : "") +
-    `<span class="k" data-tip="Reactor: ${esc(rx.state)}, throttle ${pct(rx.throttle)}">${svgIcon("core", 20, up ? C.power : C.danger)}${up ? pct(rx.throttle) : rx.state === "igniting" ? "IGNITE" : "SCRAM"}</span>` +
+    `<span class="k" data-tip="Reactor: ${esc(rx.state)}, throttle ${pct(rx.throttle)}">${svgIcon("core", 20, up ? C.power : C.danger)}${up ? pct(rx.throttle) : rx.state === "igniting" ? "IGNITE" : "OFF"}</span>` +
     `<span class="k" data-tip="Battery: ${st.battery.soc_mj.toFixed(0)} of ${PW.battery.capacity_mj} MJ, reserve ${PW.battery.restart_reserve_mj} MJ">${svgIcon("battery", 20, st.battery.out_mw > 0.05 ? C.emergency : C.power)}${pct(soc)}</span>` +
     `<span class="k" data-tip="Delivered of wanted">${svgIcon("bolt", 20, got < want - 0.05 ? C.danger : C.power)}${f1(got)} / ${f1(want)} MW</span>` +
-    `<span class="k" style="color:${rcol}" data-tip="Live runs against what the main protection allows; one more trips the grid">${svgIcon("switch", 20, rcol)}${rv.tripped ? "TRIPPED" : `${rv.live} / ${rv.limit}`}</span>`;
+    `<span class="k" style="color:${rcol}" data-tip="Live cables of the most the grid carries: one more trips it">${svgIcon("switch", 20, rcol)}${rv.tripped ? "TRIPPED" : `${rv.live} / ${rv.limit}`}</span>`;
   const off = offlineNow();
   if (off.length) STATUS.innerHTML += `<span class="k" style="color:${C.danger}" data-tip="Offline: ${esc(off.join(", "))}">${svgIcon("offline", 20, C.danger)}${off.length} offline</span>`;
   TRIPB.style.display = rv.tripped ? "block" : "none";
-  if (rv.tripped) TRIPB.innerHTML = `TRIPPED<small>factory settings in ${Math.ceil(rv.trip_s)} s</small>`;
+  if (rv.tripped) TRIPB.innerHTML = `TRIPPED<small>resets in ${Math.ceil(rv.trip_s)} s</small>`;
 }
 function legend() {
   const sw = (inner, w = 34) => `<svg width="${w}" height="18" viewBox="0 0 ${w} 18">${inner}</svg>`;
@@ -5281,13 +5281,13 @@ function legend() {
   const misc = SUB.families.find((f) => f.default).colour;
   const sysDot = (fill, rim, hatch) => sw(`<circle cx="17" cy="9" r="7" fill="${C.bg}" stroke="${rim}" stroke-width="2.5"/>` + (fill ? `<path d="M10 ${9 + 7 - 14 * fill}h14v${14 * fill}h-14z" fill="${misc}" clip-path="circle(6px at 17px 9px)"/>` : `<circle cx="17" cy="9" r="2.4" fill="${misc}"/>`) + (hatch ? `<path d="M12 4l4 0M11 7l8 0" stroke="${misc}" stroke-width="1.5" opacity="0.6"/>` : ""));
   document.getElementById("legend").innerHTML =
-    `<div class="h">BOXES (tap to switch)</div>` +
+    `<div class="h">POWER BOXES</div>` +
     row(sw(`<rect x="9" y="1" width="16" height="16" fill="${C.power}" stroke="${C.power}"/>`), "Switchboard or panel, on") +
     row(sw(`<rect x="11" y="3" width="12" height="12" fill="${C.power}" stroke="${C.power}"/>`), "Conduit box, on") +
     row(sw(`<rect x="11" y="3" width="12" height="12" fill="${C.faint}" stroke="${C.faint}"/>`), "On, nothing reaches it") +
     row(sw(`<rect x="11" y="3" width="12" height="12" fill="${C.bg}" stroke="${C.dim}" stroke-width="2"/>`), "Switched off") +
     row(sw(`<rect x="10" y="2" width="14" height="14" fill="${C.bg}" stroke="${C.danger}" stroke-width="2"/><path d="M12 4l10 10M22 4L12 14" stroke="${C.danger}" stroke-width="2"/>`), "Destroyed") +
-    `<div class="h">RUNS (tap to switch)</div>` +
+    `<div class="h">CABLES</div>` +
     row(sw(`<path d="M1 9h32" stroke="${C.power}" stroke-width="5" stroke-dasharray="8 3"/>`), "Power flowing: wider the more it carries") +
     row(sw(`<path d="M1 9h32" stroke="${C.spare}" stroke-width="3" stroke-dasharray="3 6"/>`), "Open: a spare route, or switched off") +
     row(sw(`<path d="M1 9h32" stroke="${C.faint}" stroke-width="3" stroke-dasharray="3 3"/>`), "Dead: nothing reaches it") +
@@ -6239,7 +6239,7 @@ function drawReactor() {
   s += `<circle cx="${x}" cy="${y}" r="${R}" fill="${PCB.body}" stroke="${col}" stroke-width="2.4"/>`;
   s += `<path d="${arc(-220, 40, R - 9)}" stroke="#1c2734" stroke-width="7" fill="none" stroke-linecap="round"/>`;
   if (up) s += `<path d="${arc(-220, a, R - 9)}" stroke="${col}" stroke-width="7" fill="none" stroke-linecap="round"/>`;
-  s += txt(x, y + 5, 15, up ? C.text : col, up ? pct(r.throttle) : r.state === "igniting" ? "IGNITE" : "SCRAM", { a: "middle" });
+  s += txt(x, y + 5, 15, up ? C.text : col, up ? pct(r.throttle) : r.state === "igniting" ? "IGNITE" : "OFF", { a: "middle" });
   if (r.integrity < 100) s += `<circle cx="${x}" cy="${y}" r="${R + 3}" fill="none" stroke="${C.danger}" stroke-width="2" stroke-dasharray="5 3"/>`;
   // Its name in the gauge's open bottom: every side of the part carries a trace.
   s += txt(x, y + 26, 8.5, PCB.silk, "REACTOR", { a: "middle", ls: 1 });
@@ -6286,7 +6286,7 @@ function drawKey() {
   const y = y0 + 96;
   s += `<circle cx="${x0 + 7}" cy="${y - 4}" r="6" fill="${PCB.hole}" stroke="${C.emergency}" stroke-width="2"/><circle cx="${x0 + 7}" cy="${y - 4}" r="2.2" fill="${PCB.silk}"/>` + txt(x0 + 20, y + 1, 11, PCB.silkDim, "SHORT", { ls: 1 });
   s += `<circle cx="${x0 + 90}" cy="${y - 4}" r="6" fill="${PCB.hole}" stroke="${C.danger}" stroke-width="2"/><circle cx="${x0 + 90}" cy="${y - 4}" r="2.2" fill="${PCB.silk}"/>` + txt(x0 + 103, y + 1, 11, PCB.silkDim, "NO POWER", { ls: 1 });
-  s += `<path d="M${x0 + 192} ${y - 10}l6 6-6 6-6-6z" fill="${PCB.hole}" stroke="${C.danger}" stroke-width="1.6"/>` + txt(x0 + 206, y + 1, 11, PCB.silkDim, "OFFLINE (DAMAGE)", { ls: 1 });
+  s += `<path d="M${x0 + 192} ${y - 10}l6 6-6 6-6-6z" fill="${PCB.hole}" stroke="${C.danger}" stroke-width="1.6"/>` + txt(x0 + 206, y + 1, 11, PCB.silkDim, "DAMAGED", { ls: 1 });
   return s;
 }
 /** The strip along the top: power delivered from the reactor and the battery against what the loads want. */
@@ -6417,7 +6417,7 @@ function placeLegend() {
 // COLLAPSE: on the console this schematic folds back into Engineering's side panel; here it says so.
 COLLAPSE.addEventListener("click", (e) => {
   const r = COLLAPSE.getBoundingClientRect();
-  showTip(r.left - 230, r.bottom, `<div class="n">Collapse</div><div class="d">Back to the Engineering console, where this schematic is its side panel</div>`);
+  showTip(r.left - 230, r.bottom, `<div class="n">Collapse</div><div class="d">Back to the Engineering console</div>`);
   e.stopPropagation();
 });
 addEventListener("resize", () => { resize(); placeLegend(); frameCamera(); });

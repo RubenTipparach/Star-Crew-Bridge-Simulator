@@ -218,7 +218,7 @@ mod tests {
             pages.push(("controls at a console", Page::Controls, Tab::Console, i));
         }
         for (name, page, tab, chip) in pages {
-            let mut s = Screen { page, tab, chip };
+            let mut s = Screen { page, tab, chip, ..Screen::default() };
             let mut o = Options::default();
             bad.extend(check(&format!("{name} {chip}"), |ctx| {
                 crate::look::screen_area(ctx, "options", egui::Order::Middle, |ui, screen| {

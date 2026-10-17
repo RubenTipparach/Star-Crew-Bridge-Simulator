@@ -1913,7 +1913,7 @@ impl Drill {
                     Some(Outcome::Victory)
                 } else if !self.ships[0].alive {
                     Some(Outcome::Defeat)
-                } else if self.phase_s >= self.data.mission.engage_limit_s {
+                } else if self.phase_s >= self.data.mission.fight_ends_s() {
                     Some(Outcome::Withdrew)
                 } else {
                     None
@@ -4387,7 +4387,7 @@ mod tests {
             won += usize::from(d.outcome == Outcome::Victory);
             // The owner, 2026-10-10: "this battle show go on much longer"; armour-and-missiles 6: 5-10 minutes.
             assert!(
-                (240.0..=d.data.mission.engage_limit_s + 0.5).contains(&d.stats.engage_s),
+                (240.0..=d.data.mission.safety_timeout_s + 0.5).contains(&d.stats.engage_s),
                 "seed {seed}: a fight runs 4-10 minutes, took {:.0} s",
                 d.stats.engage_s
             );

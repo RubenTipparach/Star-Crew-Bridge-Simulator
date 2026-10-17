@@ -133,7 +133,7 @@ fn power(cv: &Canvas, cx: &mut Ctx, e: &EngView) {
                 None,
             );
         }
-        let ptip = if g.prio == 0 { "Priority 0: never shed" } else { "Priority: 1 is fed first" };
+        let ptip = if g.prio == 0 { "Always powered" } else { "Priority: 1 is powered first and cut last" };
         cx.hits.add(
             &b,
             gx - 22.0,
@@ -148,7 +148,7 @@ fn power(cv: &Canvas, cx: &mut Ctx, e: &EngView) {
             feed_breaker(&b, cx, g, gx, ty + th + 58.0, brk);
         }
     }
-    let pre = [("CRUISE", "cruise"), ("COMBAT", "combat"), ("SILENT", "silent"), ("EMERG", "emergency")];
+    let pre = [("CRUISE", "cruise"), ("COMBAT", "combat"), ("SILENT", "silent"), ("EMERGENCY", "emergency")];
     let bw = (w - 24.0 - 3.0 * 8.0) / 4.0;
     for (i, (label, id)) in pre.iter().enumerate() {
         button(
@@ -410,7 +410,7 @@ fn reactor(cv: &Canvas, cx: &mut Ctx, e: &EngView) {
         hc,
         fl,
         t,
-        format!("Hot leg {:.0} K · {flow_tip}", cr.hot_k),
+        format!("Hot coolant {:.0} K · {flow_tip}", cr.hot_k),
     );
     pipe(
         &b,
@@ -419,7 +419,7 @@ fn reactor(cv: &Canvas, cx: &mut Ctx, e: &EngView) {
         hc,
         fl * through,
         t,
-        format!("Hot leg to the chiller: {}%", kit::js_round(through * 100.0)),
+        format!("Through the chiller: {}%", kit::js_round(through * 100.0)),
     );
     pipe(
         &b,
@@ -428,7 +428,7 @@ fn reactor(cv: &Canvas, cx: &mut Ctx, e: &EngView) {
         cold,
         fl * through,
         t,
-        format!("Cold leg {:.0} K", cr.cold_k),
+        format!("Cooled coolant {:.0} K", cr.cold_k),
     );
     pipe(
         &b,
@@ -437,7 +437,7 @@ fn reactor(cv: &Canvas, cx: &mut Ctx, e: &EngView) {
         cold,
         fl,
         t,
-        format!("Cold leg {:.0} K · {flow_tip}", cr.cold_k),
+        format!("Cooled coolant {:.0} K · {flow_tip}", cr.cold_k),
     );
     // The bypass: what the chiller does not take goes straight across.
     pipe(
@@ -447,7 +447,7 @@ fn reactor(cv: &Canvas, cx: &mut Ctx, e: &EngView) {
         mix_col(hc, cold, 0.5),
         fl * (1.0 - through),
         t,
-        format!("Bypass: {}%", kit::js_round((1.0 - through) * 100.0)),
+        format!("Past the chiller: {}%", kit::js_round((1.0 - through) * 100.0)),
     );
     valve(&b, mx, yb, 1.0 - through, c.text.0);
     // The core pumps on the cold leg, each turning at its speed.
@@ -471,7 +471,7 @@ fn reactor(cv: &Canvas, cx: &mut Ctx, e: &EngView) {
     }
     valve(&b, 52.0, 238.0, mv, cold);
     let mtip = format!(
-        "Makeup {} · loop {}% full",
+        "Top-up {} · loop {}% full",
         if mv > 0.02 { format!("open, {:.1} kg/s", cr.makeup_kg_s) } else { "shut".into() },
         kit::js_round(cr.inventory * 100.0)
     );
@@ -550,7 +550,7 @@ fn reactor(cv: &Canvas, cx: &mut Ctx, e: &EngView) {
             Some(format!("Target {}%", kit::js_round(r.target * 100.0))),
         );
     }
-    let word = if run { format!("{}%", kit::js_round(r.throttle * 100.0)) } else { "SCRAM".into() };
+    let word = if run { format!("{}%", kit::js_round(r.throttle * 100.0)) } else { "OFF".into() };
     b.text(
         mx,
         ty + if run { 8.0 } else { 6.0 },
@@ -589,7 +589,7 @@ fn reactor(cv: &Canvas, cx: &mut Ctx, e: &EngView) {
             y: 8.0,
             w: rw / 2.0 - 4.0,
             h: 48.0,
-            label: Some(if armed { "CONFIRM" } else { "SCRAM" }),
+            label: Some(if armed { "CONFIRM" } else { "STOP" }),
             act: run.then_some(Act::Scram),
             off: !run,
             col2: Some(c.danger.0),
@@ -598,7 +598,7 @@ fn reactor(cv: &Canvas, cx: &mut Ctx, e: &EngView) {
             col: Some(c.danger.0),
             fill: Some(rgba(0xff4757, 0.25)),
             fs: Some(14.0),
-            tip: Some(if run { "Scram: tap, then tap again" } else { "Restart at the reactor" }.into()),
+            tip: Some(if run { "Emergency stop: tap, then tap again" } else { "Restart at the reactor" }.into()),
             ..Default::default()
         },
     );
@@ -632,7 +632,7 @@ fn reactor(cv: &Canvas, cx: &mut Ctx, e: &EngView) {
         (cr.limit_k, 400.0, c.danger.0),
     ];
     let htip = format!(
-        "Hot leg {:.0} K (band {}-{}, scram {}) · cold leg {:.0} K",
+        "Hot coolant {:.0} K (safe {}-{}, stops at {}) · cooled {:.0} K",
         cr.hot_k,
         num(cr.hot_band_k[0]),
         num(cr.hot_band_k[1]),
@@ -718,7 +718,7 @@ fn reactor(cv: &Canvas, cx: &mut Ctx, e: &EngView) {
         1.0,
         mk_act,
         "makeup",
-        format!("Makeup valve: {}% open, {:.1} kg/s", kit::js_round(mv * 100.0), cr.makeup_kg_s),
+        format!("Top-up valve: {}% open, {:.1} kg/s", kit::js_round(mv * 100.0), cr.makeup_kg_s),
         auto,
     );
     button(
@@ -795,7 +795,7 @@ fn buses(cv: &Canvas, cx: &mut Ctx, e: &EngView) {
     if bs.cut > 0 {
         b.icon("breach", 18.0, h - 14.0, 14.0, c.danger.0);
         b.text(30.0, h - 9.0, 13.0, c.danger.0, &bs.cut.to_string(), T::default());
-        cx.hits.add(&b, 10.0, h - 22.0, 34.0, 18.0, None, Some("Cables cut: damage control splices them".into()));
+        cx.hits.add(&b, 10.0, h - 22.0, 34.0, 18.0, None, Some("Cables cut: damage control repairs them".into()));
     }
     // The live runs against the protection's limit (power-routing 2): the number the engineer routes by.
     let tripped = bs.trip_s > 0.0;
@@ -810,9 +810,9 @@ fn buses(cv: &Canvas, cx: &mut Ctx, e: &EngView) {
     let n = if tripped { format!("{} s", bs.trip_s.ceil()) } else { format!("{}/{}", bs.live, bs.limit) };
     b.text(w - 12.0, h - 9.0, 13.0, rc, &n, T::end());
     let tip = if tripped {
-        format!("Tripped: factory settings in {} s", bs.trip_s.ceil())
+        format!("Tripped: the grid resets in {} s", bs.trip_s.ceil())
     } else {
-        format!("Live runs: {} of the {} the protection allows", bs.live, bs.limit)
+        format!("Live cables: {} of {} before the grid trips", bs.live, bs.limit)
     };
     cx.hits.add(&b, w - 74.0, h - 22.0, 66.0, 18.0, None, Some(tip));
     // EXPAND: the schematic full screen.
@@ -883,7 +883,7 @@ fn unavailable(cv: &Canvas, cx: &mut Ctx) {
                 b.icon("bolt", 26.0, 22.0, 20.0, c.faint.0);
                 b.rect(50.0, 12.0, w - 200.0, 20.0, 4.0, rgba(0x16202c, 1.0), None);
                 b.text(w - 16.0, 28.0, 18.0, c.faint.0, "-- MW", T::end());
-                let pre = ["CRUISE", "COMBAT", "SILENT", "EMERG"];
+                let pre = ["CRUISE", "COMBAT", "SILENT", "EMERGENCY"];
                 let bw = (w - 24.0 - 3.0 * 8.0) / 4.0;
                 for (i, label) in pre.iter().enumerate() {
                     button(
@@ -920,7 +920,7 @@ fn unavailable(cv: &Canvas, cx: &mut Ctx) {
                         y: 8.0,
                         w: rw / 2.0 - 4.0,
                         h: 48.0,
-                        label: Some("SCRAM"),
+                        label: Some("STOP"),
                         off: true,
                         fs: Some(14.0),
                         ..Default::default()

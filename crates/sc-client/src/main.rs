@@ -14,7 +14,7 @@
 //! then. A HUD names the officer and what E and Q do at a lift.
 //!
 //! Usage: sc-client [--window] [--deck compiled/tern.deck] [--headless --shots DIR [--poses a,b]]
-//! [--headless --walk-test DIR] [--headless --lobby-test DIR] [--console-fixture STATE.json --shots DIR]
+//! [--headless --walk-test DIR] [--headless --lobby-test DIR] [--console-fixture STATE.json --shots DIR [--hover X,Y]]
 //!
 //! `--poses a,b` limits the headless shots to the named poses (no bot close-ups), each in the three states.
 //!
@@ -36,6 +36,7 @@ mod hud;
 mod hull;
 mod lobby;
 mod look;
+mod motion;
 mod nameplate;
 mod onfoot;
 mod options;
@@ -1569,6 +1570,10 @@ fn main() -> ExitCode {
             eprintln!("sc-client: --console-fixture needs --shots DIR");
             return ExitCode::from(2);
         };
+        let hover = value("--hover").and_then(|v| {
+            let (x, y) = v.to_str()?.split_once(',')?;
+            Some(egui::pos2(x.trim().parse().ok()?, y.trim().parse().ok()?))
+        });
         let cfg = WindowConfig {
             title: "Star Crew".into(),
             width: 1280,
@@ -1579,7 +1584,7 @@ fn main() -> ExitCode {
         };
         return platform::run(cfg, move |gl| {
             println!("sc-client: {} on {} ({})", gl.version, gl.renderer, gl.video_driver);
-            fixture::FixtureApp::new(state, dir).map(|c| Box::new(c) as Box<dyn App>)
+            fixture::FixtureApp::new(state, dir, hover).map(|c| Box::new(c) as Box<dyn App>)
         });
     }
     // The co-op drill (openspec/changes/coop-drill design 5): its own mode, joined by address.

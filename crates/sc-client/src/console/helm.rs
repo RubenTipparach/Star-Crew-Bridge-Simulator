@@ -99,7 +99,7 @@ fn thrust(cv: &Canvas, cx: &mut Ctx) {
         th + 18.0,
         [tx, ty, tw, th],
         Hit::Drag(Drag::Throttle),
-        "Forward speed: drag (W, S)",
+        "Forward speed: drag [W] [S]",
     );
     let (px, py) = (150.0f32, 74.0f32);
     let ps = w - px - 14.0;
@@ -129,7 +129,11 @@ fn thrust(cv: &Canvas, cx: &mut Ctx) {
         Color32::TRANSPARENT,
         Some(Pen::new(3.0, c.text.0)),
     );
-    let tip = format!("Strafe: drag (Z, C, Space, Ctrl). Now {:.0} m/s to starboard, {:.0} m/s up", -vb[0], vb[1]);
+    let tip = format!(
+        "Sideways and up: drag, now {:.0} m/s starboard, {:.0} m/s up [@helm.strafe_port] [@helm.strafe_starboard] [Space] [Left Ctrl]",
+        -vb[0],
+        vb[1]
+    );
     cx.hits.add_track(&b, px, py, ps, ps, [px, py, ps, ps], Hit::Drag(Drag::Strafe), &tip);
     b.icon("drive", px + ps / 2.0, py + ps + 22.0, 18.0, c.dim.0);
     kit::button(
@@ -145,7 +149,7 @@ fn thrust(cv: &Canvas, cx: &mut Ctx) {
             act: Some(Act::AllStop),
             col2: Some(c.danger.0),
             stroke: Some(alpha(c.danger.0, 0x88 as f32 / 255.0)),
-            tip: Some("All stop: speed and drift to zero (X)".into()),
+            tip: Some("All stop: speed and drift to zero [X]".into()),
             ..Default::default()
         },
     );
@@ -240,11 +244,13 @@ fn attitude(cv: &Canvas, cx: &mut Ctx) {
         let sx = mid + set.clamp(-1.0, 1.0) as f32 * (bwid / 2.0);
         b.seg(sx, by - 3.0, sx, by + 12.0, Pen::new(2.0, alpha(c.text.0, 0.7)));
         b.seg(mid, by - 2.0, mid, by + 11.0, Pen::new(1.0, c.dim.0));
-        let tip = format!("{} rate {:.1} deg/s", word.to_lowercase(), rate * v.flight.rate_dps[*ax]);
+        let tip = format!("{}: turning {:.1}\u{b0} a second", kit::title_case(word), rate * v.flight.rate_dps[*ax]);
         cx.hits.add(&b, x0, by - 3.0, bwid, 15.0, None, Some(tip));
     }
     if gimbal {
-        b.text(x0, h - 2.0, 11.0, c.warn.0, "ROLL IN YAW", T::default().ls(1.0));
+        b.text(x0, h - 2.0, 11.0, c.warn.0, "NOSE VERTICAL", T::default().ls(1.0));
+        let tip = "Nose straight up or down: roll turns like yaw";
+        cx.hits.add(&b, x0, h - 14.0, 100.0, 16.0, None, Some(tip.into()));
     }
 }
 
