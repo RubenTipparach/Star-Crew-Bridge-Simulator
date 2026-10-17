@@ -185,9 +185,10 @@ async function playByTouch() {
 /** The fit run (--fit): every size and pixel ratio, and full screen, by the mouse where the engine drew. */
 async function playFit() {
   // The engine's last word on where a control is, window coordinates (CSS px): [x, y, w, h].
-  const where = (label) => {
+  // `since`: only what it said from that line on (a page or size just changed, so an older word is stale).
+  const where = (label, since = 0) => {
     const re = new RegExp(`^sc-client: ui ${label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")} at (-?\\d+) (-?\\d+) (\\d+) (\\d+)$`);
-    const l = lines.filter((x) => re.test(x)).pop();
+    const l = lines.slice(since).filter((x) => re.test(x)).pop();
     return l ? l.match(re).slice(1, 5).map(Number) : null;
   };
   const after = (n, s) => lines.slice(n).some((l) => l.includes(s));
@@ -216,12 +217,19 @@ async function playFit() {
       if (!ok) throw new Error(`${what}: the engine's window does not follow the page (${JSON.stringify(p)}; ${lines.filter((l) => l.startsWith("sc-client: window ")).pop()})`);
     };
     /** Click `label` where the engine drew it; fail if it is off the page or the click does not land. */
+    // The line from which the engine's word on where things are is fresh: set before a resize and before each click
+    // that changes the page. The engine says where a control is only when it moves, and a frame at 5120 x 2160 pixels
+    // under software GL takes longer than the 0.6 s stillness, so the word from before the change looked settled
+    // (the PR #34 deploy clicked BACK where the last size had it).
+    let mark = 0;
     const click = async (label, what) => {
-      // Where it was last said, once it has stayed put for 0.6 s: a page that just changed size is still being laid out.
+      // Where it was said since the mark, once it has stayed put for 0.6 s: a page that just changed size is still
+      // being laid out. A control that did not move since (Resume, back on the game menu) says nothing new, so after
+      // 4 s with no fresh word its older one stands.
       let r = null;
-      for (let i = 0, still = 0; i < 40 && still < 3; i++) {
+      for (let i = 0, still = 0; i < 100 && still < 3; i++) {
         await pg.waitForTimeout(200);
-        const now = where(label);
+        const now = where(label, mark) || (i >= 20 ? where(label) : null);
         still = now && r && now.join() === r.join() ? still + 1 : 0;
         r = now;
       }
@@ -230,6 +238,7 @@ async function playFit() {
       const [x, y, w, h] = r;
       if (x < 0 || y < 0 || x + w > p.vw + 1 || y + h > p.vh + 1) throw new Error(`${what}: ${label} at ${r} is off the ${p.vw} x ${p.vh} page`);
       const n = lines.length;
+      mark = n;
       await pg.mouse.click(x + w / 2, y + h / 2);
       for (let i = 0; i < 20 && !after(n, `sc-client: ui clicked ${label}`); i++) await pg.waitForTimeout(150);
       if (!after(n, `sc-client: ui clicked ${label}`)) throw new Error(`${what}: a click at the centre of ${label} (${r}) did not land`);
@@ -239,6 +248,7 @@ async function playFit() {
     await wait(() => after(n0, "sc-client:"), "the client to start");
     await pg.waitForTimeout(3000);
     for (const [w, h] of SIZES) {
+      mark = lines.length;
       await pg.setViewportSize({ width: w, height: h });
       const what = `${w} x ${h} at ${ratio}`;
       await follows(what);
@@ -248,6 +258,7 @@ async function playFit() {
     }
     if (ratio === 2) {
       // Full screen, as itch's button does: the page fills the screen and the game follows.
+      mark = lines.length;
       await pg.setViewportSize({ width: 1280, height: 720 });
       await pg.evaluate(() => document.documentElement.requestFullscreen().catch(() => {}));
       await follows("full screen");
@@ -258,6 +269,7 @@ async function playFit() {
       await snap("fullscreen-aboard.png");
       await pg.evaluate(() => document.exitFullscreen().catch(() => {}));
       // In the game, at itch's embed: the game menu by Esc and the mouse.
+      mark = lines.length;
       await pg.setViewportSize({ width: 985, height: 455 });
       await follows("in the game at 985 x 455");
       await pg.keyboard.press("Escape");
