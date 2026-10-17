@@ -104,6 +104,8 @@ struct Tour {
     step: usize,
     since: f64,
     frames: u64,
+    /// The briefing's lowering captures taken, 0 to 3.
+    lowered: u8,
 }
 
 struct Meshes {
@@ -512,7 +514,7 @@ impl DrillApp {
             app.playtest = Some(crate::playtest::Playtest::ui_tour(app.args.station));
             // The run shows the first-time hint whatever this machine's settings say, and keeps nothing.
             app.options.first_steps_done = false;
-            app.tour = Some(Tour { frames: t.frame, args: t, step: 0, since: 0.0 });
+            app.tour = Some(Tour { frames: t.frame, args: t, step: 0, since: 0.0, lowered: 0 });
         } else if app.args.film && app.solo.is_some() {
             app.playtest = Some(crate::playtest::Playtest::film(app.args.station));
         } else if app.args.playtest && app.solo.is_some() {
@@ -866,7 +868,8 @@ impl DrillApp {
             }
         }
         let muster = self.session.as_ref().and_then(|s| s.latest()).is_some_and(|s| s.phase == Phase::Muster);
-        if muster && self.session.as_ref().is_some_and(|s| !s.ready()) {
+        // A UI run presses READY itself, after its menus are shot over the briefing (design 18a).
+        if muster && self.tour.is_none() && self.session.as_ref().is_some_and(|s| !s.ready()) {
             self.ready_held = true;
         }
         if at.stand {
@@ -1506,21 +1509,38 @@ impl DrillApp {
         }
         t.frames += 1;
         let now = self.time_s;
+        // The screens in order: the console comes straight after the briefing, so the round's start (and the briefing
+        // lowering into the desk, design 18a) is seen at the console; the menus are shot over the fight after it.
+        const ORDER: [usize; 12] = [0, 1, 2, 3, 4, 11, 5, 6, 7, 8, 9, 10];
+        let step = ORDER.get(t.step).copied().unwrap_or(usize::MAX);
         // How long a screen is held: long enough to read in the video, long enough for a fade in a capture; the console
         // a while into the fight.
-        let hold = match t.step {
+        let hold = match step {
             0 => 0.0,
             11 => 3.0,
             _ if video => 2.5,
             _ => 0.5,
         };
         let phase = self.session.as_ref().and_then(|s| s.latest()).map(|s| s.phase);
+        // The briefing lowering into the desk (design 18a): three captures on the way down.
+        if let (false, Some(at)) = (video, self.lowered_at) {
+            let k = ((now - at) / (f64::from(crate::look::look().f.motion_ms.briefing_lower) / 1000.0) * 4.0) as u8;
+            if (1..=3).contains(&k) && t.lowered < k {
+                t.lowered = k;
+                let path = t.args.dir.join(format!("12-briefing-lowering-{k}.png"));
+                let px = sc_render::read_output(f.width, f.height);
+                match sc_client::capture::write_png(&path, f.width, f.height, &px) {
+                    Ok(()) => println!("sc-client: wrote {}", path.display()),
+                    Err(e) => eprintln!("sc-client: {e}"),
+                }
+            }
+        }
         let boarded = self.boarded_at.map_or(0.0, |b| now - b);
         let risen = self.seated_at.is_some_and(|s| now - s > console_rise_s() + 0.3);
         let own = self.args.station.name();
         let plate = self.plate.as_ref().is_some_and(|(p, a)| p.label == own && !p.acts.is_empty() && *a >= 0.99);
         // Each step: is its screen up, the menu's page for it, and its capture's name.
-        let (ready, page, name): (bool, &str, &str) = match t.step {
+        let (ready, page, name): (bool, &str, &str) = match step {
             0 => (loading > 0.9, "closed", "1-loading"),
             1 => (self.free && boarded > 1.5, "closed", "2-hud-first-steps"),
             2 => (true, "main", "3-pause-walking"),
@@ -1540,7 +1560,7 @@ impl DrillApp {
         };
         // A moment that went by on its own is passed: the loading screen once aboard, the prompt once seated, the
         // briefing once the fight is on.
-        let gone = match t.step {
+        let gone = match step {
             0 => boarded > 1.0,
             3 => seated,
             4 => phase.is_some_and(Phase::live),
@@ -1551,14 +1571,18 @@ impl DrillApp {
             t.step += 1;
             t.since = now;
         }
+        // The briefing is read: READY goes out once it is shot, so the round starts with the console in view and the
+        // briefing is seen lowering into the desk (design 18a). (Sitting says READY on foot, sc-core's muster rule: the
+        // run takes it back until then, when the crew are not all ready already.)
+        if t.step >= 5 {
+            self.ready_held = !self.session.as_ref().is_some_and(|s| s.ready());
+        } else if let Some(s) = self.session.as_ref().filter(|s| s.ready() && phase == Some(Phase::Muster)) {
+            s.set_ready(false);
+        }
         if !ready {
             t.since = now;
         } else {
             self.menu.tour_page(page);
-            // The briefing is read: READY goes out once the crew sit, as a player's would.
-            if t.step >= 5 {
-                self.ready_held = !self.session.as_ref().is_some_and(|s| s.ready());
-            }
             if now - t.since >= hold {
                 if !video {
                     let px = sc_render::read_output(f.width, f.height);
