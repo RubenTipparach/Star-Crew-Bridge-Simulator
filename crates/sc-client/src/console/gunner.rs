@@ -208,9 +208,9 @@ pub fn draw(cv: &Canvas, cx: &mut Ctx) {
             w: 110.0,
             h: 44.0,
             icon: Some("target"),
-            label: Some("TAB"),
+            label: Some("NEXT"),
             act: Some(Act::GunNext),
-            tip: Some("Next target (Tab)".into()),
+            tip: Some("Next target [Tab]".into()),
             is: Some(20.0),
             off: g.targets.len() < 2,
             ..Default::default()

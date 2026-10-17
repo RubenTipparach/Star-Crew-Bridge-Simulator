@@ -57,6 +57,12 @@
   #console [data-act], #console [data-drag], #console [data-hold] { cursor: pointer; }
   #tip { position: fixed; z-index: 9; pointer-events: none; background: #182231; color: var(--fg); border: 1px solid #2c3a4d;
     border-radius: 5px; padding: 4px 8px; font: 600 13px var(--font); letter-spacing: .03em; display: none; white-space: nowrap; }
+  /* A key in a tip (ui-art-direction design 7 and 18b): a keycap after the words, the screens' keycap made small. */
+  #tip .kc { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 16px; box-sizing: border-box;
+    margin-left: 4px; padding: 0 5px; vertical-align: -3px; background: #18212c; border: 1px solid #3a4859; border-bottom-width: 2px;
+    border-radius: 3px; font: 700 11px var(--font); letter-spacing: .04em; }
+  #tip .kc:first-of-type, #tip .kh + .kc { margin-left: 8px; } #tip .kh + .kc { margin-left: 4px; }
+  #tip .kh { margin-left: 8px; font: 700 9px var(--font); letter-spacing: .16em; color: #98a8bc; }
   text { font-family: var(--font); font-weight: 600; }
 </style>
 <!-- INLINE layout:tern BEGIN -->
@@ -5052,6 +5058,22 @@ function text(x, y, s, col, str, o) {
   return `<text x="${x}" y="${y}" font-size="${s}" fill="${col}" text-anchor="${o.a || "start"}" ${o.w ? `font-weight="${o.w}"` : ""} letter-spacing="${o.ls == null ? 0.5 : o.ls}" dominant-baseline="${o.b || "alphabetic"}" style="font-variant-numeric: tabular-nums">${esc(str)}</text>`;
 }
 const tipAttr = (t) => (t ? ` data-tip="${esc(t)}"` : "");
+/** A tip as shown (ui-art-direction design 18b): its words, then each [key] after them as a keycap, never in the words. */
+const WHEEL_SVG = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="7" y="3" width="10" height="17" rx="5"/><path d="M12 3v3M12 10v-1"/><rect x="11" y="5" width="2" height="4" rx="1" fill="#6fd3ff" stroke="#6fd3ff"/></svg>';
+function tipHtml(t) {
+  const at = t.indexOf(" [");
+  if (at < 0) return esc(t);
+  const keys = t.slice(at).match(/\[([^\]]+)\]/g).map((k) => k.slice(1, -1));
+  return esc(t.slice(0, at)) + keys.map((k) => k === "hold" ? '<span class="kh">HOLD</span>' : `<span class="kc">${k === "wheel" ? WHEEL_SVG : esc(k)}</span>`).join("");
+}
+/** A viewscreen camera's word (design 18b): the feed's code in full. */
+const feedWord = (f) => ({ FWD: "FORWARD", STBD: "STARBOARD" })[f] || f;
+/** A turret mode's word on its button and its tip (design 18b): point defence in plain words. */
+const turretMode = (m) => ({ AUTO: ["AUTO", "Auto: fires at the target in its arc"], TARGET: ["TARGET", "Target: fires at the locked target"],
+  PD: ["DEFEND", "Defend: shoots down incoming missiles"], HOLD: ["HOLD", "Hold: does not fire"] })[m] || [m, m];
+/** Why the reactor stopped, as Engineering reads it under OFF (design 18b): the library's cause in plain words. */
+const causeWords = (c) => { c = String(c); return c === "manual" ? "stopped by hand" : c.startsWith("coolant") ? "coolant too hot" :
+  c.startsWith("blanket") ? "core too hot" : c.startsWith("auxiliaries") ? "pumps short of power" : c.startsWith("reactor integrity") ? "reactor damaged" : c; };
 /**
  * A button: a rounded box with an icon, a word, or both. act: the action it runs on press;
  * hold: the action it runs after a 0.6 s hold (a guarded control, bridge-stations 8.5), whose
@@ -5208,7 +5230,7 @@ const MAGAZINE = 20;
 /** A laser bank (laser-banks 1): 150 MJ, charged at 5 MW (empty to full in 30 s), fires from 40%, out to 8 km, over its
  * broadside half of the sky and 10 degrees past the keel line. The grid is not simulated yet, so it charges at its rate. */
 const LZ = { cap_mj: 150, charge_mw: 5, min_k: 0.4, range_m: 8000, past_keel_deg: 10, beam_s: 0.4 };
-G.lasers = { port: { id: "port", word: "LASER PORT", side: 1, mj: 96, beam: -9 }, stbd: { id: "stbd", word: "LASER STBD", side: -1, mj: 42, beam: -9 } };
+G.lasers = { port: { id: "port", word: "PORT LASER", side: 1, mj: 96, beam: -9 }, stbd: { id: "stbd", word: "STARBOARD LASER", side: -1, mj: 42, beam: -9 } };
 /** The Hound's faces, in our order: shield and armour as fractions of full (armour-and-missiles 1). */
 Object.assign(G.contacts.find((c) => c.id === "T1"), { shield: [0.8, 0.9, 0.55, 0.7, 0.85, 0.9], armour: [1, 1, 0.6, 1, 1, 1] });
 /** The gunner's sight (enemy-fighters 3): the barrel's aim in ship axes (yaw to starboard, pitch up, degrees), its
@@ -5226,7 +5248,10 @@ const FIGHT_T0_S = -134;
  * ship, survive, destroy_fighters with a count), so the console can measure them. A copy until the mission file has them.
  */
 const MISSION = {
-  title: "Drill 1: Hound at the Shoals",
+  title: "Hound at the Shoals",
+  // A mission's time limit, seconds, when it has one (ui-art-direction design 18c): the band and OBJECTIVES count it
+  // down. The drill has none; its server-side safety timeout is never shown.
+  time_limit_s: null,
   objectives: [
     { words: "Destroy the Hound", kind: "destroy", ship: "T1" },
     { words: "Keep the Tern's hull above zero", kind: "survive" },
@@ -5451,8 +5476,8 @@ const STATIONS = [
   { id: "captain", role: "command", word: "CAPTAIN", op: "You" },
   // Combat 2: the laser banks at the comms and flight-ops seats (laser-banks 3), the gunner in the dorsal pod
   // (enemy-fighters 3). The starboard bank is open: its automation fires it.
-  { id: "laser_port", role: "laser", word: "LASER PORT", op: "Dev" },
-  { id: "laser_stbd", role: "laser", word: "LASER STBD", op: null },
+  { id: "laser_port", role: "laser", word: "PORT LASER", op: "Dev" },
+  { id: "laser_stbd", role: "laser", word: "STARBOARD LASER", op: null },
   { id: "gunner", role: "gunner", word: "GUNNER", op: "Kai" },
 ];
 let station = "helm", captainTab = "CMD";
@@ -5527,7 +5552,7 @@ function titleBand() {
     // With OBJECTIVES open, the station's own chip is the way back (objectives-tab 1).
     const on = on0 && !G.objOpen, act = act0 || (G.objOpen ? "objclose" : null);
     const tw = 34 + w.length * 9.4;
-    s += `<g ${act ? `data-act="${act}"` : ""}${tipAttr(SOLO && !home && act ? "Your console (Tab)" : null)}>`;
+    s += `<g ${act ? `data-act="${act}"` : ""}${tipAttr(SOLO && !home && act ? "Your console [Tab]" : null)}>`;
     s += `<rect x="${x}" y="4" width="${tw}" height="24" rx="5" fill="${on ? ROLE[r] + "26" : "transparent"}" stroke="${on ? ROLE[r] : C.line2}"/>`;
     s += icon(r, x + 13, 16, 14, on ? ROLE[r] : C.dim);
     s += text(x + 25, 21, 13, on ? C.text : C.dim, w, { ls: 1.5, w: 700 }) + "</g>";
@@ -5562,7 +5587,7 @@ function titleBand() {
       }
       for (const [m, w, ic, tw] of [["auto", "AUTO", "auto", 76], ["manual", "MANUAL", "hand", 94]]) {
         const on = c.mode === m;
-        s += `<g data-act="mode:${m}"${tipAttr(m === "auto" ? `${c.op} runs it (M)` : `You run it, through ${c.op} (M)`)}>`;
+        s += `<g data-act="mode:${m}"${tipAttr(m === "auto" ? `${c.op} runs it [M]` : `You give the orders, ${c.op} carries them out [M]`)}>`;
         s += `<rect x="${x}" y="4" width="${tw}" height="24" rx="5" fill="${on ? C.text + "1f" : "transparent"}" stroke="${on ? C.text : C.line2}"/>`;
         s += icon(ic, x + 14, 16, 14, on ? C.text : C.dim) + text(x + 26, 21, 13, on ? C.text : C.dim, w, { ls: 1.5, w: 700 }) + "</g>";
         x += tw + 4;
@@ -5599,7 +5624,7 @@ function titleBand() {
   const condX = 1180 - cond.length * 9.4 - 22, leaveW = 34 + 13 * 9.4, leaveX = condX - 8 - leaveW;
   {
     const share = leaveShare(), held = share > 0, kx = leaveX + 15, ky = 16;
-    s += `<g data-act="leave"${tipAttr(`Leave the station (hold ${LEAVE_KEY})`)}>`;
+    s += `<g data-act="leave"${tipAttr(`Leave the station [hold] [${LEAVE_KEY}]`)}>`;
     s += `<rect x="${leaveX}" y="4" width="${leaveW}" height="24" rx="5" fill="transparent" stroke="${C.line2}"/>`;
     s += `<circle cx="${kx}" cy="${ky}" r="8" fill="none" stroke="${C.dim}"/>` + text(kx, ky + 4, 11, C.text, LEAVE_KEY, { a: "middle", w: 700 });
     if (held) s += `<path d="${arcPath(kx, ky, 8, 0, Math.min(share, 1) * 360)}" fill="none" stroke="${C.warn}" stroke-width="2"/>`;
@@ -5623,14 +5648,14 @@ function titleBand() {
   const o = newestOrderFor(S.id);
   if (o && !starting && leaveX - 8 - Math.max(470, x) >= 60) {
     const ox = Math.max(470, x), ow = Math.min(300, leaveX - 8 - ox);
-    s += `<g data-act="ack"${tipAttr("Acknowledge (Y)")}><rect x="${ox}" y="4" width="${ow}" height="24" rx="5" fill="${C.warn}1f" stroke="${C.warn}"/>`;
+    s += `<g data-act="ack"${tipAttr("Acknowledge [Y]")}><rect x="${ox}" y="4" width="${ow}" height="24" rx="5" fill="${C.warn}1f" stroke="${C.warn}"/>`;
     s += icon("command", ox + 16, 16, 14, C.warn) + text(ox + 30, 21, 13, C.text, `CAPTAIN: ${o.verb}`, { ls: 1.5, w: 700 });
     s += icon("check", ox + ow - 16, 16, 14, C.warn) + "</g>";
   }
   s += `<rect x="${1180 - cond.length * 9.4 - 22}" y="4" width="${cond.length * 9.4 + 22}" height="24" rx="5" fill="${cc}22" stroke="${cc}"/>`;
   s += text(1180 - 10, 21, 13, cc, cond, { a: "end", ls: 1.5, w: 700 });
-  const t = Math.floor(G.t + 754);
-  s += text(1268, 21, 14, C.dim, `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`, { a: "end" });
+  const left = timeLeft(MISSION.time_limit_s, Math.max(0, G.t - FIGHT_T0_S));
+  if (left) s += text(1268, 21, 14, C.dim, left, { a: "end" });
   return s + "</svg>";
 }
 /**
@@ -5735,7 +5760,7 @@ function lookBand() {
     if (c.id === G.target && rc) s += bracket(rc, c, C[c.iff], v3.len(rp));
   }
   s += `</svg>`;
-  s += text(342, 38, 11, C.dim, `VIEWSCREEN · ${G.feed}`, { ls: 2 });
+  s += text(342, 38, 11, C.dim, `VIEWSCREEN · ${feedWord(G.feed)}`, { ls: 2 });
   s += feedWidget(196, 10) + navball(1046, 116, 76);
   s += `<rect width="1280" height="240" fill="url(#rv)" pointer-events="none"/>`;
   return s + "</svg>";
@@ -5850,7 +5875,7 @@ function feedCone(S) {
   const d = feedDir(), half = 35 / G.zoom, len = 0.34;
   const [x0, y0] = S.dir(d.brg - half, len), [x1, y1] = S.dir(d.brg + half, len), [ix, iy] = S.dir(d.brg, len * 0.32);
   const rot = Math.atan2(ix - S.cx, -(iy - S.cy)) / D2R;
-  let s = `<g${tipAttr(`Viewscreen: ${G.feed.toLowerCase()}, bearing ${String(Math.round(wrap360(d.brg))).padStart(3, "0")}, elevation ${d.el}°`)}>`;
+  let s = `<g${tipAttr(`Viewscreen: ${feedWord(G.feed).toLowerCase()}, bearing ${String(Math.round(wrap360(d.brg))).padStart(3, "0")}, elevation ${d.el}°`)}>`;
   s += `<path d="M${S.cx} ${S.cy}L${x0.toFixed(1)} ${y0.toFixed(1)}L${x1.toFixed(1)} ${y1.toFixed(1)}Z" fill="#cfe3f5" fill-opacity="0.09" stroke="#cfe3f5" stroke-opacity="0.35" stroke-dasharray="3 3"/>`;
   s += `<g transform="translate(${ix.toFixed(1)} ${iy.toFixed(1)}) rotate(${rot.toFixed(1)})"><rect x="-5" y="-2" width="10" height="9" rx="2" fill="#cfe3f5"/><path d="M-4 -2L-7 -8H7L4 -2Z" fill="#cfe3f5"/></g>`;
   if (Math.abs(d.el) >= 3) {
@@ -5897,7 +5922,7 @@ function feedWidget(x, y) {
   }
   s += `</g></svg></g>`;
   // The feed buttons: any console can choose what the viewscreen shows.
-  FEED_PAD.forEach(([k, ic], i) => { s += button({ x: x + (i % 3) * 41, y: y + 140 + Math.floor(i / 3) * 28, w: 38, h: 25, icon: ic, is: 15, act: `feed:${k}`, on: G.feed === k, tip: `Viewscreen: ${k.toLowerCase()}` }); });
+  FEED_PAD.forEach(([k, ic], i) => { s += button({ x: x + (i % 3) * 41, y: y + 140 + Math.floor(i / 3) * 28, w: 38, h: 25, icon: ic, is: 15, act: `feed:${k}`, on: G.feed === k, tip: `Viewscreen: ${feedWord(k).toLowerCase()}` }); });
   // ORBIT (chase-orbit design 5): under CHASE, a third row of the pad; lit while on, unavailable without the chase
   // camera. With it on, a drag on the viewscreen turns the camera round the ship, the wheel or a pinch moves it in or
   // out, and O turns it on and off.
@@ -6108,9 +6133,9 @@ function navball(cx, cy, R) {
 }
 function rangeCtl(x, y, key) {
   const km = G[RANGE_OF[key]];
-  let s = button({ x, y, w: 32, h: 30, label: "−", act: `range:${key}:-1`, fs: 20, off: km === RANGE_KM[0], tip: "Closer (scroll)" });
+  let s = button({ x, y, w: 32, h: 30, label: "−", act: `range:${key}:-1`, fs: 20, off: km === RANGE_KM[0], tip: "Closer [wheel]" });
   s += `<rect x="${x + 36}" y="${y}" width="64" height="30" rx="6" fill="${C.panel2}" stroke="${C.line2}"/>` + text(x + 68, y + 20, 15, C.text, `${km} km`, { a: "middle", w: 700 });
-  s += button({ x: x + 104, y, w: 32, h: 30, label: "+", act: `range:${key}:1`, fs: 20, off: km === RANGE_KM[RANGE_KM.length - 1], tip: "Further (scroll)" });
+  s += button({ x: x + 104, y, w: 32, h: 30, label: "+", act: `range:${key}:1`, fs: 20, off: km === RANGE_KM[RANGE_KM.length - 1], tip: "Further [wheel]" });
   return s;
 }
 const fmtQ = (q) => quat.canon(q).map((x) => (x < 0 ? "" : " ") + x.toFixed(4)).join("  ");
@@ -6216,7 +6241,7 @@ function joystick(cx, h, yaw, pitch) {
   // joystick should NOT rotate"); only the shaft and the grip lean.
   const t = quat.mul(quat.axis([0, 0, 1], -yaw * 22), quat.axis([1, 0, 0], pitch * 22));
   const parts = JOY.base.concat(JOY.boot, turnMesh(JOY.shaft.concat(JOY.grip), t, [0, 0, 0]));
-  let s = `<g data-drag="joy"${tipAttr("Stick: yaw and pitch (A, D, R, F). Pull back for nose up")}><rect x="${cx - 74}" y="0" width="148" height="${h}" fill="transparent"/>`;
+  let s = `<g data-drag="joy"${tipAttr("Stick: yaw and pitch, pull back for nose up [A] [D] [R] [F]")}><rect x="${cx - 74}" y="0" width="148" height="${h}" fill="transparent"/>`;
   const key = `${yaw.toFixed(3)}|${pitch.toFixed(3)}|${cx}|${h}`;
   if (JOY_MEMO.key !== key) JOY_MEMO = { key, svg: drawMesh(parts, JOY_CAM, cx, h / 2 + 6, 60) };
   s += JOY_MEMO.svg;
@@ -6241,7 +6266,7 @@ function joystick(cx, h, yaw, pitch) {
  * +1 is roll right (starboard down). Press a side, or drag; it springs back to centre.
  */
 function flipper(cx, h, roll) {
-  let s = `<g data-drag="flip"${tipAttr("Flipper: roll left or right (Z, C)")}><rect x="${cx - 40}" y="0" width="80" height="${h}" fill="transparent"/>`;
+  let s = `<g data-drag="flip"${tipAttr("Roll: drag left or right [Z] [C]")}><rect x="${cx - 40}" y="0" width="80" height="${h}" fill="transparent"/>`;
   // Roll left and roll right: arrows curving out over the bat's tip, lit while the switch is held that way.
   const y0 = h - 140, lc = roll < -0.05 ? accent() : C.dim, rc = roll > 0.05 ? accent() : C.dim;
   s += `<path d="M${cx - 6} ${y0}Q${cx - 24} ${y0 - 4} ${cx - 30} ${y0 + 10}" fill="none" stroke="${lc}" stroke-width="2.5"/><path d="M${cx - 35} ${y0 + 6}l5 9 5 -7z" fill="${lc}"/>`;
@@ -6278,7 +6303,7 @@ function helm() {
     let b = text(70, 40, 38, C.text, Math.round(vb[2]), { a: "middle", w: 700 }) + text(70, 58, 13, C.dim, "m/s", { a: "middle" });
     // The forward speed lever, -100 to +400 m/s: the handle is the set point, the fill the speed.
     const tx = 44, ty = 74, th = h - 150, tw = 52, yOf = (v) => ty + th * (1 - (v - FL.speed_min_ms) / (FL.speed_max_ms - FL.speed_min_ms));
-    b += `<g data-drag="throttle"${tipAttr("Forward speed: drag (W, S)")}><rect x="${tx}" y="${ty}" width="${tw}" height="${th}" rx="8" fill="#101822" stroke="${C.line2}"/>`;
+    b += `<g data-drag="throttle"${tipAttr("Forward speed: drag [W] [S]")}><rect x="${tx}" y="${ty}" width="${tw}" height="${th}" rx="8" fill="#101822" stroke="${C.line2}"/>`;
     b += `<rect x="${tx}" y="${yOf(0)}" width="${tw}" height="${ty + th - yOf(0)}" rx="8" fill="url(#hatch)" opacity="0.6"/>`;
     b += `<rect x="${tx + 6}" y="${Math.min(yOf(vb[2]), yOf(0))}" width="${tw - 12}" height="${Math.abs(yOf(0) - yOf(vb[2]))}" rx="4" fill="${accent()}" opacity="0.55"/>`;
     b += `<path d="M${tx - 6} ${yOf(0)}H${tx + tw + 6}" stroke="${C.dim}"/>`;
@@ -6287,14 +6312,14 @@ function helm() {
     b += `<defs><pattern id="hatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="4" height="8" fill="#2a3442"/></pattern></defs>`;
     // The strafe pad: the puck is the lateral and vertical set point, the dot the drift now.
     const px = 150, py = 74, ps = w - px - 14, pc = [px + ps / 2, py + ps / 2], k = ps / 2 / FL.strafe_max_ms;
-    b += `<g data-drag="strafe"${tipAttr(`Strafe: drag (Left, Right, Space, Ctrl). Now ${(-vb[0]).toFixed(0)} m/s to starboard, ${vb[1].toFixed(0)} m/s up`)}>`;
+    b += `<g data-drag="strafe"${tipAttr(`Sideways and up: drag, now ${(-vb[0]).toFixed(0)} m/s starboard, ${vb[1].toFixed(0)} m/s up [Left] [Right] [Space] [Ctrl]`)}>`;
     b += `<rect x="${px}" y="${py}" width="${ps}" height="${ps}" rx="10" fill="#101822" stroke="${C.line2}"/>`;
     b += `<path d="M${pc[0]} ${py + 8}V${py + ps - 8}M${px + 8} ${pc[1]}H${px + ps - 8}" stroke="${C.line2}"/>`;
     b += `<path d="M${pc[0]} ${py + 4}l-5 7h10zM${pc[0]} ${py + ps - 4}l-5 -7h10zM${px + 4} ${pc[1]}l7 -5v10zM${px + ps - 4} ${pc[1]}l-7 -5v10z" fill="${C.dim}"/>`;
     b += `<circle cx="${pc[0] + clamp(-vb[0], -50, 50) * k}" cy="${pc[1] - clamp(vb[1], -50, 50) * k}" r="4" fill="${accent()}"/>`;
     b += `<circle cx="${pc[0] + F.strafe[0] * k}" cy="${pc[1] - F.strafe[1] * k}" r="13" fill="none" stroke="${C.text}" stroke-width="3"/></g>`;
     b += icon("drive", px + ps / 2, py + ps + 22, 18, C.dim);
-    b += button({ x: 14, y: h - 62, w: w - 28, h: 50, icon: "stop", label: "STOP", act: "allstop", col2: C.danger, stroke: C.danger + "88", tip: "All stop: speed and drift to zero (X)" });
+    b += button({ x: 14, y: h - 62, w: w - 28, h: 50, icon: "stop", label: "STOP", act: "allstop", col2: C.danger, stroke: C.danger + "88", tip: "All stop: speed and drift to zero [X]" });
     return b;
   });
   s += panel("SCANNER", grid(3, 0, 5, 4), (w, h) => {
@@ -6323,12 +6348,12 @@ function helm() {
     rows.forEach(([word, val, rate, set], i) => {
       const y = 2 + i * 56, by = y + 34, mid = x0 + bwid / 2;
       b += text(x0, y + 18, 11, C.dim, word, { ls: 2 }) + text(w - 12, y + 24, 24, C.text, val, { a: "end", w: 700 });
-      b += `<g${tipAttr(`${word.toLowerCase()} rate ${(rate * FL.rate_dps[[1, 0, 2][i]]).toFixed(1)} deg/s`)}><rect x="${x0}" y="${by}" width="${bwid}" height="9" rx="3" fill="#16202c"/>`;
+      b += `<g${tipAttr(`${word[0] + word.slice(1).toLowerCase()}: turning ${(rate * FL.rate_dps[[1, 0, 2][i]]).toFixed(1)}° a second`)}><rect x="${x0}" y="${by}" width="${bwid}" height="9" rx="3" fill="#16202c"/>`;
       const rx = mid + clamp(rate, -1, 1) * (bwid / 2);
       b += `<rect x="${Math.min(mid, rx)}" y="${by}" width="${Math.abs(rx - mid)}" height="9" rx="3" fill="${accent()}"/>`;
       b += `<path d="M${mid + clamp(set, -1, 1) * (bwid / 2)} ${by - 3}v15" stroke="${C.text}" stroke-width="2" opacity="0.7"/><path d="M${mid} ${by - 2}v13" stroke="${C.dim}"/></g>`;
     });
-    if (e.gimbal) b += text(x0, h - 2, 11, C.warn, "ROLL IN YAW", { ls: 1 });
+    if (e.gimbal) b += `<g${tipAttr("Nose straight up or down: roll turns like yaw")}>` + text(x0, h - 2, 11, C.warn, "NOSE VERTICAL", { ls: 1 }) + "</g>";
     return b;
   });
   s += panel("ORIENT", grid(8, 2, 4, 2), (w, h) => {
@@ -6396,7 +6421,7 @@ function tactical() {
     G.turrets.forEach((t, i) => {
       const x = 10 + i * (tw + 6), cx = x + tw / 2, cy = 52, ok = works(t.load);
       const hc = t.cooling ? C.danger : t.heat > 0.7 ? C.warn : C.ok;
-      b += `<g data-act="tmode:${i}"${tipAttr(`${t.id} turret: tap to change mode`)}><rect x="${x}" y="4" width="${tw}" height="${h - 14}" rx="8" fill="${C.panel2}" stroke="${t.firing ? C.ok : C.line2}"/>`;
+      b += `<g data-act="tmode:${i}"${tipAttr(`${turretMode(t.mode)[1]}; tap to change`)}><rect x="${x}" y="4" width="${tw}" height="${h - 14}" rx="8" fill="${C.panel2}" stroke="${t.firing ? C.ok : C.line2}"/>`;
       b += `<path d="${arcPath(cx, cy, 30, -140, 140)}" stroke="#1c2734" stroke-width="6" fill="none"/>`;
       if (t.heat > 0.01) b += `<path d="${arcPath(cx, cy, 30, -140, -140 + 280 * clamp(t.heat, 0, 1))}" stroke="${hc}" stroke-width="6" fill="none"/>`;
       b += `<circle cx="${cx}" cy="${cy}" r="13" fill="${ok < 0.3 ? C.faint : C.text}"/>`;
@@ -6406,7 +6431,7 @@ function tactical() {
       if (t.op) b += icon("person", cx - 14, 104, 16, ROLE.gunner) + text(cx - 3, 109, 14, C.text, t.op);
       else b += icon("auto", cx, 104, 16, C.dim);
       const mc = t.mode === "HOLD" ? C.warn : t.mode === "PD" ? "#8fd3ff" : C.text;
-      b += `<rect x="${x + 8}" y="${h - 46}" width="${tw - 16}" height="26" rx="5" fill="#0c121a" stroke="${mc}66"/>` + text(cx, h - 28, 14, mc, t.mode, { a: "middle", ls: 1.5 });
+      b += `<rect x="${x + 8}" y="${h - 46}" width="${tw - 16}" height="26" rx="5" fill="#0c121a" stroke="${mc}66"/>` + text(cx, h - 28, 14, mc, turretMode(t.mode)[0], { a: "middle", ls: 1.5 });
       b += "</g>";
     });
     return b;
@@ -6513,12 +6538,12 @@ function reactorLoop(w, h) {
     `<path d="${d}" stroke="transparent" stroke-width="18" fill="none"/></g>`;
   const hc = hotCol(cr.hot_k), through = cr.chiller, flowTip = `Flow ${cr.flow_kg_s.toFixed(0)} kg/s (${Math.round(cr.flow * 100)}%)`;
   // The legs: the hot leg from the core to the bypass tee, then what the chiller takes; the cold leg back.
-  b += pipe(`M${cx + 46} ${Ty}H${Rx - rc}Q${Rx} ${Ty} ${Rx} ${Ty + rc}V${Yb}`, hc, fl, `Hot leg ${cr.hot_k.toFixed(0)} K · ${flowTip}`);
-  b += pipe(`M${Rx} ${Yb}V${By - rc}Q${Rx} ${By} ${Rx - rc} ${By}H${cx + 38}`, hc, fl * through, `Hot leg to the chiller: ${Math.round(through * 100)}%`);
+  b += pipe(`M${cx + 46} ${Ty}H${Rx - rc}Q${Rx} ${Ty} ${Rx} ${Ty + rc}V${Yb}`, hc, fl, `Hot coolant ${cr.hot_k.toFixed(0)} K · ${flowTip}`);
+  b += pipe(`M${Rx} ${Yb}V${By - rc}Q${Rx} ${By} ${Rx - rc} ${By}H${cx + 38}`, hc, fl * through, `Through the chiller: ${Math.round(through * 100)}%`);
   b += pipe(`M${cx - 38} ${By}H${Lx + rc}Q${Lx} ${By} ${Lx} ${By - rc}V${Yb}`, COLD, fl * through, `Cold leg ${cr.cold_k.toFixed(0)} K`);
   b += pipe(`M${Lx} ${Yb}V${Ty + rc}Q${Lx} ${Ty} ${Lx + rc} ${Ty}H${cx - 46}`, COLD, fl, `Cold leg ${cr.cold_k.toFixed(0)} K · ${flowTip}`);
   // The bypass: what the chiller does not take goes straight across.
-  b += pipe(`M${Rx} ${Yb}H${Lx}`, mixCol(hc, COLD, 0.5), fl * (1 - through), `Bypass: ${Math.round((1 - through) * 100)}%`);
+  b += pipe(`M${Rx} ${Yb}H${Lx}`, mixCol(hc, COLD, 0.5), fl * (1 - through), `Past the chiller: ${Math.round((1 - through) * 100)}%`);
   b += valve(cx, Yb, 1 - through, C.text);
   // The core pumps on the cold leg, each turning at its speed; a lost or unpowered one stops and is dashed.
   cr.pumps.forEach((p, k) => {
@@ -6535,7 +6560,7 @@ function reactorLoop(w, h) {
     b += `<g${tipAttr(`${t.name}: ${Math.round(t.kg).toLocaleString("en")} kg`)}><rect x="${x}" y="${top}" width="16" height="${hh}" rx="4" fill="#101822" stroke="${C.line2}"/>`;
     b += `<rect x="${x + 2}" y="${top + 2 + (hh - 4) * (1 - t.frac)}" width="12" height="${(hh - 4) * t.frac}" rx="2" fill="${COLD}" opacity="0.75"/></g>`;
   });
-  b += `<g${tipAttr(`Makeup ${mv > 0.02 ? `open, ${cr.makeup_kg_s.toFixed(1)} kg/s` : "shut"} · loop ${Math.round(cr.inventory * 100)}% full`)}>` + valve(52, 238, mv, COLD) + "</g>";
+  b += `<g${tipAttr(`Top-up ${mv > 0.02 ? `open, ${cr.makeup_kg_s.toFixed(1)} kg/s` : "shut"} · loop ${Math.round(cr.inventory * 100)}% full`)}>` + valve(52, 238, mv, COLD) + "</g>";
   // The loop's own fill: a ring round the tanks' feet when the loop is short of coolant (cavitation below 80%).
   if (cr.inventory < 0.95) b += `<g${tipAttr(`Loop ${Math.round(cr.inventory * 100)}% full`)}>` + icon("drop", 118, 200, 20, cr.inventory < 0.8 ? C.danger : C.warn) + "</g>";
   // The chiller (the heat exchanger) and, beyond it, the radiator pumps and the radiators.
@@ -6559,8 +6584,8 @@ function reactorLoop(w, h) {
   b += `<path d="${arcPath(cx, Ty, 37, A(1), 120)}" stroke="${C.warn}" stroke-width="3" fill="none" opacity="0.6"/>`;
   if (R.throttle > 0.005) b += `<path d="${arcPath(cx, Ty, 37, -120, A(R.throttle))}" stroke="${run ? C.ok : C.emergency}" stroke-width="10" fill="none"${tipAttr(`Output ${(R.P_e / 1e6).toFixed(1)} MW`)}/>`;
   if (run) { const [tx, ty] = pol(cx, Ty, 47, A(R.target)); b += `<circle cx="${tx.toFixed(1)}" cy="${ty.toFixed(1)}" r="4.5" fill="${C.text}"${tipAttr(`Target ${Math.round(R.target * 100)}%`)}/>`; }
-  b += text(cx, Ty + (run ? 8 : 6), run ? 24 : 17, run ? C.text : C.emergency, run ? `${Math.round(R.throttle * 100)}%` : "SCRAM", { a: "middle", w: 700 });
-  if (!run && R.scramCause) b += text(cx, Ty + 62, 11, C.dim, String(R.scramCause).toUpperCase().slice(0, 22), { a: "middle", ls: 1 });
+  b += text(cx, Ty + (run ? 8 : 6), run ? 24 : 17, run ? C.text : C.emergency, run ? `${Math.round(R.throttle * 100)}%` : "OFF", { a: "middle", w: 700 });
+  if (!run && R.scramCause) b += text(cx, Ty + 62, 11, C.dim, causeWords(R.scramCause).toUpperCase().slice(0, 22), { a: "middle", ls: 1 });
   const bk = (R.T - 300) / (PW.reactor.heat.scram_k * 1.08 - 300), bcol = R.T >= PW.reactor.heat.scram_k ? C.danger : R.T >= PW.reactor.heat.warn_k ? C.warn : C.ok;
   b += `<g${tipAttr(`Reactor heat: ${Math.round(R.T)} K`)}>` + bar(214, 18, 14, 96, bk, bcol, true);
   b += `<path d="M210 ${18 + 96 * (1 - (PW.reactor.heat.scram_k - 300) / (PW.reactor.heat.scram_k * 1.08 - 300))}h22" stroke="${C.danger}" stroke-width="2"/>`;
@@ -6568,12 +6593,12 @@ function reactorLoop(w, h) {
   // Right: SCRAM and the reactor's mode.
   const X0 = 244, RW = w - X0 - 10;
   const armed = ARMED.key === "scram" && now() - ARMED.t < 3;
-  b += button({ x: X0, y: 8, w: RW / 2 - 4, h: 48, label: armed ? "CONFIRM" : "SCRAM", act: run ? "scram" : null, off: !run, col2: C.danger, stroke: C.danger + "88", on: armed, col: C.danger, fill: "rgba(255,71,87,0.25)", fs: 14, tip: run ? "Scram: tap, then tap again" : "Restart at the reactor" });
+  b += button({ x: X0, y: 8, w: RW / 2 - 4, h: 48, label: armed ? "CONFIRM" : "STOP", act: run ? "scram" : null, off: !run, col2: C.danger, stroke: C.danger + "88", on: armed, col: C.danger, fill: "rgba(255,71,87,0.25)", fs: 14, tip: run ? "Emergency stop: tap, then tap again" : "Restart at the reactor" });
   b += button({ x: X0 + RW / 2 + 4, y: 8, w: RW / 2 - 4, h: 48, icon: "core", label: R.mode === "auto" ? "AUTO" : "MANUAL", stack: true, is: 20, fs: 12, act: "rxmode", tip: R.mode === "auto" ? "Reactor follows the load (AUTO)" : "Reactor throttle by hand (MANUAL)" });
   // The two needles that matter (design 5).
   const BD = cr.bands, hs = hotState(cr), ratio = cr.heat_mw / Math.max(1e-6, cr.carry_mw);
   b += needleDial(X0 + RW * 0.25, 100, 30, cr.hot_k, 300, 400, [[BD.hot_leg_k[0], BD.hot_leg_k[1], C.ok], [BD.hot_leg_warning_k, cr.limit_k, C.warn], [cr.limit_k, 400, C.danger]], "temp", hs,
-    `Hot leg ${cr.hot_k.toFixed(0)} K (band ${BD.hot_leg_k[0]}-${BD.hot_leg_k[1]}, scram ${cr.limit_k}) · cold leg ${cr.cold_k.toFixed(0)} K`);
+    `Hot coolant ${cr.hot_k.toFixed(0)} K (safe ${BD.hot_leg_k[0]}-${BD.hot_leg_k[1]}, stops at ${cr.limit_k}) · cooled ${cr.cold_k.toFixed(0)} K`);
   b += needleDial(X0 + RW * 0.75, 100, 30, ratio, 0, 1.5, [[0, 1, C.ok + "66"], [1, 1.2, C.warn], [1.2, 1.5, C.danger]], "drop", ratio > 1.2 ? C.danger : ratio > 1 ? C.warn : C.ok,
     `Heat ${cr.heat_mw.toFixed(1)} MW · the flow carries ${cr.carry_mw.toFixed(1)} MW`);
   // The four controls (design 5), and the loop's AUTO.
@@ -6584,7 +6609,7 @@ function reactorLoop(w, h) {
   b += lever(X0 + step * 0.5 - lw / 2, ly, lw, lh, "pumps", pumpSp, pmax, pumpAct, "pump", `Core pumps: ${Math.round(pumpSp * 100)}% set, ${Math.round(pumpAct * 100)}% running`, auto);
   b += lever(X0 + step * 1.5 - lw / 2, ly, lw, lh, "chiller", through, 1, through, "chiller", `Chiller: ${Math.round(through * 100)}% of the hot leg through`, auto);
   b += lever(X0 + step * 2.5 - lw / 2, ly, lw, lh, "radiators", radSp, rmax, radAct, "radiator", `Radiator pumps: ${Math.round(radSp * 100)}% set, ${Math.round(radAct * 100)}% running`, auto);
-  b += lever(X0 + step * 3.5 - lw / 2, ly, lw, lh, "makeup", mv, 1, cr.inventory >= 1 ? mv : cr.makeup_kg_s / PW.coolant.makeup.max_kg_s, "makeup", `Makeup valve: ${Math.round(mv * 100)}% open, ${cr.makeup_kg_s.toFixed(1)} kg/s`, auto);
+  b += lever(X0 + step * 3.5 - lw / 2, ly, lw, lh, "makeup", mv, 1, cr.inventory >= 1 ? mv : cr.makeup_kg_s / PW.coolant.makeup.max_kg_s, "makeup", `Top-up valve: ${Math.round(mv * 100)}% open, ${cr.makeup_kg_s.toFixed(1)} kg/s`, auto);
   b += button({ x: X0, y: h - 40, w: RW, h: 34, icon: "cooling", label: auto ? "AUTO" : "MANUAL", is: 18, fs: 14, act: "cmode", on: !auto, tip: auto ? "The loop runs itself: tap for MANUAL" : "The loop is yours: tap for AUTO" });
   return b;
 }
@@ -6627,7 +6652,7 @@ function engineering() {
       b += "</g>";
       b += text(cx, ty + th + 22, 15, off ? C.faint : C.text, off ? "OFF" : `${Math.round((pv ? pv.sp : gn.sp) * 100)}`, { a: "middle", w: 700 });
       // Priority: one to three pips, a ring round them at 0 (never shed); tap to cycle.
-      b += `<g data-act="prio:${g.id}"${tipAttr(gn.prio === 0 ? "Priority 0: never shed" : "Priority: 1 is fed first")}><rect x="${cx - 22}" y="${ty + th + 28}" width="44" height="24" rx="5" fill="transparent"/>`;
+      b += `<g data-act="prio:${g.id}"${tipAttr(gn.prio === 0 ? "Always powered" : "Priority: 1 is powered first and cut last")}><rect x="${cx - 22}" y="${ty + th + 28}" width="44" height="24" rx="5" fill="transparent"/>`;
       if (gn.prio === 0) b += `<rect x="${cx - 21}" y="${ty + th + 31}" width="42" height="18" rx="9" fill="none" stroke="${accent()}" stroke-width="1.5"/>`;
       for (let p = 0; p < 3; p++) b += `<circle cx="${cx - 12 + p * 12}" cy="${ty + th + 40}" r="4" fill="${p < 4 - gn.prio ? accent() : "#1c2734"}"/>`;
       b += "</g>";
@@ -6645,7 +6670,7 @@ function engineering() {
         b += icon("lock", cx + 14, by + 13, 16, locked ? C.warn : closed ? C.faint : C.dim) + "</g>";
       }
     });
-    const pre = [["CRUISE", "cruise"], ["COMBAT", "combat"], ["SILENT", "silent"], ["EMERG", "emergency"]];
+    const pre = [["CRUISE", "cruise"], ["COMBAT", "combat"], ["SILENT", "silent"], ["EMERGENCY", "emergency"]];
     const bw = (w - 24 - 3 * 8) / 4;
     pre.forEach(([k, id], i) => { b += button({ x: 12 + i * (bw + 8), y: h - 42, w: bw, h: 34, label: k, act: `preset:${id}`, on: st.preset === id, fs: 14 }); });
     return b;
@@ -6662,10 +6687,10 @@ function engineering() {
     b += `<g${tipAttr(`Battery ${Math.round(soc * 100)}%`)}>` + icon("battery", 22, 16, 18, st.batOut > 0.05 ? C.emergency : C.dim);
     b += bar(36, 11, 70, 10, soc, soc > 0.3 ? C.ok : C.warn) + "</g>";
     const cut = Object.values(st.conduit).filter((c) => c.severed).length;
-    if (cut) b += `<g${tipAttr("Cables cut: damage control splices them")}>` + icon("breach", 18, h - 14, 14, C.danger) + text(30, h - 9, 13, C.danger, String(cut)) + "</g>";
+    if (cut) b += `<g${tipAttr("Cables cut: damage control repairs them")}>` + icon("breach", 18, h - 14, 14, C.danger) + text(30, h - 9, 13, C.danger, String(cut)) + "</g>";
     // The live runs against the protection's limit (power-routing 2): the number the engineer routes by.
     const rv = sim.routingView(), full = rv.live >= rv.limit, rc = rv.tripped ? C.danger : full ? C.warn : C.dim;
-    b += `<g${tipAttr(rv.tripped ? `Tripped: factory settings in ${Math.ceil(rv.trip_s)} s` : `Live runs: ${rv.live} of the ${rv.limit} the protection allows`)}>`;
+    b += `<g${tipAttr(rv.tripped ? `Tripped: the grid resets in ${Math.ceil(rv.trip_s)} s` : `Live cables: ${rv.live} of ${rv.limit} before the grid trips`)}>`;
     b += icon("runs", w - 66, h - 14, 14, rc) + text(w - 12, h - 9, 13, rc, rv.tripped ? `${Math.ceil(rv.trip_s)} s` : `${rv.live}/${rv.limit}`, { a: "end" }) + "</g>";
     // EXPAND: the schematic full screen.
     b += `<g data-act="expand"${tipAttr("Expand the schematic")}><rect x="${w - 34}" y="2" width="28" height="28" rx="5" fill="${C.panel2}" stroke="${C.line2}"/>` + icon("expand", w - 20, 16, 16, C.text) + "</g>";
@@ -6803,7 +6828,7 @@ function science() {
     b += text(140, 50, 12, C.dim, c.iff === "unknown" ? "UNKNOWN" : c.cls.toUpperCase(), { ls: 2 });
     if (c.scan >= 0.3) b += bar(140, 60, w - 154, 8, c.hull / 100, col);
     const done = c.scan >= 1;
-    b += button({ x: 140, y: h - 58, w: w - 152, h: 46, icon: "scan", label: done ? "DONE" : G.scanning ? "SCANNING" : "SCAN", act: done ? null : "scan", off: done, on: G.scanning, tip: "Scan (Q)", fs: 14 });
+    b += button({ x: 140, y: h - 58, w: w - 152, h: 46, icon: "scan", label: done ? "DONE" : G.scanning ? "SCANNING" : "SCAN", act: done ? null : "scan", off: done, on: G.scanning, tip: "Scan [Q]", fs: 14 });
     return b;
   });
   s += panel("SCREEN", grid(9, 2, 3, 2), (w, h) => {
@@ -7138,7 +7163,7 @@ function gunner() {
   if (g.locked) s += `<path d="M85 448l22 170M107 448l-22 170" stroke="${C.danger}" stroke-width="2"/>`;
   s += "</g>";
   // TAB, and the targets it steps through.
-  s += button({ x: 470, y: 590, w: 110, h: 44, icon: "target", label: "TAB", act: "gnext", tip: "Next target (Tab)", is: 20, off: list.length < 2 });
+  s += button({ x: 470, y: 590, w: 110, h: 44, icon: "target", label: "NEXT", act: "gnext", tip: "Next target [Tab]", is: 20, off: list.length < 2 });
   list.slice(0, 5).forEach((c, i) => {
     const on = c === chosen, col = C[c.iff];
     s += `<g data-act="gpick:${i}"${tipAttr(`${c.id} · ${rangeKm(c).toFixed(1)} km`)}><rect x="${592 + i * 76}" y="590" width="68" height="44" rx="7" fill="${on ? col + "26" : C.panel2}" stroke="${on ? col : C.line2}" stroke-width="${on ? 2 : 1.2}"/>`;
@@ -7168,14 +7193,20 @@ function objectiveView() {
     }
     return { words: o.words, state: "progress", k: 0, number: null };
   });
-  return { title: MISSION.title, clock_s: Math.max(0, G.t - FIGHT_T0_S), rows };
+  return { title: MISSION.title, clock_s: Math.max(0, G.t - FIGHT_T0_S), limit_s: MISSION.time_limit_s, rows };
+}
+/** The band's and OBJECTIVES' clock: the time left of a time limit, mm:ss rounded up, or null without one (Q6). */
+function timeLeft(limit, clock) {
+  if (limit == null) return null;
+  const t = Math.ceil(Math.max(0, limit - clock));
+  return `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
 }
 /** OBJECTIVES (objectives-tab 2): over the four panels, or over the sight. At most six rows, one number each. */
 function objectivesPanel() {
   const ov = objectiveView();
   panel("OBJECTIVES", grid(0, 0, 12, 4), (w, h) => {
-    const t = Math.floor(ov.clock_s);
-    let o = text(24, 40, 26, C.text, ov.title, { w: 700 }) + text(w - 24, 40, 26, C.dim, `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`, { a: "end" });
+    const left = timeLeft(ov.limit_s, ov.clock_s);
+    let o = text(24, 40, 26, C.text, ov.title, { w: 700 }) + (left ? text(w - 24, 40, 26, C.dim, left, { a: "end" }) : "");
     o += `<rect x="24" y="58" width="${w - 48}" height="1" fill="${C.line}"/>`;
     ov.rows.slice(0, 6).forEach((r, i) => {
       const y = 78 + i * 82, mx = 60, my = y + 34, col = r.state === "done" ? C.ok : r.state === "failed" ? C.danger : C.text;
@@ -7414,7 +7445,7 @@ CONSOLE.addEventListener("pointerdown", (e) => {
 CONSOLE.addEventListener("pointermove", (e) => {
   if (DRAG) { dragTo(e); return; }
   const t = document.elementFromPoint(e.clientX, e.clientY), el = t && t.closest && t.closest("[data-tip]");
-  if (el) { TIP.textContent = el.dataset.tip; TIP.style.display = "block"; TIP.style.left = e.clientX + 14 + "px"; TIP.style.top = e.clientY + 16 + "px"; }
+  if (el) { TIP.innerHTML = tipHtml(el.dataset.tip); TIP.style.display = "block"; TIP.style.left = e.clientX + 14 + "px"; TIP.style.top = e.clientY + 16 + "px"; }
   else TIP.style.display = "none";
 });
 window.addEventListener("pointerup", (e) => {
@@ -7533,7 +7564,7 @@ window.consoleState = function () {
     solo: SOLO ? { seat: SOLO.seat, crew: SOLO.crew.map((c) => ({ station: c.id, op: c.op, auto: c.mode === "auto", seated: c.seated })) } : null,
     order: (newestOrderFor(S.id) || {}).verb || null,
     alert: !reactorUp() ? "emergency" : st.alert === "red_alert" ? "red_alert" : "normal", red_alert: st.alert === "red_alert",
-    clock_s: Math.floor(G.t + 754),
+    clock_s: Math.max(0, G.t - FIGHT_T0_S), limit_s: MISSION.time_limit_s,
     hull_pct: hullPct(), shield_ratio: FACES.map((_, f) => shieldRatio(f)), power_mw: st.rxOut + st.batOut,
     reactor_up: reactorUp(), speed_mps: v3.len(F.V), fires: fires(), breaches: breaches(),
     q: quat.canon(F.q), w: F.w, wset: F.wset, v_body: vb, speed_set: F.speedSet, strafe: F.strafe, stick: stick(),
@@ -7592,7 +7623,7 @@ function consoleEngineering() {
         breaker: g.feed_breaker ? st.groupBreaker[g.id] || "closed" : null };
     }),
     preview: PREVIEW ? { gid: PREVIEW.gid, sp: PREVIEW.sp, k: groupK(GROUPS.find((g) => g.id === PREVIEW.gid), PREVIEW.r.alloc_mw) } : null,
-    reactor: { up: reactorUp(), throttle: R.throttle, target: R.target, p_e_mw: R.P_e / 1e6, mode: R.mode, scram_cause: R.scramCause ? String(R.scramCause) : null,
+    reactor: { up: reactorUp(), throttle: R.throttle, target: R.target, p_e_mw: R.P_e / 1e6, mode: R.mode, scram_cause: R.scramCause ? causeWords(R.scramCause) : null,
       t_k: R.T, warn_k: PW.reactor.heat.warn_k, scram_k: PW.reactor.heat.scram_k, throttle_max: PW.reactor.throttle_max },
     armed_scram: ARMED.key === "scram" && now() - ARMED.t < 3,
     cool: { mode: cr.mode, flow: cr.flow, flow_kg_s: cr.flow_kg_s, chiller: cr.chiller, hot_k: cr.hot_k, cold_k: cr.cold_k,
@@ -7703,7 +7734,7 @@ window.MOCKUP_FLAT = true;
     press.timer = setTimeout(() => {
       press.long = true;
       const t = el.closest("[data-tip]") || el.querySelector("[data-tip]");
-      TIP.textContent = t ? t.dataset.tip : el.textContent.trim() || el.dataset.act;
+      TIP.innerHTML = t ? tipHtml(t.dataset.tip) : esc(el.textContent.trim() || el.dataset.act);
       TIP.style.display = "block"; TIP.style.left = Math.max(4, press.cx - 60) + "px"; TIP.style.top = Math.max(4, r.top - 34) + "px";
     }, FINGER.long_s * 1000);
   }, true);

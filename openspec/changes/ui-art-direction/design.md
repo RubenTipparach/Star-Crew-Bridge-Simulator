@@ -448,15 +448,17 @@ HOLD word, `[wheel]` the mouse wheel's glyph). In the engine a key that is a bin
 | Tactical, TURRETS | `PD` | `DEFEND` |
 | Tactical, tip | `Turret: tap to change mode` | `Auto: fires at the target in its arc`, `Target: fires at the locked target`, `Defend: shoots down incoming missiles`, `Hold: does not fire`, each then `; tap to change` |
 | Tactical, tip | `corvette, hostile` | `Corvette, hostile` |
+| OBJECTIVES, title line | `mm:ss` running clock | none without a time limit (18c) |
+| Band | `mm:ss` running clock | none without a time limit (18c) |
 | Gunner | `TAB` (button) | `NEXT` |
 | Gunner, tip | `Next target (Tab)` | `Next target [Tab]` |
 | Science, tip | `Scan (Q)` | `Scan [Q]` |
-| Science, SHIELDS model | `STBD` | `STARBOARD` |
 | Engineering, POWER | `EMERG` | `EMERGENCY` |
 | Engineering, tips | `Priority 0: never shed`, `Priority: 1 is fed first` | `Always powered`, `Priority: 1 is powered first and cut last` |
 | Engineering, REACTOR | `SCRAM` (button) | `STOP` |
 | Engineering, REACTOR | `SCRAM` (the core's word when it is down) | `OFF` |
 | Engineering, tip | `Scram: tap, then tap again` | `Emergency stop: tap, then tap again` |
+| Engineering, REACTOR | why it stopped, under OFF: `MANUAL`, `COOLANT HOT LEG OVER 3...`, `BLANKET OVER ... K`, `AUXILIARIES BELOW ...`, `REACTOR INTEGRITY BELOW ...` (cut at 22 letters) | `STOPPED BY HAND`, `COOLANT TOO HOT`, `CORE TOO HOT`, `PUMPS SHORT OF POWER`, `REACTOR DAMAGED` (`sc-core` `ScramCause::words`; the mockup maps its library's cause to the same words) |
 | Engineering, tips | `Hot leg {K} · {flow}`, `Hot leg to the chiller: {n}%`, `Cold leg {K}`, `Bypass: {n}%` | `Hot coolant {K} · {flow}`, `Through the chiller: {n}%`, `Cooled coolant {K}`, `Past the chiller: {n}%` |
 | Engineering, tip | `Hot leg {K} (band a-b, scram c) · cold leg {K}` | `Hot coolant {K} (safe a-b, stops at c) · cooled {K}` |
 | Engineering, tips | `Makeup valve: ...`, `Makeup open ...` | `Top-up valve: ...`, `Top-up open ...` |
@@ -471,7 +473,9 @@ HOLD word, `[wheel]` the mouse wheel's glyph). In the engine a key that is a bin
 
 Kept, and why: `T1` and `J1` (Q12); YAW, PITCH and ROLL (the Controls page's own words, what a flight game says);
 port, starboard, bow and stern (the ship's sides, as the station names say them); the turret letters D, V, P, S (on
-the turret's own dial, beside the station tab that names the gunner); SHORT and NO POWER on the board's legend.
+the turret's own dial, beside the station tab that names the gunner); SHORT and NO POWER on the board's legend; STBD on
+Science's shield model, where STARBOARD was tried and ran into TOP over the hull (a label that does not fit is worse
+than the sea's own short form, which every face on that model keeps beside BOW and STERN).
 
 ### 18c. The mission clock (Q6)
 

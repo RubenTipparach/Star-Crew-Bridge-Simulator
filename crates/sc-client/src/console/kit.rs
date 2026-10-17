@@ -196,21 +196,62 @@ impl Hits {
     }
 }
 
-/// The hover tip: the mockup's `#tip`, beside the pointer.
+/// A tip's words and its keys (ui-art-direction design 7 and 18b): every `[...]` after the words is a key, drawn as a
+/// keycap, never spelled into the sentence. A key is a key's name (`Tab`), a binding's field (`@helm.roll_port`, so the
+/// tip shows the key the game reads), `hold` (the HOLD word) or a mouse glyph (`wheel`).
+pub fn tip_parts(tip: &str) -> (&str, Vec<crate::look::KeyTok>) {
+    use crate::look::KeyTok;
+    static KEYS: OnceLock<crate::bindings::Bindings> = OnceLock::new();
+    let Some(at) = tip.find(" [") else { return (tip, Vec::new()) };
+    let keys = KEYS.get_or_init(crate::bindings::Bindings::shipped);
+    let toks = tip[at..]
+        .split(['[', ']'])
+        .map(str::trim)
+        .filter(|t| !t.is_empty())
+        .map(|t| {
+            let one = [t.to_owned()];
+            keys.tokens(&one).and_then(|v| v.into_iter().next()).unwrap_or_else(|| KeyTok::Key(t.to_owned()))
+        })
+        .collect();
+    (tip[..at].trim_end(), toks)
+}
+
+/// "YAW" as "Yaw": a panel's word at the head of a tip.
+pub fn title_case(word: &str) -> String {
+    let lower = word.to_lowercase();
+    let mut cs = lower.chars();
+    cs.next().map(|f| f.to_uppercase().chain(cs).collect()).unwrap_or_default()
+}
+
+/// The keycaps in a tip, layout points high (the mockup's `#tip .kc`).
+const TIP_KEY_H: f32 = 18.0;
+
+/// The hover tip: the mockup's `#tip`, beside the pointer: its words, then its keys as keycaps (design 18b).
 pub fn tooltip(cv: &Canvas, cx: &mut Ctx) {
     let Some(p) = cx.pointer else { return };
     let Some(tip) = cx.hits.tip_at(p).map(str::to_owned) else { return };
+    let (words, keys) = tip_parts(&tip);
     let c = &vg::style().c;
     // Measured off screen, then drawn where it fits.
     let (x, y) = ((p.x - cv.o.x) / cv.s + 14.0, (p.y - cv.o.y) / cv.s + 18.0);
     let probe = Canvas::new(cv.painter.with_clip_rect(Rect::NOTHING), cv.o, cv.s);
-    let w = probe.text(0.0, 0.0, 13.0, c.text.0, &tip, T::default().ls(0.39)) + 16.0;
+    let tw = probe.text(0.0, 0.0, 13.0, c.text.0, words, T::default().ls(0.39));
+    // The keycaps are the screens' own (look::Kit::keys), scaled so a cap is TIP_KEY_H points high.
+    let kk = TIP_KEY_H / crate::look::look().f.sizes_px.key_h;
+    let cap_kit = |cv: &Canvas, x: f32, y: f32| {
+        crate::look::Kit::new(cv.painter.clone(), Pos2::new(cv.o.x + x * cv.s, cv.o.y + y * cv.s), cv.s * kk)
+    };
+    let kw = if keys.is_empty() { 0.0 } else { cap_kit(&probe, 0.0, 0.0).keys_w(&keys) * kk + 8.0 };
+    let w = tw + kw + 16.0;
     // Kept on the canvas (the reference frame, `ui::layout_size`).
     let size = crate::ui::layout_size();
     let x = x.min(size.x - w - 4.0);
     let y = if y + 26.0 > size.y { y - 46.0 } else { y };
     cv.rect(x, y, w, 24.0, 5.0, rgba(0x182231, 1.0), Some(Pen::new(1.0, rgba(0x2c3a4d, 1.0))));
-    cv.text(x + 8.0, y + 17.0, 13.0, c.text.0, &tip, T::default().ls(0.39));
+    cv.text(x + 8.0, y + 17.0, 13.0, c.text.0, words, T::default().ls(0.39));
+    if !keys.is_empty() {
+        cap_kit(cv, x + 8.0 + tw + 8.0, y + 12.0).keys(0.0, 0.0, &keys);
+    }
 }
 
 /// A button (the mockup's `button(b)`): a rounded box with an icon, a word, or both.
@@ -575,7 +616,7 @@ pub fn range_ctl(cv: &Canvas, cx: &mut Ctx, x: f32, y: f32, key: &'static str) {
             act: Some(Act::Range(key, -1)),
             fs: Some(20.0),
             off: km <= 5.0,
-            tip: Some("Closer (scroll)".into()),
+            tip: Some("Closer [wheel]".into()),
             ..Default::default()
         },
     );
@@ -593,7 +634,7 @@ pub fn range_ctl(cv: &Canvas, cx: &mut Ctx, x: f32, y: f32, key: &'static str) {
             act: Some(Act::Range(key, 1)),
             fs: Some(20.0),
             off: km >= 100.0,
-            tip: Some("Further (scroll)".into()),
+            tip: Some("Further [wheel]".into()),
             ..Default::default()
         },
     );
@@ -982,7 +1023,7 @@ pub fn feed_widget(cv: &Canvas, cx: &mut Ctx, x: f32, y: f32) {
                 tip: Some(if *k == "CHASE" {
                     "Chase camera: on or off".to_owned()
                 } else {
-                    format!("Viewscreen: {}", k.to_lowercase())
+                    format!("Viewscreen: {}", super::feed_word(k).to_lowercase())
                 }),
                 ..Default::default()
             },
@@ -1609,7 +1650,7 @@ pub fn joystick(cv: &Canvas, cx: &mut Ctx, x: f32, h: f32, yaw: f64, pitch: f64)
         148.0,
         h,
         Some(Hit::Drag(Drag::Joy)),
-        Some("Stick: yaw and pitch (A, D, R, F). Pull back for nose up".into()),
+        Some("Stick: yaw and pitch, pull back for nose up [A] [D] [R] [F]".into()),
     );
 }
 
@@ -1651,7 +1692,7 @@ pub fn flipper(cv: &Canvas, cx: &mut Ctx, x: f32, h: f32, roll: f64) {
         80.0,
         h,
         Some(Hit::Drag(Drag::Flip)),
-        Some("Flipper: roll left or right (Q, E)".into()),
+        Some("Roll: drag left or right [@helm.roll_port] [@helm.roll_starboard]".into()),
     );
 }
 
@@ -1700,6 +1741,20 @@ pub fn thumbwheel(cv: &Canvas, cx: &mut Ctx, x: f32, top: f32, hh: f32, value: f
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_tips_keys_come_after_its_words_as_keycaps() {
+        use crate::look::KeyTok::{Glyph, Hold, Key};
+        assert_eq!(tip_parts("Next target [Tab]"), ("Next target", vec![Key("Tab".into())]));
+        assert_eq!(tip_parts("Leave the station [hold] [E]"), ("Leave the station", vec![Hold, Key("E".into())]));
+        assert_eq!(tip_parts("Closer [wheel]"), ("Closer", vec![Glyph("wheel".into())]));
+        assert_eq!(tip_parts("Hull"), ("Hull", vec![]));
+        // A binding's field is the key the game reads (the helm's roll moved off Q and E, leave-station 3).
+        let (_, roll) = tip_parts("Roll: drag left or right [@helm.roll_port] [@helm.roll_starboard]");
+        assert_eq!(roll, vec![Key("Z".into()), Key("C".into())]);
+        let (_, strafe) = tip_parts("x [@helm.strafe_port] [@helm.strafe_starboard] [Space] [Left Ctrl]");
+        assert_eq!(strafe, vec![Key("Left".into()), Key("Right".into()), Key("Space".into()), Key("Ctrl".into())]);
+    }
 
     #[test]
     fn the_consoles_draw_the_tern_low_poly_model() {

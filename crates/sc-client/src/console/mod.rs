@@ -987,8 +987,8 @@ pub fn station_word(id: &str) -> (&'static str, &'static str) {
         "tactical" => ("TACTICAL", "tactical"),
         "engineering" => ("ENGINEERING", "engineering"),
         "science" => ("SCIENCE", "science"),
-        "laser_port" => ("LASER PORT", "laser"),
-        "laser_stbd" => ("LASER STBD", "laser"),
+        "laser_port" => ("PORT LASER", "laser"),
+        "laser_stbd" => ("STARBOARD LASER", "laser"),
         "gunner" => ("GUNNER", "gunner"),
         _ => ("CAPTAIN", "command"),
     }
@@ -1047,7 +1047,7 @@ fn title_band(cv: &Canvas, cx: &mut Ctx) {
         cv.icon(&r, x + 13.0, 16.0, 14.0, if on { rc } else { c.dim.0 });
         cv.text(x + 25.0, 21.0, 13.0, if on { c.text.0 } else { c.dim.0 }, &w, T::default().ls(1.5).bold());
         if let Some(a) = act {
-            let tip = (solo.is_some() && !home && a != Act::ObjClose).then(|| "Your console (Tab)".to_owned());
+            let tip = (solo.is_some() && !home && a != Act::ObjClose).then(|| "Your console [Tab]".to_owned());
             cx.hits.add(cv, x, 4.0, tw, 24.0, Some(kit::Hit::Act(a)), tip);
         }
         x += tw + 6.0;
@@ -1106,8 +1106,11 @@ fn title_band(cv: &Canvas, cx: &mut Ctx) {
                 let col = if on { c.text.0 } else { c.dim.0 };
                 cv.icon(ic, x + 14.0, 16.0, 14.0, col);
                 cv.text(x + 26.0, 21.0, 13.0, col, w, T::default().ls(1.5).bold());
-                let tip =
-                    if auto { format!("{} runs it (M)", t.op) } else { format!("You run it, through {} (M)", t.op) };
+                let tip = if auto {
+                    format!("{} runs it [M]", t.op)
+                } else {
+                    format!("You give the orders, {} carries them out [M]", t.op)
+                };
                 cx.hits.add(cv, x, 4.0, tw, 24.0, Some(kit::Hit::Act(Act::Mode(auto))), Some(tip));
                 x += tw + 4.0;
             }
@@ -1189,7 +1192,7 @@ fn title_band(cv: &Canvas, cx: &mut Ctx) {
         }
         let col = if held { c.text.0 } else { c.dim.0 };
         cv.text(leave_x + 29.0, 21.0, 13.0, col, "LEAVE STATION", T::default().ls(1.5).bold());
-        let tip = format!("Leave the station (hold {})", l.key);
+        let tip = format!("Leave the station [hold] [{}]", l.key);
         cx.hits.add(cv, leave_x, 4.0, leave_w, 24.0, Some(kit::Hit::Act(Act::Leave)), Some(tip));
     }
     // START MISSION (start-mission 4): while the round waits, on the console of a player who may start it, in the
@@ -1218,7 +1221,7 @@ fn title_band(cv: &Canvas, cx: &mut Ctx) {
         cv.icon("command", ox + 16.0, 16.0, 14.0, c.warn.0);
         cv.text(ox + 30.0, 21.0, 13.0, c.text.0, &format!("CAPTAIN: {o}"), T::default().ls(1.5).bold());
         cv.icon("check", ox + ow - 16.0, 16.0, 14.0, c.warn.0);
-        cx.hits.add(cv, ox, 4.0, ow, 24.0, Some(kit::Hit::Act(Act::Ack)), Some("Acknowledge (Y)".into()));
+        cx.hits.add(cv, ox, 4.0, ow, 24.0, Some(kit::Hit::Act(Act::Ack)), Some("Acknowledge [Y]".into()));
     }
     let cc = if emerg {
         c.emergency.0
@@ -1240,6 +1243,15 @@ fn title_band(cv: &Canvas, cx: &mut Ctx) {
 pub fn time_left(limit_s: Option<f64>, clock_s: f64) -> Option<String> {
     let left = (limit_s? - clock_s).max(0.0).ceil() as i64;
     Some(format!("{:02}:{:02}", left / 60, left % 60))
+}
+
+/// A viewscreen camera's word on the console (ui-art-direction design 18b): the feed's code in full, never FWD or STBD.
+pub fn feed_word(feed: &str) -> &str {
+    match feed {
+        "FWD" => "FORWARD",
+        "STBD" => "STARBOARD",
+        other => other,
+    }
 }
 
 /// The viewscreen's camera, in ship axes: forward, right and up (the mockup's `feedBasis`).
@@ -1461,7 +1473,7 @@ fn look_band(cv: &Canvas, cx: &mut Ctx) {
         let tip = "Drag to orbit the ship; scroll or pinch to move in or out";
         cx.hits.add(cv, sx, sy, sw, sh, Some(kit::Hit::Drag(kit::Drag::Orbit)), Some(tip.into()));
     }
-    cv.text(342.0, 38.0, 11.0, c.dim.0, &format!("VIEWSCREEN · {}", v.feed), T::default().ls(2.0));
+    cv.text(342.0, 38.0, 11.0, c.dim.0, &format!("VIEWSCREEN · {}", feed_word(&v.feed)), T::default().ls(2.0));
     kit::feed_widget(cv, cx, 196.0, 10.0);
     kit::navball(cv, cx, 1046.0, 116.0, 76.0);
     if v.red_alert {

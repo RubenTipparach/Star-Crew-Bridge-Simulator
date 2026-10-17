@@ -733,7 +733,7 @@ impl Seat {
                 target: p.target,
                 p_e_mw: p.p_e_mw,
                 mode: if p.rx_auto { "auto" } else { "manual" }.into(),
-                scram_cause: sc_core::power::ScramCause::from_u8(p.scram_cause).map(|c| c.words(pd)),
+                scram_cause: sc_core::power::ScramCause::from_u8(p.scram_cause).map(|c| c.words().to_owned()),
                 t_k: p.blanket_k,
                 warn_k: f.reactor.heat.warn_k,
                 scram_k: f.reactor.heat.scram_k,
@@ -1878,6 +1878,35 @@ mod tests {
         snap: Snapshot,
         data: DrillData,
         station: Station,
+    }
+
+    #[test]
+    fn no_console_tip_spells_a_key_into_its_words() {
+        // ui-art-direction design 7 and 18b: keys are keycaps after the words ("Next target [Tab]"), never "(Tab)".
+        for st in Station::ALL {
+            let mut b = Bench::new(st);
+            let hits = paint(&b.view(0.0));
+            for tip in hits.regions.iter().filter_map(|r| r.tip.as_deref()) {
+                let (words, keys) = console::kit::tip_parts(tip);
+                assert!(!words.contains('[') && !words.contains("(scroll)"), "{st:?}: {tip}");
+                for inner in words.split('(').skip(1).filter_map(|r| r.split(')').next()) {
+                    // A key: one capital (E), or a capitalised short name (Tab, Ctrl); a mode word (AUTO) is not one.
+                    let key = |k: &str| {
+                        k.len() == 1 && k.starts_with(|c: char| c.is_ascii_uppercase())
+                            || (2..=5).contains(&k.len())
+                                && k.starts_with(|c: char| c.is_ascii_uppercase())
+                                && k[1..].chars().all(|c| c.is_ascii_lowercase())
+                    };
+                    let keyish = inner.split(", ").all(key);
+                    assert!(!keyish, "{st:?}: a key spelled into the tip {tip:?}");
+                }
+                for k in &keys {
+                    if let crate::look::KeyTok::Key(name) = k {
+                        assert!(!name.starts_with('@'), "{st:?}: {name} names no binding");
+                    }
+                }
+            }
+        }
     }
 
     #[test]
