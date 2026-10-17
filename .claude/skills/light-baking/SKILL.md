@@ -50,7 +50,7 @@ emergency power cost nothing extra to bake. Stored as three `RGBA8` vertex colou
 - **Moving things use probes**: ambient cubes on a 1 m grid, from the same bake.
 - **Bakes are deterministic**: seeded quasi-random samples keyed by stable ids, never `Math.random`
   or thread order; a digest proves it.
-- **Every bake states its Pi 5 cost** (CLAUDE.md 2): triangles added, bytes, and the residual if a
+- **Every bake states its cost** (CLAUDE.md 2, information, not a gate): triangles added, bytes, and the residual if a
   cap was reached.
 - **Numbers say what they are**: a bake time from the mockup is this machine's CPU in one browser
   thread, not a Pi 5 and not the engine baker.
@@ -123,7 +123,7 @@ uses it on the Tern's bridge and engineering. It is documentation tooling, not e
    lightmap, Split with any two); State (Normal, Red alert, Emergency power, Power loss); Bounces;
    Texel size; Toggles (AO in the bake on or off, Debug: occlusion only, Debug: vertex wireframe
    or lightmap texel checker, the probe-lit crew figure). The panel on the right gives triangles, vertices, bytes, atlas size, bake time,
-   rays, residual and digest; the meter gives the Pi 5 budget.
+   rays, residual and digest; the meter gives what it draws (the Pi 5 budget is retired, CLAUDE.md 2).
 3. **Place or tune a lamp**: fixture types and their photometry are `data/lighting/fixtures.json`
    (a ceiling panel 850 cd, a high-bay lamp 2,200 cd); placement is the kit's lamp rule
    (`ShipKit.lampsFor`, from `data/ships/tern/detailing.json` `lamps`: a panel in every frame bay,
