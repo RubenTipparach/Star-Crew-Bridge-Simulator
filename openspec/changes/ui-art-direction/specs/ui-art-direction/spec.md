@@ -46,6 +46,10 @@ on the game's screen when it does nothing there.
 - **WHEN** nothing the player can use is in reach
 - **THEN** no key is shown on the walking screen
 
+#### Scenario: A console's tooltip
+- **WHEN** a seated player hovers the gunner's NEXT button
+- **THEN** the tooltip reads Next target followed by a Tab keycap, with no key in brackets in its words
+
 ### Requirement: Controls listed in Options, not on the game's screen
 
 Options SHALL hold a Controls page, a square panel listing the client's bindings as keycaps grouped by activity, with
@@ -80,3 +84,26 @@ as a keycap with a ring that fills while it is held, and from a Leave station it
 #### Scenario: The Esc menu while walking
 - **WHEN** a walking player opens the Esc menu
 - **THEN** it lists Resume, Options, Controls and Leave ship, without Leave station
+
+### Requirement: Focus and the briefing move, briefly, by the style's curves
+
+The focus bar SHALL slide from the item that had focus to the item that has it over `motion_ms.focus` on its
+`motion_ease` curve, and when a round starts the briefing SHALL lower out of the console's screen over
+`motion_ms.briefing_lower` on its curve, uncovering the console, with no bounce, no overshoot and no cut.
+
+#### Scenario: Arrowing down the front menu
+- **WHEN** the player presses the down arrow on the front menu
+- **THEN** the accent bar and its fill are between the two items 45 ms later and on the new item at 90 ms
+
+#### Scenario: The round starts at a console
+- **WHEN** the countdown ends while the player sits at Helm
+- **THEN** the briefing slides down under the band over 350 ms and the Helm console is seen behind it, never a black frame
+
+### Requirement: The console band's clock shows only a mission's time limit
+
+The console band SHALL show a clock only when the mission has a time limit (`time_limit_s`), counting down the time
+left; a mission's safety timeout (`safety_timeout_s`) SHALL end the fight on the server and SHALL NOT be drawn.
+
+#### Scenario: The training drill
+- **WHEN** a player sits at a console in the training drill, which has a safety timeout and no time limit
+- **THEN** the band shows no clock

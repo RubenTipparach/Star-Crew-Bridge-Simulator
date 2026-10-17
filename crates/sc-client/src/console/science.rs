@@ -203,7 +203,7 @@ fn contact(cv: &Canvas, cx: &mut Ctx) {
             act: (!done).then_some(Act::Scan),
             off: done,
             on: scanning,
-            tip: Some("Scan (Q)".into()),
+            tip: Some("Scan [Q]".into()),
             fs: Some(14.0),
             ..Default::default()
         },

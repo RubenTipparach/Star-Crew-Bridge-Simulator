@@ -4,7 +4,8 @@
 //! mockup saved (`tools/consoles/parity.mjs` writes `window.consoleState()` beside each of its named shots), at
 //! 1280 x 720 with one layout point a pixel, and writes `<name>-engine.png`. `tools/consoles/compare.py` lays it
 //! beside the mockup's picture of the same moment. It is a measurement instrument: it draws with the drill's own
-//! console code and changes nothing. The viewscreen stays black here: its 3D feed is the drill's, not the mockup's
+//! console code and changes nothing. `--hover X,Y` (layout points) puts the pointer there, so the capture shows that
+//! control's tooltip (ui-art-direction design 18b's evidence), written as `<name>-hover-engine.png`. The viewscreen stays black here: its 3D feed is the drill's, not the mockup's
 //! sketch, and the comparison leaves that rectangle out.
 
 use crate::console::{self, ConsoleView};
@@ -21,11 +22,13 @@ pub struct FixtureApp {
     view: ConsoleView,
     out: PathBuf,
     frames: u32,
+    /// Where the pointer rests, layout points (the tooltip's capture), if anywhere.
+    hover: Option<egui::Pos2>,
 }
 
 impl FixtureApp {
     /// Read the state and set the renderer up.
-    pub fn new(state: PathBuf, shots: PathBuf) -> Result<Self, String> {
+    pub fn new(state: PathBuf, shots: PathBuf, hover: Option<egui::Pos2>) -> Result<Self, String> {
         let text = std::fs::read_to_string(&state).map_err(|e| format!("{}: {e}", state.display()))?;
         let view: ConsoleView = serde_json::from_str(&text).map_err(|e| format!("{}: {e}", state.display()))?;
         let cfg_text =
@@ -34,7 +37,8 @@ impl FixtureApp {
         let mut r = Renderer::new(&cfg);
         let target = r.make_target(16, 16, 1);
         let name = state.file_stem().and_then(|s| s.to_str()).unwrap_or("console").to_owned();
-        Ok(Self { r, target, ui: Ui::new(), view, out: shots.join(format!("{name}-engine.png")), frames: 0 })
+        let name = if hover.is_some() { format!("{name}-hover") } else { name };
+        Ok(Self { r, target, ui: Ui::new(), view, out: shots.join(format!("{name}-engine.png")), frames: 0, hover })
     }
 }
 
@@ -43,9 +47,9 @@ impl App for FixtureApp {
         self.frames += 1;
         self.r.begin_3d(&self.target, [0.0, 0.0, 0.0, 1.0]);
         self.r.end_pass();
-        let view = &self.view;
+        let (view, hover) = (&self.view, self.hover);
         let frame = self.ui.run(&mut self.r, f, 0.0, |ctx| {
-            let _ = console::paint(ctx, view, false, None);
+            let _ = console::paint(ctx, view, false, hover);
         });
         let meshes = frame.meshes();
         if self.frames == 3 {

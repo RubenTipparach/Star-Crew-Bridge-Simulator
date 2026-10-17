@@ -67,7 +67,7 @@
   ],
   "tern_start_speed_mps": 0,
   "countdown_s": 5,
-  "engage_limit_s": 600,
+  "safety_timeout_s": 600,
   "debrief_s": 20,
   "debrief_max_s": 240,
   "bot_ready_s": 3,

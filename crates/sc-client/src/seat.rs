@@ -524,7 +524,8 @@ impl Seat {
             alert: if br.red_alert { "red_alert" } else { "normal" }.into(),
             red_alert: br.red_alert,
             clock_s: snap.phase_s,
-            timed: data.mission.engage_limit_s > 0.0,
+            // Only a mission's time limit is counted down, in the fight (design 18c): the safety timeout is never shown.
+            limit_s: data.mission.time_limit_s.filter(|_| snap.phase == sc_core::combat::Phase::Engage),
             hull_pct: tern.hull / data.tern_combat.hull_mj.max(1e-9) * 100.0,
             shield_ratio: std::array::from_fn(|f| tern.faces[f] / caps[f].max(1e-9)),
             power_mw: snap.power.as_ref().map(|p| p.rx_out_mw + p.bat_out_mw),
@@ -732,7 +733,7 @@ impl Seat {
                 target: p.target,
                 p_e_mw: p.p_e_mw,
                 mode: if p.rx_auto { "auto" } else { "manual" }.into(),
-                scram_cause: sc_core::power::ScramCause::from_u8(p.scram_cause).map(|c| c.words(pd)),
+                scram_cause: sc_core::power::ScramCause::from_u8(p.scram_cause).map(|c| c.words().to_owned()),
                 t_k: p.blanket_k,
                 warn_k: f.reactor.heat.warn_k,
                 scram_k: f.reactor.heat.scram_k,
@@ -1756,7 +1757,8 @@ pub(crate) fn objectives_view(
             ObjectiveRow { words: o.words.clone(), state: state.into(), k, number }
         })
         .collect();
-    Some(ObjectivesView { title: m.title.clone(), clock_s: snap.phase_s, rows })
+    let limit_s = m.time_limit_s.filter(|_| snap.phase == sc_core::combat::Phase::Engage);
+    Some(ObjectivesView { title: m.title.clone(), clock_s: snap.phase_s, limit_s, rows })
 }
 
 /// A pointer event on the console, in egui points.
@@ -1876,6 +1878,54 @@ mod tests {
         snap: Snapshot,
         data: DrillData,
         station: Station,
+    }
+
+    #[test]
+    fn no_console_tip_spells_a_key_into_its_words() {
+        // ui-art-direction design 7 and 18b: keys are keycaps after the words ("Next target [Tab]"), never "(Tab)".
+        for st in Station::ALL {
+            let mut b = Bench::new(st);
+            let hits = paint(&b.view(0.0));
+            for tip in hits.regions.iter().filter_map(|r| r.tip.as_deref()) {
+                let (words, keys) = console::kit::tip_parts(tip);
+                assert!(!words.contains('[') && !words.contains("(scroll)"), "{st:?}: {tip}");
+                for inner in words.split('(').skip(1).filter_map(|r| r.split(')').next()) {
+                    // A key: one capital (E), or a capitalised short name (Tab, Ctrl); a mode word (AUTO) is not one.
+                    let key = |k: &str| {
+                        k.len() == 1 && k.starts_with(|c: char| c.is_ascii_uppercase())
+                            || (2..=5).contains(&k.len())
+                                && k.starts_with(|c: char| c.is_ascii_uppercase())
+                                && k[1..].chars().all(|c| c.is_ascii_lowercase())
+                    };
+                    let keyish = inner.split(", ").all(key);
+                    assert!(!keyish, "{st:?}: a key spelled into the tip {tip:?}");
+                }
+                for k in &keys {
+                    if let crate::look::KeyTok::Key(name) = k {
+                        assert!(!name.starts_with('@'), "{st:?}: {name} names no binding");
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn the_band_shows_no_clock_for_a_safety_timeout_and_counts_down_a_time_limit() {
+        // ui-art-direction Q6 and design 18c: the drill's 600 s is a safety timeout, never shown.
+        let mut b = Bench::new(Station::Helm);
+        assert_eq!(b.data.mission.time_limit_s, None, "the drill has no time limit");
+        let v = b.view(0.0);
+        assert_eq!(v.limit_s, None);
+        assert_eq!(console::time_left(v.limit_s, v.clock_s), None, "no clock in the band");
+        assert_eq!(v.objectives.as_ref().and_then(|o| o.limit_s), None, "nor on OBJECTIVES");
+        b.data.mission.time_limit_s = Some(300.0);
+        let mut v = b.view(0.0);
+        assert_eq!(v.limit_s, Some(300.0), "a time limit is counted in the fight");
+        assert_eq!(v.objectives.as_ref().and_then(|o| o.limit_s), Some(300.0));
+        v.clock_s = 59.5;
+        assert_eq!(console::time_left(v.limit_s, v.clock_s).as_deref(), Some("04:01"), "the time left, rounded up");
+        v.clock_s = 400.0;
+        assert_eq!(console::time_left(v.limit_s, v.clock_s).as_deref(), Some("00:00"));
     }
 
     impl Bench {

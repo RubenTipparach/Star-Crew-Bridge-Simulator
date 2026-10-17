@@ -114,6 +114,8 @@ pub struct Lobby {
     controls: crate::bindings::Controls,
     /// The page on screen and when it came up, egui's clock: a new page fades in from the ground (design 8).
     shown: Option<(Page, f64)>,
+    /// The focus slab's slide between the items (design 18a).
+    slide: crate::motion::Slide,
 }
 
 impl Lobby {
@@ -137,6 +139,7 @@ impl Lobby {
             art: None,
             controls,
             shown: None,
+            slide: crate::motion::Slide::default(),
         };
         match kept {
             // A station that is not built any more is Any.
@@ -211,7 +214,7 @@ impl Lobby {
             self.shown = Some((page, now));
         }
         let since = self.shown.map_or(now, |s| s.1);
-        let fade = ((now - since) * 1000.0 / f64::from(look().f.motion_ms.screen_fade)).clamp(0.0, 1.0) as f32;
+        let fade = crate::motion::eased(now - since, look().f.motion_ms.screen_fade, look().f.motion_ease.screen_fade);
         let veil = egui::LayerId::new(egui::Order::Foreground, egui::Id::new("lobby-fade"));
         if fade < 1.0 {
             look::cover(&ctx.layer_painter(veil), look::ground(1.0 - fade));
@@ -288,14 +291,23 @@ impl Lobby {
         let item_h = look().f.sizes_px.item_h;
         let mut go = None;
         let mut action = LobbyAction::None;
-        for i in 0..rows {
-            let (word, page) = MAIN.get(i).map_or(("QUIT", None), |(w, p)| (*w, Some(*p)));
+        let item = |i: usize| MAIN.get(i).map_or(("QUIT", None), |(w, p)| (*w, Some(*p)));
+        // The pointer moves the focus first, so the slab is drawn under the item that has it (design 18a).
+        let hits: Vec<egui::Response> = (0..rows)
+            .map(|i| {
+                let r = hit(ui, k.r(96.0, 546.4 + i as f32 * item_h, 520.0, item_h), item(i).0);
+                if r.hovered() {
+                    self.focus = i;
+                }
+                r
+            })
+            .collect();
+        let now = ui.input(|i| i.time);
+        k.focus_slab(&mut self.slide, 96.0, 546.4 + self.focus as f32 * item_h, 520.0, now);
+        for (i, r) in hits.iter().enumerate() {
+            let (word, page) = item(i);
             let y = 546.4 + i as f32 * item_h;
-            let r = hit(ui, k.r(96.0, y, 520.0, item_h), word);
-            if r.hovered() {
-                self.focus = i;
-            }
-            k.item(96.0, y, 520.0, word, i == self.focus, Role::Title);
+            k.item(96.0, y, word, i == self.focus, Role::Title);
             if r.clicked() || (enter && i == self.focus) {
                 self.focus = i;
                 match page {
