@@ -3088,7 +3088,7 @@ fn mission_label(m: &sc_core::combat::data::MissionFile) -> String {
 /// extinguisher's bar beside it, and the first time aboard the hint with its marker. No roster, phase or clock.
 fn bridge_overlay(ctx: &egui::Context, b: &BridgeUi) {
     if let Some((deck, labels)) = &b.map {
-        crate::shipmap::overlay(ctx, deck, labels);
+        crate::shipmap::overlay(ctx, deck, labels, b.touch);
         if b.red_alert {
             let painter = ctx.layer_painter(egui::LayerId::new(egui::Order::Middle, egui::Id::new("bridge-names")));
             crate::hud::alert_chip(&painter, ctx.content_rect(), true);

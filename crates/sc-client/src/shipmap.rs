@@ -173,14 +173,16 @@ pub fn draw(
 }
 
 /// The map's title and deck at the top left of the safe area (ui-art-direction design 11), and each marker's name on a
-/// square plate (the player's edged).
-pub fn overlay(ctx: &egui::Context, deck: &str, labels: &[MapLabel]) {
+/// square plate (the player's edged). By thumb (`touch`) the title moves right of the MAP button in that corner.
+pub fn overlay(ctx: &egui::Context, deck: &str, labels: &[MapLabel], touch: bool) {
     let screen = ctx.content_rect();
     let painter = ctx.layer_painter(egui::LayerId::new(egui::Order::Background, egui::Id::new("names")));
     let c = look::look().c();
     let k = look::kit(&painter, screen, crate::ui::Anchor::TopLeft, egui::Vec2::new(800.0, 200.0));
-    k.text(Role::Label, 96.0, 54.0, c.accent.0, "Ship map", Align::Start);
-    k.text(Role::Title, 96.0, 54.0 + k.line(Role::Label) + 8.0, c.text.0, deck, Align::Start);
+    // MAP is 48 px of the 390 px reference a phone is laid out on, 12 px in: about 190 of the 1080 the kit draws in.
+    let left = if touch { 230.0 } else { 96.0 };
+    k.text(Role::Label, left, 54.0, c.accent.0, "Ship map", Align::Start);
+    k.text(Role::Title, left, 54.0 + k.line(Role::Label) + 8.0, c.text.0, deck, Align::Start);
     let (_, s) = crate::ui::anchored(screen, crate::ui::Anchor::Centre, egui::Vec2::ZERO);
     for l in labels {
         let p = egui::pos2(screen.min.x + l.at[0] * screen.width(), screen.min.y + l.at[1] * screen.height());

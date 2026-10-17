@@ -875,7 +875,7 @@ impl Client {
         let (menu, options, controls) = (&mut self.menu, &mut self.options, &self.bindings.controls);
         let frame = self.ui.run(&mut self.r, f, self.time_s, |ctx| {
             if let Some(deck) = &map_deck {
-                shipmap::overlay(ctx, deck, &labels);
+                shipmap::overlay(ctx, deck, &labels, false);
             }
             let painter = ctx.layer_painter(egui::LayerId::new(egui::Order::Background, egui::Id::new("walk-names")));
             let screen = ctx.content_rect();
