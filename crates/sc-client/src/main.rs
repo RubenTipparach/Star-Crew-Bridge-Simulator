@@ -95,6 +95,9 @@ const POSES: &[(&str, [f64; 3], [f32; 2], f32)] = &[
     ("mess-window", [-4.6, 0.0, 11.6], [-1.0, 0.0], -6.0),
     ("medbay-window", [4.8, 0.0, 23.0], [1.0, 0.0], -6.0),
     ("life-support-window", [9.0, -3.5, 12.5], [0.7, -0.7], 10.0),
+    // The dorsal gunner's pod (tern-exterior 3a): standing behind the seat, down to the ladder's hatch, then level.
+    ("gunner-pod-down", [0.0, 6.5, 1.0], [0.0, 1.0], -35.0),
+    ("gunner-pod-level", [0.0, 6.5, 1.0], [0.0, 1.0], 0.0),
     ("outside-port-bow", [38.0, 6.0, 62.0], [-0.55, -0.83], -8.0),
     ("outside-starboard-bow", [-38.0, 6.0, 62.0], [0.55, -0.83], -8.0),
     ("outside-port-aft", [45.0, 14.0, -80.0], [-0.45, 0.89], -10.0),

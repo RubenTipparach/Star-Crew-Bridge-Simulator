@@ -74,6 +74,23 @@ into the same file rather than a second one. That keeps one loader and one downl
   rounds them to the centimetre), and the triangles fit the Pi 5 exterior budget (12,000, the engine-stack table);
   otherwise the compile stops.
 
+### 3a. The turret pods' cut (2026-10-17)
+
+The owner, 2026-10-17: "Also hull is clipping in the gunner pod, there's no hole in the geometry carved for that".
+The dorsal pod's air runs from 6.5 m to 9.0 m; the model's roof skin (7.89 m), its hazard plating (7.67 m) and the
+turret base's floor plate (7.9 m) crossed it at chest height, and the base's top (9.0 m) lay in its ceiling. A gunner
+standing or seated there (eye about 8.2 m) was inside the hull: the floor and the ladder down were hidden under it.
+
+`deckc` now cuts every pod (`layout.json` compartments of kind `pod`, each brush's outline and heights, 1 cm past
+floor and ceiling) out of the model's triangles as it packs them (`sc-tools` `podcut`): a triangle a pod touches is
+replaced by its pieces outside the pod, each corner taking the position, normal, colour and texture coordinate at
+that point of the triangle. The paint lands where it did, so no texture is regenerated (CLAUDE.md 9's projected lines
+are untouched: only surface inside a pod is removed). The turret's base on the model (1.6 m each side of the keel, z
+0.1-3.9 m) encloses the dorsal pod's outline (1.25 m, z 0.75-3.25 m), so the opening is never seen from outside.
+With the four pods cut, the model's 4,440 triangles compile to 4,700 (the crossed ones replaced by their pieces outside); the glb itself is unchanged. Checked by
+`deckc`'s test that no hull triangle is left inside a pod, and captures from the gunner's seat before and after in
+`docs/screenshots/engine/gunner-pod/`.
+
 ## 4. The draw
 
 - The client builds one mesh for the hull and the three texture arrays when it loads the deck, and draws the hull's seven
