@@ -329,17 +329,17 @@ Questions (to the survey, with these shots):
 
 ### Open questions
 
-The survey's questions NS1 to NS5 are Q1 to Q5 above. The survey closed on 2026-10-16 with all five blank; by its
-rule a blank is the recommendation accepted, so each stands as its recommendation (the owner, the same day: "love the
+The survey's questions NS1 to NS5 are Q1 to Q5 above. The survey first closed on 2026-10-16 with all five blank, so
+each stood as its recommendation; the owner then answered each "approve" the same day (survey 2) (the owner, the same day: "love the
 mockup of the nebula", then "Implement new space changes").
 
 | Id | Question | Answer | Status |
 | --- | --- | --- | --- |
-| NS1 (Q1) | Which sky for the Shoals | A, Bloom: the default sky, named by `data/space/systems/shoals.json`'s `sky`; the four skies stay in `data/space/skies/`, any system names any of them | (recommendation accepted), 2026-10-16 |
-| NS2 (Q2) | Which turns streak the stars | Any turn of the view, the ship's or the player's head (FreeSpace 2's `StarField.cpp`: the streak is the camera's rotation); a cut never streaks | (recommendation accepted), 2026-10-16 |
-| NS3 (Q3) | How strong the streaks | FreeSpace 2's: the 1.7 degree cap, dimmed to half and whitened, as `data/space/starfield.json` has it | (recommendation accepted), 2026-10-16 |
-| NS4 (Q4) | The sky's colour on the hulls | On: the sky's ambient cube tints the outside ambient (design 6) | (recommendation accepted), 2026-10-16 |
-| NS5 (Q5) | The mesh budget | About 8,000 vertices, one draw call (`sc_core::sky::MAX_SKY_VERTICES`) | (recommendation accepted), 2026-10-16 |
+| NS1 (Q1) | Which sky for the Shoals | A, Bloom: the default sky, named by `data/space/systems/shoals.json`'s `sky`; the four skies stay in `data/space/skies/`, any system names any of them | Approved, the owner, 2026-10-16 (survey 2): "approve" |
+| NS2 (Q2) | Which turns streak the stars | Any turn of the view, the ship's or the player's head (FreeSpace 2's `StarField.cpp`: the streak is the camera's rotation); a cut never streaks | Approved, the owner, 2026-10-16 (survey 2): "approve" |
+| NS3 (Q3) | How strong the streaks | FreeSpace 2's: the 1.7 degree cap, dimmed to half and whitened, as `data/space/starfield.json` has it | Approved, the owner, 2026-10-16 (survey 2): "approve" |
+| NS4 (Q4) | The sky's colour on the hulls | On: the sky's ambient cube tints the outside ambient (design 6) | Approved, the owner, 2026-10-16 (survey 2): "approve" |
+| NS5 (Q5) | The mesh budget | About 8,000 vertices, one draw call (`sc_core::sky::MAX_SKY_VERTICES`) | Approved, the owner, 2026-10-16 (survey 2): "approve" |
 
 ## 11. As built (2026-10-16)
 

@@ -29,4 +29,4 @@ can look out the window na dsee their ship").
 - [x] 4.1 Headless captures in `docs/screenshots/exterior/` (design 8), looked at before they are shown.
 - [x] 4.2 `scripts/check.sh` passes.
 - [ ] 4.3 The Pi 5 measures the walk's frame time and memory with the hull (owner, on hardware).
-- [ ] 4.4 The owner signs off the captures (O1, survey 2).
+- [x] 4.4 The owner signs off the captures (O1, survey 2): 2026-10-16, "approve".

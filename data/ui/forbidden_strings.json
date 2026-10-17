@@ -1,0 +1,33 @@
+{
+  "schema": "starcrew.ui-forbidden/1",
+  "_doc": "What no player screen may show (openspec/changes/ui-art-direction design 12 to 14): internal names, debug values, placeholder names, dev tags and notes about how the game is built. The release check (crates/sc-client/src/release.rs, scripts/check.sh) lays out every reachable screen headless and fails on a text that holds one, naming the screen and the text. contains: a piece of text anywhere, as written; words: a whole word, as written (so PD is refused and SPEED is not); ip_address: four numbers with dots.",
+  "contains": [
+    "(bot)",
+    "(NPC)",
+    "automation",
+    "Lt. Player",
+    "not simulated",
+    "not built",
+    "Drill 1:",
+    "stbd",
+    "Stbd",
+    "STBD ORDERS",
+    "TODO",
+    "placeholder",
+    "PLACEHOLDER",
+    "RTT ",
+    "LOSS ",
+    "BRIDGE (V)",
+    "ENERGIZING",
+    "ENGAGING IN",
+    "MARK READY",
+    "CREW SITTING",
+    "A bot plays",
+    "SCS TERN",
+    "Waiting for the drill",
+    "Next drill",
+    "Star Crew: drill"
+  ],
+  "words": ["MUSTER", "ENGAGE", "COUNTDOWN", "Bot", "auto", "TOUR", "PD", "reading"],
+  "ip_address": true
+}

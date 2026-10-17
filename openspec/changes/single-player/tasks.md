@@ -21,7 +21,8 @@ The owner asked for it on 2026-10-11 (the proposal's words).
 - [x] 2.6 The in-process test (design 9), the headless captures (`docs/screenshots/engine/single-player/`, a round won
   with the crew), and the client's resident memory with a crew of four (design 8).
 - [ ] 2.7 The same game on a Pi 5: frame time and memory with the crew aboard.
-- [ ] 2.8 The owner signs off the captures beside the mockup.
+- [x] 2.8 The owner signs off the captures beside the mockup: Q3, 2026-10-16, "approve, but need a start mission button when everyone is ready, or captain can start even when everyone is not ready. it doesnt matter."
+- [ ] 2.9 START MISSION: the captain (in single player, the player) starts the round before every seat is ready (`start-mission`).
 
 ## 3. Later
 

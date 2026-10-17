@@ -590,6 +590,9 @@ pub struct ConsoleView {
     pub red_alert: bool,
     /// The clock in the title band, seconds.
     pub clock_s: f64,
+    /// The mission has a time limit: the band shows its clock (ui-art-direction Q6: only then).
+    #[serde(default = "timed")]
+    pub timed: bool,
     pub hull_pct: f64,
     /// Each shield face's charge over its capacity.
     pub shield_ratio: [f64; 6],
@@ -720,6 +723,21 @@ pub struct ConsoleView {
     /// LEAVE STATION in the title band, while the player sits (leave-station 4).
     #[serde(default)]
     pub leave: Option<LeaveView>,
+    /// START MISSION in the title band, while the round waits and this player may start it (start-mission 4).
+    #[serde(default)]
+    pub start: Option<StartView>,
+}
+
+/// START MISSION (start-mission 4): the start key's name on its keycap, and how many of those aboard are ready.
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct StartView {
+    /// The start key, as `data/input/bindings.json` names it ("Return").
+    pub key: String,
+    /// Seated and ready.
+    pub ready: u32,
+    /// Everyone aboard, people and NPCs.
+    pub aboard: u32,
 }
 
 /// LEAVE STATION (leave-station 4): the stand key's name on its keycap, and how much of its hold has passed (0..1).
@@ -1108,6 +1126,20 @@ fn title_band(cv: &Canvas, cx: &mut Ctx) {
     }
     // The laser banks took the comms and flight-ops seats (laser-banks 3), so only the open stations are left to swap
     // to; single player crews every station, so it has none.
+    let cond = if emerg {
+        "EMERGENCY POWER"
+    } else if red {
+        "RED ALERT"
+    } else {
+        "NORMAL"
+    };
+    let cond_x = 1180.0 - cond.len() as f32 * 9.4 - 22.0;
+    let leave_w = 34.0 + 13.0 * 9.4;
+    let leave_x = cond_x - 8.0 - leave_w;
+    let order_end = if v.leave.is_some() { leave_x } else { cond_x };
+    // START MISSION's place (start-mission 4), right against LEAVE STATION: the swap chips stop short of it.
+    let start_w = 34.0 + 13.0 * 9.4 + 46.0;
+    let start_x = order_end - 8.0 - start_w;
     let open: Vec<(String, String, Option<String>)> = if solo.is_some() {
         Vec::new()
     } else {
@@ -1121,6 +1153,9 @@ fn title_band(cv: &Canvas, cx: &mut Ctx) {
     };
     for (w, r, id) in open {
         let tw = 44.0 + w.chars().count() as f32 * 8.6;
+        if v.start.is_some() && x + tw > start_x - 6.0 {
+            break;
+        }
         let on = id.is_some();
         cv.rect(x, 4.0, tw, 24.0, 5.0, Color32::TRANSPARENT, Some(Pen::new(1.0, c.line2.0).dash(4.0, 3.0, 0.0)));
         cv.icon(&r, x + 13.0, 16.0, 13.0, if on { role.of(&r) } else { c.faint.0 });
@@ -1130,24 +1165,14 @@ fn title_band(cv: &Canvas, cx: &mut Ctx) {
         cv.path(&format!("M{ax} 12h8l-3 -3M{bx} 20h-8l3 3"), Xf::ID, None, Some(Pen::new(1.5, ac)));
         let tip = match &id {
             Some(_) => format!("{} is open: swap to it", w.to_lowercase()),
-            None => format!("{} is open (its console is not in this drill yet)", w.to_lowercase()),
+            None => format!("{} is open", w.to_lowercase()),
         };
         let hit = id.map(Act::Swap);
         cx.hits.add(cv, x, 4.0, tw, 24.0, hit.map(kit::Hit::Act), Some(tip));
         x += tw + 6.0;
     }
-    let cond = if emerg {
-        "EMERGENCY POWER"
-    } else if red {
-        "RED ALERT"
-    } else {
-        "NORMAL"
-    };
     // LEAVE STATION (leave-station 4): left of the condition, the same place at every station; the stand key on its
     // keycap, whose ring fills while the key is held. A click or a tap stands.
-    let cond_x = 1180.0 - cond.len() as f32 * 9.4 - 22.0;
-    let leave_w = 34.0 + 13.0 * 9.4;
-    let leave_x = cond_x - 8.0 - leave_w;
     if let Some(l) = &v.leave {
         let held = l.share > 0.0;
         cv.rect(leave_x, 4.0, leave_w, 24.0, 5.0, Color32::TRANSPARENT, Some(Pen::new(1.0, c.line2.0)));
@@ -1163,10 +1188,26 @@ fn title_band(cv: &Canvas, cx: &mut Ctx) {
         let tip = format!("Leave the station (hold {})", l.key);
         cx.hits.add(cv, leave_x, 4.0, leave_w, 24.0, Some(kit::Hit::Act(Act::Leave)), Some(tip));
     }
+    // START MISSION (start-mission 4): while the round waits, on the console of a player who may start it, in the
+    // order's place right against LEAVE STATION; the start key on its keycap, then how many of those aboard are
+    // ready. Not drawn when the station's own tabs leave it no room (its key still works).
+    let sx = start_x;
+    let start = v.start.as_ref().filter(|_| x <= sx);
+    if let Some(sv) = start {
+        cv.rect(sx, 4.0, start_w, 24.0, 5.0, alpha(c.ok.0, 0x26 as f32 / 255.0), Some(Pen::new(1.0, c.ok.0)));
+        let kw = 10.0 + sv.key.chars().count() as f32 * 6.5;
+        let kx = sx + 6.0;
+        cv.rect(kx, 8.0, kw, 16.0, 4.0, Color32::TRANSPARENT, Some(Pen::new(1.0, c.dim.0)));
+        cv.text(kx + kw / 2.0, 20.0, 10.0, c.text.0, &sv.key, T::mid().bold());
+        cv.text(kx + kw + 7.0, 21.0, 13.0, c.text.0, "START MISSION", T::default().ls(1.5).bold());
+        let count = format!("{}/{}", sv.ready, sv.aboard);
+        cv.text(sx + start_w - 10.0, 21.0, 13.0, c.dim.0, &count, T::end());
+        let tip = format!("Start now: {} of {} ready", sv.ready, sv.aboard);
+        cx.hits.add(cv, sx, 4.0, start_w, 24.0, Some(kit::Hit::Act(Act::Start)), Some(tip));
+    }
     // The newest order to the station shown: at 470, or after the tabs when they reach past it, short of LEAVE STATION
-    // (or the condition); left out when the tabs leave it no room.
-    let order_end = if v.leave.is_some() { leave_x } else { cond_x };
-    if let Some(o) = v.order.as_ref().filter(|_| order_end - 8.0 - x.max(470.0) >= 60.0) {
+    // (or the condition); left out when the tabs leave it no room, or START MISSION has its place.
+    if let Some(o) = v.order.as_ref().filter(|_| start.is_none() && order_end - 8.0 - x.max(470.0) >= 60.0) {
         let ox = x.max(470.0);
         let ow = 300f32.min(order_end - 8.0 - ox);
         cv.rect(ox, 4.0, ow, 24.0, 5.0, alpha(c.warn.0, 0x1f as f32 / 255.0), Some(Pen::new(1.0, c.warn.0)));
@@ -1185,8 +1226,15 @@ fn title_band(cv: &Canvas, cx: &mut Ctx) {
     let cw = cond.len() as f32 * 9.4;
     cv.rect(1180.0 - cw - 22.0, 4.0, cw + 22.0, 24.0, 5.0, alpha(cc, 0x22 as f32 / 255.0), Some(Pen::new(1.0, cc)));
     cv.text(1170.0, 21.0, 13.0, cc, cond, T::end().ls(1.5).bold());
-    let t = v.clock_s.max(0.0).floor() as i64;
-    cv.text(1268.0, 21.0, 14.0, c.dim.0, &format!("{:02}:{:02}", t / 60, t % 60), T::end());
+    if v.timed {
+        let t = v.clock_s.max(0.0).floor() as i64;
+        cv.text(1268.0, 21.0, 14.0, c.dim.0, &format!("{:02}:{:02}", t / 60, t % 60), T::end());
+    }
+}
+
+/// A view without the field (the parity fixtures, saved from the mockup): its mission is timed, as both are.
+fn timed() -> bool {
+    true
 }
 
 /// The viewscreen's camera, in ship axes: forward, right and up (the mockup's `feedBasis`).
@@ -1542,7 +1590,7 @@ fn status_strip(cv: &Canvas, cx: &mut Ctx) {
             // Unavailable: the drill simulates no power grid yet (CLAUDE.md 10, a control's unavailable state).
             cv.icon("bolt", 330.0, 16.0, 16.0, c.faint.0);
             cv.text(344.0, 21.0, 14.0, c.faint.0, "-- MW", T::default());
-            cx.hits.add(cv, 322.0, 4.0, 90.0, 24.0, None, Some("Power: not simulated in this drill".into()));
+            cx.hits.add(cv, 322.0, 4.0, 90.0, 24.0, None, Some("Power".into()));
         }
     }
     cv.icon("speed", 432.0, 16.0, 16.0, c.text.0);
@@ -1558,7 +1606,22 @@ fn status_strip(cv: &Canvas, cx: &mut Ctx) {
     cv.text(604.0, 21.0, 14.0, bc, &nb.to_string(), T::default());
     cx.hits.add(cv, 582.0, 4.0, 40.0, 24.0, None, Some("Compartments open to space".into()));
     cv.icon("person", 1090.0, 16.0, 16.0, accent(v));
-    cv.text(1106.0, 21.0, 14.0, c.text.0, &format!("{} · {}", v.op.as_deref().unwrap_or("You"), v.word), T::default());
+    // A long name is cut with an ellipsis so the line ends inside the canvas (ui-art-direction design 13: no text off
+    // the screen); the mockup's names fit as they are.
+    let room = 1272.0 - 1106.0;
+    let wide = |t: &str| {
+        let font = egui::FontId::new(14.0 * cv.s, egui::FontFamily::Name(vg::SEMIBOLD.into()));
+        (cv.painter.layout_no_wrap(t.to_owned(), font, c.text.0).size().x + 0.5 * cv.s * t.chars().count() as f32)
+            / cv.s
+    };
+    let op = v.op.as_deref().unwrap_or("You");
+    let mut line = format!("{op} · {}", v.word);
+    let mut keep: Vec<char> = op.chars().collect();
+    while wide(&line) > room && !keep.is_empty() {
+        keep.pop();
+        line = format!("{}\u{2026} · {}", keep.iter().collect::<String>().trim_end(), v.word);
+    }
+    cv.text(1106.0, 21.0, 14.0, c.text.0, &line, T::default());
 }
 
 /// The grid cell of a panel: column, row, width and height in cells (the mockup's `grid`).

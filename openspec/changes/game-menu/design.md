@@ -85,6 +85,6 @@ The walk's first Esc no longer only lets go of the mouse: the menu opening does 
 
 | Id | Question | Recommendation | Status |
 | --- | --- | --- | --- |
-| Z1 | Approve the mockup (`docs/mockups/game-menu.html`, states 3, 4 and 5) | Approve | In the survey, with the shots |
+| Z1 | Approve the mockup (`docs/mockups/game-menu.html`, states 3, 4 and 5) | Approve | Approved, the owner, 2026-10-16 (survey 2): "looks good, see previous comments on lobby Q3" (the START MISSION control, `start-mission`) |
 | Z4 | The Options rows: Display, Names, Look speed, Field of view | Those four; Volume once there is sound | Recommendation taken (ask only with screenshots) |
 | Z5 | Leaving asks once, with No in focus | Ask once | Recommendation taken (ask only with screenshots) |

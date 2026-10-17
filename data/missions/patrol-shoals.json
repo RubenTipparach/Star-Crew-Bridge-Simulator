@@ -2,7 +2,8 @@
   "schema": "starcrew.mission/1",
   "_doc": "The patrol (openspec/changes/patrol-mission design 1): the drill's fields, and a patrol block. The Tern starts docked at the system file's berth on shore power with the impulse drive's breaker open; engineering closes it and drops shore power, helm undocks and the berth's departure path is flown under its limits; the Tern jumps along the route, science sweeps each point, and at the encounter's point the drill's fight runs, the enemy placed at enemy_start_m from the Tern's arrival in its frame and the relay at waypoint_m; then home. A jump needs to be clear of every mass lock (data/ships/tern/jump.json). sweep_s is science's sweep, sweep_range_m how far it sees; drive_ready_min the impulse drive's capability the berth asks for before it opens the clamps; clamps_s how long they take. Read by sc-core::combat::data and sc-core::combat::patrol. clear_mps and loiter_mps are a crew helm's speeds clearing a mass lock and at a point; resend_s how long a crew's patrol command is given to land.",
   "id": "patrol-shoals",
-  "title": "Patrol: the Shoals",
+  "title": "The Shoals",
+  "label": "Patrol",
   "situation": "Undock from Tamsin Station and patrol the Shoals: sweep the Pell beacon, then the relay at the Shoals, where a Hound corvette has been raiding. Drive it off or destroy it, then jump home.",
   "objectives": [
     {

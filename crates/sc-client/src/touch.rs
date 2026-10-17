@@ -583,21 +583,6 @@ fn menu_icon(painter: &egui::Painter, c: Pos2, s: f32, col: Color32) {
     }
 }
 
-/// The word USE carries for an on-foot prompt (design 3: the verb of what is in reach), and the prompt without its key
-/// letters: "E  Sit at Helm" is "Sit" and "Sit at Helm". A prompt with no E to it lights nothing.
-pub fn touch_prompt(prompt: &str) -> (Option<String>, String) {
-    let clean = prompt.replace("E  ", "").replace("F  ", "").replace("Q  ", "");
-    let clean = clean.split_whitespace().collect::<Vec<_>>().join(" ");
-    let word = if let Some(rest) = prompt.strip_prefix("E  ") {
-        rest.split([' ', ':']).next().map(str::to_owned)
-    } else if prompt.contains("F  Spray") {
-        Some("Spray".to_owned())
-    } else {
-        None
-    };
-    (word, clean)
-}
-
 /// A finger on a seated console (design 4).
 #[derive(Debug)]
 pub struct ConsoleFinger {
@@ -906,15 +891,6 @@ mod tests {
         let mut l = layer();
         l.set(&phone(), Mode::Off);
         assert!(!finger(&mut l, 1, TouchPhase::Down, 150.0, 300.0), "the menus take it");
-    }
-
-    #[test]
-    fn a_prompt_gives_use_its_verb_and_loses_its_keys() {
-        assert_eq!(touch_prompt("E  Sit at Helm"), (Some("Sit".into()), "Sit at Helm".into()));
-        assert_eq!(touch_prompt("E  Repair: Coolant"), (Some("Repair".into()), "Repair: Coolant".into()));
-        assert_eq!(touch_prompt("E  Up        Q  Down").0, Some("Up".into()));
-        assert_eq!(touch_prompt("FIRE   F  Spray it   (agent 80%)").0, Some("Spray".into()));
-        assert_eq!(touch_prompt("Lt. Min holds Helm"), (None, "Lt. Min holds Helm".into()));
     }
 
     fn hits() -> Hits {

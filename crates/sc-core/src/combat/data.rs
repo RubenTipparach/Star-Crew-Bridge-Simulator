@@ -1064,8 +1064,11 @@ pub struct MissionFile {
     pub schema: String,
     /// A stable id.
     pub id: String,
-    /// The title.
+    /// The title, as the briefing, the loading screen and the menu show it ("Hound at the Shoals").
     pub title: String,
+    /// The small line over the title ("Training drill 1"; ui-art-direction design 12: never in the title itself).
+    #[serde(default)]
+    pub label: String,
     /// The situation, as the briefing reads it.
     pub situation: String,
     /// The objectives (objectives-tab 2).

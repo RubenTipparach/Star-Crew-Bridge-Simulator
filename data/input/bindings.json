@@ -1,7 +1,11 @@
 {
   "schema": "starcrew.bindings/1",
-  "status": "PROPOSED by openspec/changes/leave-station (design 6), on the owner's word of 2026-10-15 (\"need a Leave station button\", \"a key would be nice too\"): the key that sits is the key that stands, at every station. Keys by SDL's names. Options > Controls will read and write this file (crew-on-deck task 2.3); until then it is edited by hand.",
+  "status": "PROPOSED by openspec/changes/leave-station (design 6), on the owner's word of 2026-10-15 (\"need a Leave station button\", \"a key would be nice too\"): the key that sits is the key that stands, at every station. Keys by SDL's names. Options > Controls lists this file read-only (openspec/changes/ui-art-direction design 10, Q10: rebinding later); until then it is edited by hand.",
   "use": "E",
+  "start": "Return",
+  "_start": "openspec/changes/start-mission design 5: START MISSION while the round waits in Muster, for the captain (or any seated person when no person is captain). Return is bound nowhere else in the seated game.",
+  "down": "Q",
+  "spray": "F",
   "helm": {
     "_note": "Helm's roll moved off E to Z and C (bridge-stations 10.1's keys), and the lateral strafe from Z and C to the arrows; Space and Ctrl still strafe up and down.",
     "roll_port": "Z",
@@ -12,5 +16,33 @@
   "viewscreen": {
     "_note": "openspec/changes/chase-orbit design 5: ORBIT on or off while CHASE is on, at every console with a viewscreen. O is bound nowhere else.",
     "orbit": "O"
+  },
+  "captain": {
+    "_note": "ui-art-direction design 10: the lighting keys act only from the captain's seat, the ALERT panel's command (owner, 2026-10-15: \"lighting can only be changed by the captain\").",
+    "normal": "1",
+    "red_alert": "2"
+  },
+  "controls": {
+    "_note": "What Options > Controls lists, read-only (ui-art-direction design 10 and its mockup). A key is a binding's field above (@use), a key by its SDL name, a mouse glyph (mouse, click, drag, wheel), hold before a held key, or / between two ways. The keys not yet in the fields above are the client's own (onfoot.rs, seat.rs, drill.rs, main.rs).",
+    "on_foot": [
+      { "group": "Move", "column": 0, "rows": [["Look", ["mouse"]], ["Walk", ["W", "A", "S", "D"]], ["Run", ["hold", "Left Shift"]], ["Jump", ["Space"]]] },
+      { "group": "Use", "column": 0, "rows": [["Use, sit, repair", ["@use"]], ["Climb down", ["@down"]], ["Extinguisher", ["hold", "@spray", "/", "click"]]] },
+      { "group": "Lift", "column": 1, "rows": [["Up a deck", ["@use"]], ["Down a deck", ["@down"]], ["Call the lift", ["@use"]]] },
+      { "group": "Ship map", "column": 1, "rows": [["Open", ["M"]], ["Turn", ["drag"]], ["Zoom", ["wheel"]], ["Next deck", ["Tab"]]] },
+      { "group": "General", "column": 1, "rows": [["Menu", ["Escape"]], ["Screenshot", ["F12"]]] }
+    ],
+    "any_console": { "group": "Any console", "rows": [["Press a control", ["click"]], ["Stand up", ["hold", "@use"]], ["Acknowledge order", ["Y"]], ["Next console", ["Tab"]], ["Hand to the crew", ["M"]], ["Bridge view", ["V"]], ["Orbit the chase view", ["@viewscreen.orbit"]], ["Start the mission", ["@start"]]] },
+    "stations": [
+      { "group": "Helm", "station": "helm", "rows": [["Speed", ["W", "S"]], ["Yaw", ["A", "D"]], ["Pitch", ["R", "F"]], ["Roll", ["@helm.roll_port", "@helm.roll_starboard"]], ["Strafe", ["@helm.strafe_port", "@helm.strafe_starboard"]], ["Rise, sink", ["Space", "Left Ctrl"]], ["All stop", ["X"]]] },
+      { "group": "Tactical", "station": "tactical", "rows": [["Lock target", ["T"]], ["Load a tube", ["L"]], ["Fire", ["hold", "G"]]] },
+      { "group": "Lasers", "station": "laser", "rows": [["Fire", ["hold", "G"]]] },
+      { "group": "Gunner", "station": "gunner", "rows": [["Aim", ["Left", "Up", "Down", "Right"]], ["Fire", ["hold", "Space"]], ["Next target", ["Tab"]]] },
+      { "group": "Science", "station": "science", "rows": [["Scan", ["Q"]]] },
+      { "group": "Captain", "station": "command", "rows": [["Normal lighting", ["@captain.normal"]], ["Red alert", ["@captain.red_alert"]]] }
+    ],
+    "touch": [
+      { "group": "Gestures", "column": 0, "rows": [["Look", ["Drag"]], ["Run", ["hold", "Stick edge"]]] },
+      { "group": "At a console", "column": 1, "rows": [["Details", ["hold", "Tap"]], ["Stand up", ["hold", "Stand"]]] }
+    ]
   }
 }

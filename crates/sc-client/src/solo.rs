@@ -260,6 +260,34 @@ mod tests {
     }
 
     #[test]
+    fn the_single_player_starts_the_mission_before_the_crew_are_ready() {
+        // The owner, 2026-10-16 (survey 2, Q3): "captain can start even when everyone is not ready. it doesnt
+        // matter". An NPC holds the captain's seat, so the player may start from the helm (start-mission 2).
+        let data = DrillData::shipped();
+        let root = std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../.."));
+        let (bridge, _) = sc_server::bridge::load(&data, root, None).expect("the bridge's seats");
+        let helm = bridge.stand_point(Station::Helm);
+        let mut host = SoloHost::start(&data, Station::Helm, &names(), 7, Some(bridge)).unwrap();
+        for n in &mut host.crew {
+            // The crew read the briefing for a minute before they say READY: not ready when the player sits.
+            n.bot.read_s = 60.0;
+        }
+        let mut me = Session::connect(host.dial(), "Lt. Player", false, None, Impair::default(), 7).unwrap();
+        assert!(run(&mut host, &mut me, &data, 30.0, |_, me| me.slot.is_some()), "joined");
+        walk_to(&mut host, &mut me, &data, helm);
+        me.claim(Station::Helm);
+        assert!(run(&mut host, &mut me, &data, 30.0, |_, me| me.station() == Some(Station::Helm)), "seated");
+        let soon = Instant::now() + Duration::from_millis(500);
+        run(&mut host, &mut me, &data, 1.0, |_, _| Instant::now() >= soon);
+        assert!(me.crew.iter().any(|c| c.bot && !(c.ready && c.station.is_some())), "the crew are not ready");
+        assert_eq!(host.server().drill.phase, Phase::Muster, "the round waits for them by itself");
+        me.start_mission();
+        let counting = run(&mut host, &mut me, &data, 10.0, |h, _| h.server().drill.phase == Phase::Countdown);
+        assert!(counting, "START MISSION began the countdown with the crew not ready");
+        assert_eq!(me.refused, None, "the player's call was taken");
+    }
+
+    #[test]
     fn the_player_takes_the_captains_chair_in_a_fight_and_the_tabs_follow_the_swap() {
         // The owner, 2026-10-15: "for example I'm helmsman, I should be able to sit in captains seat whenever"
         // (relieve-bots 5): after the swap the player's own chip is the captain's and the captain's NPC holds the helm.

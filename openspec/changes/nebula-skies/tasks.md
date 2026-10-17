@@ -6,7 +6,7 @@
 - [x] 1.2 The generator `tools/space/nebula_skies.py`, the recipes `data/space/skies/recipes.json`, the streak tuning `data/space/starfield.json`
 - [x] 1.3 Four skies generated (`bloom`, `quiet`, `ember`, `verdigris`)
 - [x] 1.4 The mockup `docs/mockups/nebula-skies.html`: skies A-D, behind the Tern, behind Tamsin Station, through the bridge window, a fast turn each, streaks on and off, the mesh, sky ambient on and off, motes at speed, the Pi cost
-- [x] 1.5 The owner's answers to Q1-Q5 (design 10), with the shots: the survey closed blank on 2026-10-16, so NS1-NS5 are the recommendations accepted (design 10, Open questions)
+- [x] 1.5 The owner's answers to Q1-Q5 (design 10), with the shots: NS1-NS5 each "approve", the owner, 2026-10-16 (design 10, Open questions)
 
 ## 2. The sky mesh in the renderer (after approval)
 

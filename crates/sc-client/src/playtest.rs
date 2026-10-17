@@ -305,6 +305,15 @@ impl Playtest {
         p
     }
 
+    /// The UI's capture runs' script (`--ui-shots`, `--demo`; ui-art-direction): to the player's own station, a moment
+    /// standing in reach of the seat (the prompt shows), sit, and stay.
+    pub fn ui_tour(own: Station) -> Self {
+        let mut p = Self::new(own);
+        p.beats = vec![Beat::To(own), Beat::Look(4.0), Beat::Sit, Beat::Work(f64::INFINITY)];
+        p.fought_at = f64::INFINITY;
+        p
+    }
+
     fn beat(&self) -> Option<Beat> {
         self.beats.get(self.k).copied()
     }

@@ -262,7 +262,9 @@ fn crew(cv: &Canvas, cx: &mut Ctx, cap: &CapView) {
         if row.order {
             b.icon("dots", x + cw - 20.0, y + ch / 2.0, 18.0, c.warn.0);
         }
-        let tip = format!("{}: {}", row.role.replacen('_', " ", 1), row.op.as_deref().unwrap_or("automation"));
+        let station =
+            sc_core::combat::Station::from_id(&row.role).map_or_else(|| row.role.clone(), |s| s.name().to_owned());
+        let tip = format!("{station}: {}", row.op.as_deref().unwrap_or("Ship's computer"));
         cx.hits.add(&b, x, y, cw, ch, Some(Hit::Act(Act::Compose(row.role.clone()))), Some(tip));
     }
 }
@@ -498,15 +500,7 @@ fn room(cv: &Canvas, cx: &mut Ctx, cap: &CapView) {
         let x = 14.0 + k as f32 * ((w - 28.0) / 4.0);
         b.icon(ic, x + 14.0, 100.0, 20.0, *col);
         b.text(x + 30.0, 107.0, 18.0, c.text.0, val, T::default());
-        cx.hits.add(
-            &b,
-            x,
-            88.0,
-            (w - 28.0) / 4.0,
-            26.0,
-            None,
-            Some(if r.is_some() { (*tip).to_owned() } else { format!("{tip}: not simulated in this drill") }),
-        );
+        cx.hits.add(&b, x, 88.0, (w - 28.0) / 4.0, 26.0, None, Some((*tip).to_owned()));
     }
     button(
         &b,
@@ -521,14 +515,7 @@ fn room(cv: &Canvas, cx: &mut Ctx, cap: &CapView) {
             act: Some(Act::OrderRepair),
             // No damage control is simulated where the room has no readings: the mockup's unavailable state.
             off: cap.room.is_none(),
-            tip: Some(
-                if cap.room.is_some() {
-                    "Order damage control here"
-                } else {
-                    "Damage control: not simulated in this drill"
-                }
-                .into(),
-            ),
+            tip: Some(if cap.room.is_some() { "Order damage control here" } else { "Damage control" }.into()),
             fs: Some(14.0),
             ..Default::default()
         },

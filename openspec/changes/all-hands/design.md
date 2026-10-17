@@ -11,7 +11,7 @@
 | The extinguisher's cut, and fire on the floor in cells | `fire-spread` 5 |
 | Docking at a repair point, the game over the live room, the server's checks | `repairs-on-deck` 1-7 |
 | A job cut into rounds, an officer plays, a rating repairs at a rate | `repair-minigames` 1 and 1a, `sc-core::repair` |
-| The three panel-box games (awaiting approval, survey RM1-RM3) | `repair-minigames` 2a |
+| The three panel-box games (approved, survey RM1-RM3, 2026-10-16: "approve" each) | `repair-minigames` 2a |
 
 ## 1. The mode
 

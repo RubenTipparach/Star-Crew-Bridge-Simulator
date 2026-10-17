@@ -92,8 +92,9 @@ impl OnFoot {
         self.eye_y = y;
     }
 
-    /// The keys' walk: W A S D, Shift to run, Space to jump, E (up) and Q (down) to climb; `yaw` the eye's facing.
-    pub fn keys_input(held: &HashSet<u32>, pressed: &HashSet<u32>, yaw: f32) -> Input {
+    /// The keys' walk: W A S D, Shift to run, Space to jump, the use key (up) and the down key (down) to climb, as
+    /// `b` binds them; `yaw` the eye's facing.
+    pub fn keys_input(held: &HashSet<u32>, pressed: &HashSet<u32>, yaw: f32, b: &crate::bindings::Bindings) -> Input {
         let k = |c: u32| if held.contains(&c) { 1.0 } else { 0.0 };
         Input {
             forward: k(keys::W) - k(keys::S),
@@ -101,8 +102,8 @@ impl OnFoot {
             yaw,
             run: held.contains(&keys::LSHIFT),
             jump: pressed.contains(&keys::SPACE),
-            use_: pressed.contains(&keys::E) || pressed.contains(&keys::Q),
-            down: pressed.contains(&keys::Q),
+            use_: pressed.contains(&b.use_key) || pressed.contains(&b.down_key),
+            down: pressed.contains(&b.down_key),
         }
     }
 
@@ -147,14 +148,20 @@ impl OnFoot {
         false
     }
 
-    /// What E and Q do where the body stands: in a lift's car, or at a landing.
-    pub fn prompt(&self) -> Option<&'static str> {
+    /// What the use and down keys do where the body stands (ui-art-direction design 7): in a lift's car, up a deck
+    /// and down a deck; at a landing, call the car. The keys are `b`'s, as the walk reads them.
+    pub fn prompt(&self, b: &crate::bindings::Bindings) -> Option<crate::hud::Prompt> {
+        use crate::hud::Prompt;
+        use crate::look::KeyTok;
         let f = self.body.feet;
+        let use_key = vec![KeyTok::Key(b.use_label.clone())];
         if self.world.lift_index_at(f[0], f[2]).is_some() {
-            return Some("E  Up        Q  Down");
+            let mut p = Prompt::act("Lift", use_key, "Up");
+            p.acts.push((vec![KeyTok::Key(b.down_label.clone())], "Down".into()));
+            return Some(p);
         }
         let reach = self.data.lift_call_m as f32;
-        self.world.landing_near(f[0], f[1], f[2], reach, &self.doors).map(|_| "E  Call lift")
+        self.world.landing_near(f[0], f[1], f[2], reach, &self.doors).map(|_| Prompt::act("Lift", use_key, "Call"))
     }
 
     /// Run the cars `dt` seconds and tell the walk world where they are.
