@@ -104,6 +104,8 @@ struct Tour {
     step: usize,
     since: f64,
     frames: u64,
+    /// The briefing's lowering captures taken, 0 to 3.
+    lowered: u8,
 }
 
 struct Meshes {
@@ -280,6 +282,9 @@ pub struct DrillApp {
     /// the camera sits down with the body from there.
     last_view: Option<([f64; 3], f32, f32)>,
     rise_from: Option<([f64; 3], f32, f32)>,
+    /// The round's phase on the last snapshot seen, and when the briefing began lowering into the desk (design 18a).
+    seen_phase: Option<Phase>,
+    lowered_at: Option<f64>,
     /// The left button is down (looking round on foot, it sprays an extinguisher), and what was last sent of spraying.
     mouse_left: bool,
     spray_sent: bool,
@@ -318,8 +323,17 @@ pub struct DrillApp {
     ui_meshes: usize,
 }
 
-/// The console comes up from the desk over this long once the body sits, seconds (the law: maximum immersion).
-const CONSOLE_RISE_S: f64 = 0.6;
+/// The console comes up from the desk over this long once the body sits, seconds (the law: maximum immersion): the
+/// style's `motion_ms.console_rise` (ui-art-direction design 8 and 18a).
+fn console_rise_s() -> f64 {
+    f64::from(crate::look::look().f.motion_ms.console_rise) / 1000.0
+}
+
+/// How far the console has come up `since` seconds after the body sat, on the style's curve: 0 down, 1 up.
+fn console_risen(since: f64) -> f32 {
+    let l = crate::look::look();
+    crate::motion::eased(since, l.f.motion_ms.console_rise, l.f.motion_ease.console_rise)
+}
 
 /// The walk goes to the server this often, seconds (20 a second: other players see a body walk, not hop).
 const WALK_SEND_S: f64 = 0.05;
@@ -467,6 +481,8 @@ impl DrillApp {
             seated_at: None,
             last_view: None,
             rise_from: None,
+            seen_phase: None,
+            lowered_at: None,
             mouse_left: false,
             spray_sent: false,
             repair_data: None,
@@ -498,7 +514,7 @@ impl DrillApp {
             app.playtest = Some(crate::playtest::Playtest::ui_tour(app.args.station));
             // The run shows the first-time hint whatever this machine's settings say, and keeps nothing.
             app.options.first_steps_done = false;
-            app.tour = Some(Tour { frames: t.frame, args: t, step: 0, since: 0.0 });
+            app.tour = Some(Tour { frames: t.frame, args: t, step: 0, since: 0.0, lowered: 0 });
         } else if app.args.film && app.solo.is_some() {
             app.playtest = Some(crate::playtest::Playtest::film(app.args.station));
         } else if app.args.playtest && app.solo.is_some() {
@@ -852,7 +868,8 @@ impl DrillApp {
             }
         }
         let muster = self.session.as_ref().and_then(|s| s.latest()).is_some_and(|s| s.phase == Phase::Muster);
-        if muster && self.session.as_ref().is_some_and(|s| !s.ready()) {
+        // A UI run presses READY itself, after its menus are shot over the briefing (design 18a).
+        if muster && self.tour.is_none() && self.session.as_ref().is_some_and(|s| !s.ready()) {
             self.ready_held = true;
         }
         if at.stand {
@@ -1492,21 +1509,38 @@ impl DrillApp {
         }
         t.frames += 1;
         let now = self.time_s;
+        // The screens in order: the console comes straight after the briefing, so the round's start (and the briefing
+        // lowering into the desk, design 18a) is seen at the console; the menus are shot over the fight after it.
+        const ORDER: [usize; 12] = [0, 1, 2, 3, 4, 11, 5, 6, 7, 8, 9, 10];
+        let step = ORDER.get(t.step).copied().unwrap_or(usize::MAX);
         // How long a screen is held: long enough to read in the video, long enough for a fade in a capture; the console
         // a while into the fight.
-        let hold = match t.step {
+        let hold = match step {
             0 => 0.0,
             11 => 3.0,
             _ if video => 2.5,
             _ => 0.5,
         };
         let phase = self.session.as_ref().and_then(|s| s.latest()).map(|s| s.phase);
+        // The briefing lowering into the desk (design 18a): three captures on the way down.
+        if let (false, Some(at)) = (video, self.lowered_at) {
+            let k = ((now - at) / (f64::from(crate::look::look().f.motion_ms.briefing_lower) / 1000.0) * 4.0) as u8;
+            if (1..=3).contains(&k) && t.lowered < k {
+                t.lowered = k;
+                let path = t.args.dir.join(format!("12-briefing-lowering-{k}.png"));
+                let px = sc_render::read_output(f.width, f.height);
+                match sc_client::capture::write_png(&path, f.width, f.height, &px) {
+                    Ok(()) => println!("sc-client: wrote {}", path.display()),
+                    Err(e) => eprintln!("sc-client: {e}"),
+                }
+            }
+        }
         let boarded = self.boarded_at.map_or(0.0, |b| now - b);
-        let risen = self.seated_at.is_some_and(|s| now - s > CONSOLE_RISE_S + 0.3);
+        let risen = self.seated_at.is_some_and(|s| now - s > console_rise_s() + 0.3);
         let own = self.args.station.name();
         let plate = self.plate.as_ref().is_some_and(|(p, a)| p.label == own && !p.acts.is_empty() && *a >= 0.99);
         // Each step: is its screen up, the menu's page for it, and its capture's name.
-        let (ready, page, name): (bool, &str, &str) = match t.step {
+        let (ready, page, name): (bool, &str, &str) = match step {
             0 => (loading > 0.9, "closed", "1-loading"),
             1 => (self.free && boarded > 1.5, "closed", "2-hud-first-steps"),
             2 => (true, "main", "3-pause-walking"),
@@ -1526,7 +1560,7 @@ impl DrillApp {
         };
         // A moment that went by on its own is passed: the loading screen once aboard, the prompt once seated, the
         // briefing once the fight is on.
-        let gone = match t.step {
+        let gone = match step {
             0 => boarded > 1.0,
             3 => seated,
             4 => phase.is_some_and(Phase::live),
@@ -1537,14 +1571,18 @@ impl DrillApp {
             t.step += 1;
             t.since = now;
         }
+        // The briefing is read: READY goes out once it is shot, so the round starts with the console in view and the
+        // briefing is seen lowering into the desk (design 18a). (Sitting says READY on foot, sc-core's muster rule: the
+        // run takes it back until then, when the crew are not all ready already.)
+        if t.step >= 5 {
+            self.ready_held = !self.session.as_ref().is_some_and(|s| s.ready());
+        } else if let Some(s) = self.session.as_ref().filter(|s| s.ready() && phase == Some(Phase::Muster)) {
+            s.set_ready(false);
+        }
         if !ready {
             t.since = now;
         } else {
             self.menu.tour_page(page);
-            // The briefing is read: READY goes out once the crew sit, as a player's would.
-            if t.step >= 5 {
-                self.ready_held = !self.session.as_ref().is_some_and(|s| s.ready());
-            }
             if now - t.since >= hold {
                 if !video {
                     let px = sc_render::read_output(f.width, f.height);
@@ -2123,7 +2161,8 @@ impl App for DrillApp {
             .clone()
             .or_else(|| mine.and_then(|b| b.going).map(|g| crate::hud::Prompt::note(g.name(), "On your way")));
         let m = &crate::look::look().f.motion_ms;
-        let (fade_in, fade_out) = (dt as f32 * 1000.0 / m.prompt_in, dt as f32 * 1000.0 / m.prompt_out);
+        // Linear fades by the frame's share of each (a prompt can turn back mid-fade, so it steps rather than starts).
+        let (fade_in, fade_out) = (crate::motion::progress(dt, m.prompt_in), crate::motion::progress(dt, m.prompt_out));
         self.plate = match (want, self.plate.take()) {
             (Some(p), was) => Some((p, (was.map_or(0.0, |w| w.1) + fade_in).min(1.0))),
             (None, Some((p, a))) => Some((p, a - fade_out)).filter(|x| x.1 > 0.0),
@@ -2160,7 +2199,7 @@ impl App for DrillApp {
             println!("sc-client: stood up");
         }
         self.seated_at = if seated { self.seated_at.or(Some(self.time_s)) } else { None };
-        let rise = self.seated_at.map_or(1.0, |t| ((self.time_s - t) / CONSOLE_RISE_S).min(1.0));
+        let rise = self.seated_at.map_or(1.0, |t| console_risen(self.time_s - t));
         let rising = seated && rise < 1.0 && self.bridge.is_some() && !self.overview;
         let mut bridge_ui = None;
         if on_bridge || rising {
@@ -2173,7 +2212,7 @@ impl App for DrillApp {
                 (true, Some(b), None) if rising => {
                     let to = (crate::drill_bridge::eye_of(&b), b.yaw, -0.18f32);
                     let from = self.rise_from.unwrap_or(to);
-                    let k = (rise * rise * (3.0 - 2.0 * rise)) as f32;
+                    let k = rise;
                     let turn =
                         (to.1 - from.1 + std::f32::consts::PI).rem_euclid(std::f32::consts::TAU) - std::f32::consts::PI;
                     let e: [f64; 3] = std::array::from_fn(|i| from.0[i] + (to.0[i] - from.0[i]) * f64::from(k));
@@ -2369,6 +2408,14 @@ impl App for DrillApp {
             self.render_feed(ships.as_ref(), console_view.as_ref());
         }
         let mut ask: Vec<UiAsk> = Vec::new();
+        // The round starting under a briefing: it lowers into the desk (design 18a).
+        let phase = ships.as_ref().map(|x| x.2.phase);
+        if matches!(self.seen_phase, Some(Phase::Muster | Phase::Countdown))
+            && matches!(phase, Some(Phase::Engage | Phase::Patrol))
+        {
+            self.lowered_at = Some(self.time_s);
+        }
+        self.seen_phase = phase.or(self.seen_phase);
         let mut view = UiView::gather(self, ships.as_ref());
         view.bridge = bridge_ui;
         let mut painted: Option<(console::kit::Hits, f32)> = None;
@@ -2382,7 +2429,8 @@ impl App for DrillApp {
         let need_art = art.0.is_none();
         let controls = self.bindings.controls.clone();
         let loading_a = self.boarded_at.map_or(1.0, |t| {
-            1.0 - ((self.time_s - t) * 1000.0 / f64::from(crate::look::look().f.motion_ms.load_out)) as f32
+            let l = crate::look::look();
+            1.0 - crate::motion::eased(self.time_s - t, l.f.motion_ms.load_out, l.f.motion_ease.load_out)
         });
         let mut menu_ask = None;
         let (menu, options) = (&mut self.menu, &mut self.options);
@@ -2583,7 +2631,7 @@ impl App for DrillApp {
             }
             // The console coming up from the desk: the chair's view behind it, the console eased up from below.
             Some(_) if rising => {
-                let dy = ((1.0 - rise) * (1.0 - rise)) as f32 * frame.points[1];
+                let dy = (1.0 - rise) * frame.points[1];
                 let up: Vec<(Vec<sc_render::UiVertex>, [i32; 4])> = frame
                     .meshes()
                     .iter()
@@ -2714,6 +2762,8 @@ struct UiView {
     bridge: Option<BridgeUi>,
     /// Single player: READY pressed, waiting for the crew to sit.
     ready_held: bool,
+    /// The briefing lowering into the desk as the round starts, how far down (0..1), while it goes (design 18a).
+    lowering: Option<f32>,
 }
 
 /// What the bridge view's UI shows: a name over each body (and where it is going), and this player's own walk.
@@ -2768,12 +2818,19 @@ impl UiView {
             nominal_pct: app.data.damage.systems.nominal_from_pct,
             bridge: None,
             ready_held: app.ready_held,
+            lowering: app.lowered_at.map(|t| briefing_lowered(app.time_s - t)).filter(|k| *k < 1.0),
         }
     }
 }
 
 fn label(ui: &mut egui::Ui, text: &str, size: f32, colour: Color32) {
     ui.label(RichText::new(text).size(size).color(colour));
+}
+
+/// How far the briefing has lowered into the desk `since` seconds after the round started, on the style's curve.
+fn briefing_lowered(since: f64) -> f32 {
+    let l = crate::look::look();
+    crate::motion::eased(since, l.f.motion_ms.briefing_lower, l.f.motion_ease.briefing_lower)
 }
 
 fn mmss(s: f64) -> String {
@@ -2819,8 +2876,12 @@ fn draw_ui(
         bridge_overlay(ctx, b);
     } else {
         match snap.phase {
-            Phase::Muster | Phase::Countdown => briefing(ctx, v, snap.phase, snap.phase_s, ask, art.0),
+            Phase::Muster | Phase::Countdown => briefing(ctx, v, snap.phase, snap.phase_s, ask, art.0, 0.0),
             Phase::Engage | Phase::Patrol => {
+                // The briefing goes down into the desk at its last count, taking no presses (design 18a).
+                if let Some(k) = v.lowering {
+                    briefing(ctx, v, Phase::Countdown, v.mission.countdown_s, &mut Vec::new(), art.0, k);
+                }
                 // A refused command says why, over the status strip, for a few seconds.
                 if let Some((why, _)) = v.refused.as_ref().filter(|r| r.1 < 3.0) {
                     egui::Area::new(egui::Id::new("refused"))
@@ -2925,7 +2986,8 @@ fn bridge_overlay(ctx: &egui::Context, b: &BridgeUi) {
 
 /// The briefing on the console before the round (ui-art-direction design 11, Q7): a solid screen under the console's
 /// band (LEAVE STATION and START MISSION stay in reach there), the mission, your orders, the crew, then READY or Launch
-/// in. A crew row pressed takes that station (relieve-bots 6: never a person's).
+/// in. A crew row pressed takes that station (relieve-bots 6: never a person's). `lower`: how far it has gone down
+/// into the desk as the round starts, 0 up to 1 gone (design 18a).
 fn briefing(
     ctx: &egui::Context,
     v: &UiView,
@@ -2933,6 +2995,7 @@ fn briefing(
     phase_s: f64,
     ask: &mut Vec<UiAsk>,
     art: Option<&egui::TextureHandle>,
+    lower: f32,
 ) {
     use crate::hud::{BriefingAsk, CrewRow, ReadyState};
     let mine = v.station.unwrap_or(v.want);
@@ -2988,9 +3051,11 @@ fn briefing(
         for r in std::iter::once(above).chain(sides) {
             ui.painter().rect_filled(r, 0.0, ground);
         }
-        let mut sub = ui.new_child(egui::UiBuilder::new().max_rect(below));
+        // Lowering, the solid screen and everything on it go down under the band, uncovering the console.
+        let drop = Vec2::new(0.0, lower.clamp(0.0, 1.0) * below.height());
+        let mut sub = ui.new_child(egui::UiBuilder::new().max_rect(below.translate(drop)));
         sub.set_clip_rect(below);
-        crate::hud::briefing(&mut sub, screen, art, &b)
+        crate::hud::briefing(&mut sub, screen.translate(drop), art, &b)
     });
     match got {
         Some(BriefingAsk::Ready(r)) => ask.push(UiAsk::Ready(r)),
@@ -3182,6 +3247,7 @@ mod tests {
             nominal_pct: 0.0,
             bridge: None,
             ready_held: false,
+            lowering: None,
         }
     }
 
@@ -3228,6 +3294,32 @@ mod tests {
     }
 
     #[test]
+    fn the_briefing_lowers_into_the_desk_over_350_ms_and_the_console_rises_over_600() {
+        // design 18a: the durations are the style's, the curves ease both ends.
+        assert_eq!(super::briefing_lowered(0.0), 0.0);
+        assert!((super::briefing_lowered(0.175) - 0.5).abs() < 1e-3, "half way down at half time");
+        assert_eq!(super::briefing_lowered(0.35), 1.0, "gone at 350 ms");
+        assert_eq!(super::console_risen(0.6), 1.0, "up at 600 ms");
+        assert!(super::console_risen(0.06) < 0.01, "the console starts gently");
+    }
+
+    #[test]
+    fn a_lowering_briefing_goes_down_whole_and_takes_no_presses() {
+        // Half way down every word has dropped by the same amount, about half the screen under the band.
+        let v = view("drill-hound", Station::Helm);
+        let mut ask = Vec::new();
+        let (up, size) = texts_drawn((1920, 1080), |ctx| briefing(ctx, &v, Phase::Countdown, 5.0, &mut ask, None, 0.0));
+        let (down, _) = texts_drawn((1920, 1080), |ctx| briefing(ctx, &v, Phase::Countdown, 5.0, &mut ask, None, 0.5));
+        assert!(!up.is_empty() && up.len() == down.len());
+        let drop = down[0].rect.min.y - up[0].rect.min.y;
+        assert!(drop > size.y * 0.4 && drop < size.y * 0.5, "half of the screen under the band: {drop} of {}", size.y);
+        for (a, b) in up.iter().zip(&down) {
+            assert!((b.rect.min.y - a.rect.min.y - drop).abs() < 0.5, "{} moves with the rest", a.text);
+        }
+        assert!(ask.is_empty(), "nothing was pressed");
+    }
+
+    #[test]
     fn the_briefing_fits_eight_crew_and_every_stations_orders() {
         // The undock video's briefing drew Laser port, Laser stbd and Gunner over one another, the claim buttons below;
         // the art direction's is a solid screen with one hierarchy and no (bot), automation or MARK READY.
@@ -3235,11 +3327,11 @@ mod tests {
             for me in Station::ALL {
                 let v = view(id, me);
                 let bad = check(&format!("briefing {id} {me:?}"), |ctx| {
-                    briefing(ctx, &v, Phase::Muster, 1.0, &mut Vec::new(), None)
+                    briefing(ctx, &v, Phase::Muster, 1.0, &mut Vec::new(), None, 0.0)
                 });
                 assert!(bad.is_empty(), "{bad:#?}");
                 let (drawn, _) =
-                    texts_drawn((1920, 1080), |ctx| briefing(ctx, &v, Phase::Muster, 1.0, &mut Vec::new(), None));
+                    texts_drawn((1920, 1080), |ctx| briefing(ctx, &v, Phase::Muster, 1.0, &mut Vec::new(), None, 0.0));
                 for name in
                     ["Lt. Kiya Ashberg", "Lt. Haro Lundivan", "Gunner", "Starboard laser", "READY", "YOUR ORDERS"]
                 {
@@ -3248,7 +3340,8 @@ mod tests {
             }
         }
         let v = view("drill-hound", Station::Helm);
-        let bad = check("briefing countdown", |ctx| briefing(ctx, &v, Phase::Countdown, 2.0, &mut Vec::new(), None));
+        let bad =
+            check("briefing countdown", |ctx| briefing(ctx, &v, Phase::Countdown, 2.0, &mut Vec::new(), None, 0.0));
         assert!(bad.is_empty(), "{bad:#?}");
     }
 }

@@ -1087,8 +1087,13 @@ pub struct MissionFile {
     pub tern_start_speed_mps: f64,
     /// Countdown, in seconds.
     pub countdown_s: f64,
-    /// Engage ends with the enemy withdrawn after this many seconds.
-    pub engage_limit_s: f64,
+    /// The server's safety timeout, seconds: a fight nobody finishes ends with the enemy withdrawn after this long. Never
+    /// shown to the crew; it is not a goal (ui-art-direction design 18c).
+    pub safety_timeout_s: f64,
+    /// The mission's time limit, seconds, when it has one: the crew are told of it and the console band counts it down
+    /// (ui-art-direction Q6). The fight ends at it as at the safety timeout, whichever is first. Neither mission has one.
+    #[serde(default)]
+    pub time_limit_s: Option<f64>,
     /// Debrief, in seconds: the least it lasts.
     pub debrief_s: f64,
     /// The most a debrief lasts while the teams put the ship right (ship-damage 9), seconds.
@@ -1119,6 +1124,12 @@ impl MissionFile {
     /// All hands: the players put the ship right, no teams aboard (all-hands 1).
     pub fn all_hands(&self) -> bool {
         self.damage_control == "crew"
+    }
+
+    /// When the fight ends with the enemy withdrawn, seconds into Engage: the time limit, or the safety timeout, the
+    /// earlier (design 18c).
+    pub fn fight_ends_s(&self) -> f64 {
+        self.time_limit_s.map_or(self.safety_timeout_s, |t| t.min(self.safety_timeout_s))
     }
 }
 
@@ -1173,7 +1184,10 @@ impl Validate for MissionFile {
         }
         c.number("tern_start_speed_mps", self.tern_start_speed_mps, -100.0, 400.0);
         c.number("countdown_s", self.countdown_s, 0.0, 120.0);
-        c.number("engage_limit_s", self.engage_limit_s, 10.0, 7200.0);
+        c.number("safety_timeout_s", self.safety_timeout_s, 10.0, 7200.0);
+        if let Some(t) = self.time_limit_s {
+            c.number("time_limit_s", t, 10.0, self.safety_timeout_s);
+        }
         c.number("debrief_s", self.debrief_s, 1.0, 600.0);
         c.number("debrief_max_s", self.debrief_max_s, self.debrief_s, 1800.0);
         c.number("bot_ready_s", self.bot_ready_s, 0.0, 120.0);
@@ -1460,5 +1474,28 @@ impl DrillData {
     /// The verbs the captain can send a station, [verb, icon] (none for a station the captain does not order).
     pub fn order_verbs(&self, s: crate::combat::Station) -> &[[String; 2]] {
         self.stations.orders.get(s.id()).map(Vec::as_slice).unwrap_or(&[])
+    }
+}
+
+#[cfg(test)]
+mod mission_clock_tests {
+    use super::*;
+
+    #[test]
+    fn the_shipped_missions_have_a_safety_timeout_and_no_time_limit() {
+        // ui-art-direction design 18c: 600 s ends a fight nobody finishes; nothing tells the crew of it.
+        for m in [DrillData::shipped().mission, DrillData::shipped_patrol().mission] {
+            assert_eq!((m.safety_timeout_s, m.time_limit_s), (600.0, None), "{}", m.id);
+            assert_eq!(m.fight_ends_s(), 600.0);
+        }
+    }
+
+    #[test]
+    fn a_time_limit_ends_the_fight_first_and_never_after_the_safety_timeout() {
+        let mut m = DrillData::shipped().mission;
+        m.time_limit_s = Some(240.0);
+        assert_eq!(m.fight_ends_s(), 240.0);
+        m.time_limit_s = Some(900.0);
+        assert_eq!(m.fight_ends_s(), 600.0);
     }
 }

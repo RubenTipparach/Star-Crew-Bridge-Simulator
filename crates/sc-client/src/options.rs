@@ -158,6 +158,8 @@ pub struct Screen {
     pub tab: Tab,
     /// The station chosen on the console tab, by its index in the bindings' stations.
     pub chip: usize,
+    /// The rail's focus slab sliding between the pages (design 18a).
+    pub slide: crate::motion::Slide,
 }
 
 /// The rail's pages in their order, with their words.
@@ -190,12 +192,18 @@ impl Screen {
         k.text(Role::Title, 334.0, 150.0, c.text.0, "Options", Align::Start);
         let item_h = look().f.sizes_px.item_h;
         let rail = k.px(look().f.type_.body.px);
+        let hits: Vec<bool> = PAGES
+            .iter()
+            .enumerate()
+            .map(|(i, (_, w))| hit(ui, k.r(334.0, 224.0 + i as f32 * item_h, 300.0, item_h), w).clicked())
+            .collect();
+        if let Some(i) = hits.iter().position(|c| *c) {
+            self.page = PAGES[i].0;
+        }
+        let at = PAGES.iter().position(|(p, _)| *p == self.page).unwrap_or(0);
+        rail.focus_slab(&mut self.slide, 334.0, 224.0 + at as f32 * item_h, 300.0, ui.input(|i| i.time));
         for (i, (p, word)) in PAGES.iter().enumerate() {
-            let y = 224.0 + i as f32 * item_h;
-            rail.item(334.0, y, 300.0, word, self.page == *p, Role::Title);
-            if hit(ui, k.r(334.0, y, 300.0, item_h), word).clicked() {
-                self.page = *p;
-            }
+            rail.item(334.0, 224.0 + i as f32 * item_h, word, self.page == *p, Role::Title);
         }
         let [px, py, pw, ph] = PANEL;
         k.panel(px, py, pw, ph);

@@ -654,15 +654,14 @@ impl ScramCause {
             .find(|c| *c as u8 == v)
     }
 
-    /// What the console says, with the limit from the data.
-    pub fn words(self, d: &PowerData) -> String {
-        let r = &d.file.reactor;
+    /// What Engineering reads under OFF, in plain words (ui-art-direction design 18b).
+    pub fn words(self) -> &'static str {
         match self {
-            Self::Manual => "manual".into(),
-            Self::LoopHot => format!("coolant hot leg over {:.0} K", r.scram.loop_over_k),
-            Self::BlanketHot => format!("blanket over {:.0} K", r.heat.scram_k),
-            Self::AuxSupply => format!("auxiliaries below {:.0}% supply", r.scram.aux_supply_below * 100.0),
-            Self::Damaged => format!("reactor integrity below {:.0}%", r.scram.integrity_below_pct),
+            Self::Manual => "stopped by hand",
+            Self::LoopHot => "coolant too hot",
+            Self::BlanketHot => "core too hot",
+            Self::AuxSupply => "pumps short of power",
+            Self::Damaged => "reactor damaged",
         }
     }
 }

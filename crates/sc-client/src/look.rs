@@ -8,6 +8,7 @@
 //! an anchor of the screen by `ui::anchored` (design 3). Text never draws under the owner's 12 px floor (Q8). It lives
 //! in the client because egui is the client's UI; the consoles keep their own look (`vg::style`, console-parity).
 
+use crate::motion::Ease;
 use crate::vg::{self, Canvas, IconPart, T};
 use egui::{Color32, FontFamily, FontId, Pos2, Rect, Vec2};
 use sc_core::data::{Checks, Validate};
@@ -119,6 +120,20 @@ pub struct Motion {
     pub console_rise: f32,
 }
 
+/// Each motion's curve (design 18a), by the same names as [`Motion`].
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct MotionEase {
+    pub focus: Ease,
+    pub panel_in: Ease,
+    pub screen_fade: Ease,
+    pub load_out: Ease,
+    pub prompt_in: Ease,
+    pub prompt_out: Ease,
+    pub briefing_lower: Ease,
+    pub console_rise: Ease,
+}
+
 /// `data/ui/ui_style.json` (`starcrew.ui-style/1`).
 #[derive(Clone, Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -140,6 +155,7 @@ pub struct StyleFile {
     /// The stations' colours, for their icons only.
     pub roles: BTreeMap<String, Hex>,
     pub motion_ms: Motion,
+    pub motion_ease: MotionEase,
     /// The glyphs beyond the consoles' icons: SVG fragments on a 24-unit grid.
     pub glyphs: BTreeMap<String, String>,
 }
@@ -177,6 +193,20 @@ impl Validate for StyleFile {
             ("secondary_h", s.secondary_h),
         ] {
             c.number(&format!("sizes_px.{k}"), f64::from(v), 0.0, 400.0);
+        }
+        let m = &self.motion_ms;
+        for (k, v) in [
+            ("focus", m.focus),
+            ("panel_in", m.panel_in),
+            ("screen_fade", m.screen_fade),
+            ("load_out", m.load_out),
+            ("prompt_in", m.prompt_in),
+            ("prompt_out", m.prompt_out),
+            ("briefing_lower", m.briefing_lower),
+            ("console_rise", m.console_rise),
+        ] {
+            // Short motion only (design 8): nothing a player waits on.
+            c.number(&format!("motion_ms.{k}"), f64::from(v), 1.0, 1000.0);
         }
         for need in ["command", "helm", "tactical", "engineering", "science", "laser", "gunner"] {
             if !self.roles.contains_key(need) {
@@ -468,13 +498,20 @@ impl Kit {
         self.fill(x, y, look().f.sizes_px.bar, h, look().c().accent.0);
     }
 
-    /// A menu item (design 6): `role` text in `dim`, or focused with the accent bar, the raised fill and `text`.
-    pub fn item(&self, x: f32, y: f32, w: f32, word: &str, focus: bool, role: Role) {
+    /// The focus slab (design 6 and 18a): the raised fill and the accent bar of the focused item, one item high, its
+    /// top sliding to `y` over `motion_ms.focus` on its curve from wherever it was drawn last (`slide` keeps that).
+    /// Drawn before the items, which only change colour.
+    pub fn focus_slab(&self, slide: &mut crate::motion::Slide, x: f32, y: f32, w: f32, now: f64) {
+        let l = look();
+        let (sz, c) = (&l.f.sizes_px, l.c());
+        let y = slide.at(y, now, l.f.motion_ms.focus, l.f.motion_ease.focus);
+        self.fill(x, y, w, sz.item_h, c.raised.0);
+        self.bar(x, y, sz.item_h);
+    }
+
+    /// A menu item (design 6): `role` text in `dim`, or `text` when focused (its slab is [`Kit::focus_slab`]'s).
+    pub fn item(&self, x: f32, y: f32, word: &str, focus: bool, role: Role) {
         let (sz, c) = (&look().f.sizes_px, look().c());
-        if focus {
-            self.fill(x, y, w, sz.item_h, c.raised.0);
-            self.bar(x, y, sz.item_h);
-        }
         let col = if focus { c.text.0 } else { c.dim.0 };
         self.text_mid(role, x + sz.item_pad, y + sz.item_h / 2.0, col, word, Align::Start);
     }

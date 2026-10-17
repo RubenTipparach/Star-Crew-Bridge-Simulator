@@ -69,7 +69,7 @@ fn targets(cv: &Canvas, cx: &mut Ctx) {
             w - 20.0,
             80.0,
             Some(Hit::Act(Act::Target(k.id.clone()))),
-            Some(format!("{}, {}", k.cls, k.iff)),
+            Some(kit::title_case(&format!("{}, {}", k.cls, k.iff))),
         );
         y += 88.0;
     }
@@ -184,8 +184,10 @@ fn turrets(cv: &Canvas, cx: &mut Ctx) {
             rgba(0x0c121a, 1.0),
             Some(Pen::new(1.0, alpha(mc, 0x66 as f32 / 255.0))),
         );
-        b.text(tcx, h - 28.0, 14.0, mc, &t.mode, T::mid().ls(1.5));
-        cx.hits.add(&b, x, 4.0, tw, h - 14.0, Some(Hit::Act(Act::TMode(i))), Some("Turret: tap to change mode".into()));
+        let (word, does) = turret_mode(&t.mode);
+        b.text(tcx, h - 28.0, 14.0, mc, word, T::mid().ls(1.5));
+        let tip = format!("{}: {does}; tap to change", kit::title_case(word));
+        cx.hits.add(&b, x, 4.0, tw, h - 14.0, Some(Hit::Act(Act::TMode(i))), Some(tip));
     }
 }
 
@@ -297,4 +299,16 @@ fn tubes(cv: &Canvas, cx: &mut Ctx) {
     }
     let tip = if can { "Hold to fire" } else { "No tube ready or no hostile target" };
     cx.hits.add(&b, fcx - 52.0, fcy - 52.0, 104.0, 104.0, can.then(|| Hit::Hold("fire".into())), Some(tip.into()));
+}
+
+/// A turret mode's word on its button and what it does, for its tip (ui-art-direction design 18b): the snapshot's
+/// AUTO, TARGET, PD and HOLD, with point defence said in plain words.
+fn turret_mode(mode: &str) -> (&str, &'static str) {
+    match mode {
+        "AUTO" => ("AUTO", "fires at the target in its arc"),
+        "TARGET" => ("TARGET", "fires at the locked target"),
+        "PD" => ("DEFEND", "shoots down incoming missiles"),
+        "HOLD" => ("HOLD", "does not fire"),
+        other => (other, "its mode"),
+    }
 }

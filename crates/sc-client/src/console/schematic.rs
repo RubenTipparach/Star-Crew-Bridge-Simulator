@@ -872,7 +872,7 @@ pub fn draw(cv: &Canvas, cx: &mut Ctx, v: &SchemView) {
         let b = cv.at(640.0, 44.0);
         b.rect(-150.0, 0.0, 300.0, 52.0, 8.0, vg::rgba(0x28060a, 0.92), Some(Pen::new(2.0, c.danger.0)));
         b.text(0.0, 26.0, 22.0, Color32::WHITE, "TRIPPED", T::mid().bold().ls(2.6));
-        let msg = format!("factory settings in {} s", v.trip_s.ceil());
+        let msg = format!("resets in {} s", v.trip_s.ceil());
         b.text(0.0, 44.0, 13.0, vg::rgba(0xffb3ba, 1.0), &msg, T::mid());
     }
 }
@@ -897,7 +897,7 @@ fn switches(cv: &Canvas, cx: &mut Ctx, v: &SchemView) {
             label,
             T::mid().bold(),
         );
-        let tip = if three { "The ship in 3D" } else { "The schematic as a circuit board, a board a deck" };
+        let tip = if three { "The ship in 3D" } else { "The power plan, one board a deck" };
         cx.hits.add(cv, bx, y, bw, 34.0, Some(Hit::Act(Act::SchemDim(three))), Some(tip.into()));
     }
     let (bx, bw) = (1280.0 - 12.0 - 118.0, 118.0);
@@ -905,7 +905,7 @@ fn switches(cv: &Canvas, cx: &mut Ctx, v: &SchemView) {
     let pen = Pen::new(2.0, c.text.0).round();
     cv.path("M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7", Xf::tr(bx + 12.0, y + 8.0).sc(0.75), None, Some(pen));
     cv.text(bx + 36.0, y + 22.0, 13.0, c.text.0, "CONSOLE", T::default().bold().ls(1.0));
-    let tip = "Back to the Engineering console, where this schematic is its side panel";
+    let tip = "Back to the Engineering console";
     cx.hits.add(cv, bx, y, bw, 34.0, Some(Hit::Act(Act::Schem(false))), Some(tip.into()));
 }
 
@@ -939,7 +939,7 @@ fn status(cv: &Canvas, cx: &mut Ctx, s: &Static, v: &SchemView) {
         cv.text(x0 + 24.0, y0 + 5.0, 15.0, if col == c.danger.0 { col } else { c.text.0 }, text, T::default().bold());
         cx.hits.add(cv, x0, y0 - 11.0, 96.0, 22.0, None, Some(tip));
     };
-    let rx = if v.rx_up { format!("{}%", (v.throttle * 100.0).round()) } else { "SCRAM".into() };
+    let rx = if v.rx_up { format!("{}%", (v.throttle * 100.0).round()) } else { "OFF".into() };
     item(
         cx,
         x + 8.0,
@@ -972,7 +972,7 @@ fn status(cv: &Canvas, cx: &mut Ctx, s: &Static, v: &SchemView) {
         120.0,
         22.0,
         None,
-        Some("Live runs against what the main protection allows; one more trips the grid".into()),
+        Some("Live cables of the most the grid carries: one more trips it".into()),
     );
     if !offline.is_empty() {
         let (ox, oy) = (x + 18.0, y + 74.0);
@@ -991,7 +991,7 @@ fn legend(cv: &Canvas, s: &Static) {
     y += 18.0;
     let head = |y: f32, t: &str| cv.text(x + 12.0, y, 12.0, c.dim.0, t, T::default().ls(0.7));
     let row = |y: f32, t: &str| cv.text(x + 56.0, y + 5.0, 13.0, c.text.0, t, T::default());
-    head(y, "BOXES (tap to switch)");
+    head(y, "POWER BOXES");
     let rows: [(&str, Color32, u8); 4] = [
         ("On, carrying power", sc.power.0, 0),
         ("On, nothing reaches it", c.faint.0, 0),
@@ -1009,7 +1009,7 @@ fn legend(cv: &Canvas, s: &Static) {
         row(yy, t);
     }
     y += 18.0 + 4.0 * 22.0 + 8.0;
-    head(y, "RUNS (tap to switch)");
+    head(y, "CABLES");
     let lines: [(&str, Pen); 5] = [
         ("Power flowing: wider the more it carries", Pen::new(4.0, sc.power.0).dash(8.0, 3.0, 0.0)),
         ("Open: a spare route, or switched off", Pen::new(2.5, sc.spare.0).dash(3.0, 6.0, 0.0)),
@@ -1246,7 +1246,7 @@ fn key(b: &Canvas, s: &Static) {
         Some(pcb.hole.0),
         Some(Pen::new(1.6, c.danger.0)),
     );
-    b.text(x0 + 206.0, y + 1.0, 11.0, pcb.silk_dim.0, "OFFLINE (DAMAGE)", T::default().bold().ls(1.0));
+    b.text(x0 + 206.0, y + 1.0, 11.0, pcb.silk_dim.0, "DAMAGED", T::default().bold().ls(1.0));
 }
 
 /// Each room's place on the board: the box round its parts.
@@ -1634,7 +1634,7 @@ fn reactor(b: &Canvas, v: &SchemView, s: &Static) {
         let k = (v.throttle / 1.2).clamp(0.0, 1.0) as f32;
         b.polyline(&arc(-220.0, -220.0 + 260.0 * k), Pen::new(7.0, col).round());
     }
-    let t = if v.rx_up { format!("{}%", (v.throttle * 100.0).round()) } else { "SCRAM".into() };
+    let t = if v.rx_up { format!("{}%", (v.throttle * 100.0).round()) } else { "OFF".into() };
     b.text(x, y + 5.0, 15.0, if v.rx_up { c.text.0 } else { col }, &t, T::mid().bold());
     b.text(x, y + 26.0, 8.5, sc.pcb.silk.0, "REACTOR", T::mid().bold().ls(1.0));
 }
