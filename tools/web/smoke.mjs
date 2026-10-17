@@ -22,9 +22,11 @@
  *
  * --touch plays it as a phone held sideways instead (openspec/changes/touch-controls design 7): 844 x 390, touch only,
  * no key and no mouse. It taps Single Player and Beam aboard, walks the body from where it boards up the corridor to
- * the bridge on the move stick (the thumb held at its rim, so it runs), turns the view with a drag, sits at the first
- * seat in reach with USE, waits for Engage, and stands up again by holding STAND. It passes when the client says the
- * touch layer came on, that the body sat and that it stood up. DIR saves a shot of each step
+ * the bridge on the move stick (the thumb held at its rim, so it runs), turns the view with a drag, taps MAP and
+ * fails unless the ship map opens (the client says `map open` and draws it, `ship map drawn`) and closes on a second
+ * tap, sits at the first seat in reach with USE, taps START MISSION where the engine drew it, waits for Engage, and
+ * stands up again by holding STAND. It passes when the client says the touch layer came on, that the map opened and
+ * closed, that the body sat, that START MISSION was pressed, and that it stood up. DIR saves a shot of each step
  * (docs/screenshots/web/touch/).
  *
  * --fit checks the page fits the game at every size and pixel ratio, with the mouse (openspec/changes/browser-page-fit
@@ -127,6 +129,20 @@ async function playByTouch() {
   await wait(() => seen("single player on the local server") && seen("the bridge for the crew on foot"), "the game to board");
   await page.waitForTimeout(8000);
   await snap("3-aboard.png");
+  // MAP, top left: the ship map opens, and is the map (its first frame said), not the bridge's overview (the owner,
+  // 2026-10-17: "Map button on mobile isn't pulling up the map", "It just shows bridge screen"). A second tap shuts it.
+  const after = (n, s) => lines.slice(n).some((l) => l.includes(s));
+  let n = lines.length;
+  await page.touchscreen.tap(36, 36);
+  for (let i = 0; i < 40 && !after(n, "sc-client: ship map drawn:"); i++) await page.waitForTimeout(250);
+  if (!after(n, "sc-client: map open") || !after(n, "sc-client: ship map drawn:")) throw new Error("MAP did not open the ship map");
+  await page.waitForTimeout(1500);
+  await snap("3b-map-open.png");
+  n = lines.length;
+  await page.touchscreen.tap(36, 36);
+  for (let i = 0; i < 20 && !after(n, "sc-client: map closed"); i++) await page.waitForTimeout(250);
+  if (!after(n, "sc-client: map closed")) throw new Error("a second tap on MAP did not close the map");
+  await page.waitForTimeout(500);
   // The move stick: a thumb lands low on the left and pushes forward to the rim; held there it runs. The body walks up
   // the corridor to the bridge in short pushes until a seat is in reach (the client says so: "prompt: Helm [E] Sit
   // down" or "[E] Relieve ..."); the crew walking the same corridor push it about, so the walk is steered by what the client says,
@@ -159,7 +175,6 @@ async function playByTouch() {
   await snap("5-a-seat-in-reach.png");
   // USE, bottom right: sit (or take the seat from the NPC in it). The body boards seated and stands, so only a sit
   // said after the tap counts; a tap the server refuses (the walk it holds a moment behind the client's) is tapped again.
-  const after = (n, s) => lines.slice(n).some((l) => l.includes(s));
   let sat = false;
   for (let tries = 0; tries < 3 && !sat; tries++) {
     const n = lines.length;
@@ -306,7 +321,7 @@ try {
     await playByTouch();
     const broken = ["no ship (", "no bridge to walk", "no walk on foot", "pageerror:"].some(seen);
     if (broken) throw new Error("the game came up broken");
-    console.log(`smoke: ok, played by touch: boarded, walked to a seat, sat, stood (${((Date.now() - t0) / 1000).toFixed(0)} s)`);
+    console.log(`smoke: ok, played by touch: boarded, opened and shut the map, walked to a seat, sat, started the mission, stood (${((Date.now() - t0) / 1000).toFixed(0)} s)`);
   } else {
     await page.goto(url, { waitUntil: "domcontentloaded", timeout: 180000 });
     // The client is up when it has printed its GL line; give the menu a few frames to draw.

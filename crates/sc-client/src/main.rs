@@ -47,6 +47,7 @@ mod playtest;
 mod release;
 mod repairs;
 mod seat;
+mod shipmap;
 mod ships3d;
 mod solo;
 mod stand;
@@ -199,60 +200,12 @@ struct Room {
     deck: char,
 }
 
-/// The ship map (ship-plan-view 5): an orbit round the ship, the decks pulled apart and cut.
-struct MapView {
-    yaw: f32,
-    pitch: f32,
-    dist: f32,
-    /// One deck only (its index, 0 the lowest), or all.
-    deck: Option<usize>,
-}
-
-/// The decks pulled apart in the map, metres.
-const MAP_EXPLODE_M: f32 = 12.0;
-/// Each deck is cut this high above its floor in the map, metres.
-const MAP_CUT_M: f32 = 1.6;
-/// Figures are drawn this much larger on the map, so a body reads from across the ship.
-const MAP_FIGURE_SCALE: f32 = 3.0;
 /// `--shots` frames this many bots close up after the ship's poses (light-baking 16).
 const BOT_SHOTS: usize = 4;
 /// A bot close-up's camera stands this far in front of the bot, metres.
 const BOT_SHOT_M: f32 = 2.2;
 /// Where a figure takes its light probes: its chest, this far above its feet, metres (light-baking 16).
 const FIGURE_PROBE_HEIGHT_M: f64 = 1.0;
-
-/// A name over a marker on the map: where (0-1 across and down the screen), what, its colour.
-struct MapLabel {
-    at: [f32; 2],
-    text: String,
-    colour: egui::Color32,
-    own: bool,
-}
-
-/// The map's title and deck at the top left of the safe area (ui-art-direction design 11), and each marker's name on a
-/// square plate (the player's edged).
-fn map_overlay(ctx: &egui::Context, deck: &str, labels: &[MapLabel]) {
-    use look::{Align, Role};
-    let screen = ctx.content_rect();
-    let painter = ctx.layer_painter(egui::LayerId::new(egui::Order::Background, egui::Id::new("names")));
-    let c = look::look().c();
-    let k = look::kit(&painter, screen, ui::Anchor::TopLeft, egui::Vec2::new(800.0, 200.0));
-    k.text(Role::Label, 96.0, 54.0, c.accent.0, "Ship map", Align::Start);
-    k.text(Role::Title, 96.0, 54.0 + k.line(Role::Label) + 8.0, c.text.0, deck, Align::Start);
-    let (_, s) = ui::anchored(screen, ui::Anchor::Centre, egui::Vec2::ZERO);
-    for l in labels {
-        let p = egui::pos2(screen.min.x + l.at[0] * screen.width(), screen.min.y + l.at[1] * screen.height());
-        let m = look::Kit::new(painter.clone(), p, s);
-        let role = if l.own { Role::Body } else { Role::Label };
-        let w = m.width(role, &l.text) + 20.0;
-        let h = m.line(role) + 8.0;
-        m.fill(-w / 2.0, -h / 2.0, w, h, look::alpha(c.panel.0, 0.9));
-        if l.own {
-            m.edge(-w / 2.0, -h / 2.0, w, h, l.colour);
-        }
-        m.text_mid(role, 0.0, 0.0, l.colour, &l.text, Align::Middle);
-    }
-}
 
 /// The outside (deck-pipeline 13b): the sky's numbers, the bow camera's target and where the viewscreens are.
 struct Outside {
@@ -354,9 +307,9 @@ struct Client {
     /// `--hand-over-test`: where its captures go, whether this menu is the one come back to, and its frames.
     hand_test: Option<(PathBuf, bool, u32)>,
     /// The ship map while it is open (M).
-    map: Option<MapView>,
+    map: Option<shipmap::MapView>,
     /// The names over the map's markers this frame.
-    map_labels: Vec<MapLabel>,
+    map_labels: Vec<shipmap::MapLabel>,
     /// The game menu on Esc (game-menu) and the options it sets.
     menu: game_menu::GameMenu,
     options: options::Options,
@@ -820,94 +773,48 @@ impl Client {
         else {
             return;
         };
-        let n = wk.decks.len().max(1);
-        let deck_index = |c: char| (n - 1).saturating_sub((c as u8).saturating_sub(b'A') as usize).min(n - 1);
-        let deck_of_y = |y: f32| {
-            (0..wk.decks.len())
-                .min_by(|&a, &b| (wk.decks[a] - y + 0.3).abs().total_cmp(&(wk.decks[b] - y + 0.3).abs()))
-                .unwrap_or(0)
-        };
-        let lift = |k: usize| k as f32 * MAP_EXPLODE_M;
-        // The camera: an orbit round the ship's middle, the exploded stack's middle height.
-        let target = Vec3::new(0.0, wk.decks.first().copied().unwrap_or(0.0) + lift(n - 1) / 2.0, 0.0);
-        let dir = Vec3::new(m.pitch.cos() * m.yaw.sin(), m.pitch.sin(), m.pitch.cos() * m.yaw.cos());
-        let eye = target + dir * m.dist;
-        let view = glam::camera::rh::view::look_to_mat4(Vec3::ZERO, -dir, Vec3::Y);
-        let proj = glam::camera::rh::proj::opengl::perspective(
-            45f32.to_radians(),
-            RENDER_3D.0 as f32 / RENDER_3D.1 as f32,
-            1.0,
-            600.0,
-        );
-        let glow = w[0] * panel_glow[0] + w[1] * panel_glow[1] + w[2] * panel_glow[2];
-        let shown = |k: usize| m.deck.is_none_or(|d| d == k);
-        for room in rooms.iter().filter(|r| !r.outside && r.car.is_none()) {
-            let k = deck_index(room.deck);
-            if !shown(k) {
-                continue;
-            }
-            let o = Vec3::new(room.origin[0] as f32, room.origin[1] as f32 + lift(k), room.origin[2] as f32);
-            let p = DeckParams {
-                mvp: proj * view * Mat4::from_translation(o - eye),
-                state_weights: w,
-                flash_dir: Vec3::Z,
-                flash: 0.0,
-                panel_first: *panel_first,
-                panel_glow: glow,
-                clip_y: wk.decks[k] + MAP_CUT_M - room.origin[1] as f32,
-                relight: sc_render::NO_RELIGHT,
-            };
-            self.r.draw_deck(&self.target, &room.mesh, DeckProgram::Textured, &p, Some(tex));
-        }
+        let map_rooms: Vec<shipmap::MapRoom<'_>> = rooms
+            .iter()
+            .filter(|r| !r.outside && r.car.is_none())
+            .map(|r| shipmap::MapRoom { mesh: &r.mesh, origin: r.origin, deck: r.deck })
+            .collect();
         // Bodies: every bot in its department's figure, the player in theirs, drawn large; names over them.
-        let mut bodies: Vec<([f32; 3], f32, usize, String, egui::Color32, bool)> = wk
+        let figure = |fig: usize| figures.iter().find(|(d, _)| *d == fig).map(|(_, m)| m);
+        let mut bodies: Vec<shipmap::MapBody<'_>> = wk
             .crew
             .bots
             .iter()
             .map(|b| {
                 let dv = wk.company.division_of(b.member.department);
                 let c = wk.company.divisions[dv].colour_srgb;
-                let col = egui::Color32::from_rgb((c[0] * 255.0) as u8, (c[1] * 255.0) as u8, (c[2] * 255.0) as u8);
-                (b.body.feet, b.yaw, dv, b.member.name.clone(), col, false)
+                let colour = egui::Color32::from_rgb((c[0] * 255.0) as u8, (c[1] * 255.0) as u8, (c[2] * 255.0) as u8);
+                shipmap::MapBody {
+                    feet: b.body.feet,
+                    yaw: b.yaw,
+                    figure: figure(dv),
+                    name: b.member.name.clone(),
+                    colour,
+                    own: false,
+                }
             })
             .collect();
         let me = self.officer.as_ref().map_or_else(|| "You".to_owned(), |(t, _)| t.clone());
-        let own = wk.company.divisions.len();
-        bodies.push((wk.body.feet, self.cam.yaw, own, me, egui::Color32::from_rgb(255, 184, 77), true));
-        let vp = proj * view;
-        for (feet, yaw, fig, name, colour, own) in bodies {
-            let k = deck_of_y(feet[1]);
-            if !shown(k) {
-                continue;
-            }
-            let at = Vec3::new(feet[0], feet[1] + lift(k), feet[2]);
-            if let Some((_, mesh)) = figures.iter().find(|(d, _)| *d == fig) {
-                // The map is a diagram: its figures take the fixed light, not a room's (light-baking 16).
-                let turn = Mat4::from_rotation_y(yaw);
-                let mvp =
-                    vp * Mat4::from_translation(at - eye) * turn * Mat4::from_scale(Vec3::splat(MAP_FIGURE_SCALE));
-                self.r.draw_deck_probe(
-                    &self.target,
-                    mesh,
-                    mvp,
-                    turn,
-                    &sc_core::probes::fallback_cube(),
-                    [1.0, 0.0, 0.0],
-                );
-            }
-            let head = vp * (at - eye + Vec3::Y * (MAP_FIGURE_SCALE * 1.9 + 0.6)).extend(1.0);
-            if head.w > 0.0 {
-                let ndc = head.truncate() / head.w;
-                if ndc.x.abs() < 1.1 && ndc.y.abs() < 1.1 {
-                    self.map_labels.push(MapLabel {
-                        at: [(ndc.x + 1.0) / 2.0, (1.0 - ndc.y) / 2.0],
-                        text: name,
-                        colour,
-                        own,
-                    });
-                }
-            }
-        }
+        bodies.push(shipmap::MapBody {
+            feet: wk.body.feet,
+            yaw: self.cam.yaw,
+            figure: figure(wk.company.divisions.len()),
+            name: me,
+            colour: egui::Color32::from_rgb(255, 184, 77),
+            own: true,
+        });
+        let lk = shipmap::MapLook {
+            tex,
+            panel_first: *panel_first,
+            panel_glow: w[0] * panel_glow[0] + w[1] * panel_glow[1] + w[2] * panel_glow[2],
+            lighting: w,
+        };
+        let aspect = RENDER_3D.0 as f32 / RENDER_3D.1 as f32;
+        self.map_labels = shipmap::draw(&mut self.r, &self.target, m, aspect, &wk.decks, &map_rooms, &lk, &bodies);
     }
 
     /// The names over the bots this player can see (crew-nameplates 2): on screen, within 25 m, and in line of sight
@@ -954,13 +861,7 @@ impl Client {
             .filter(|_| !self.flying && self.map.is_none())
             .and_then(|w| w.foot.prompt(&self.bindings));
         let labels = std::mem::take(&mut self.map_labels);
-        let map_deck = self.map.as_ref().map(|m| match m.deck {
-            None => "All decks".to_owned(),
-            Some(k) => {
-                let n = self.walker.as_ref().map_or(3, |w| w.decks.len());
-                format!("Deck {}", (b'A' + (n - 1 - k) as u8) as char)
-            }
-        });
+        let map_deck = self.map.as_ref().map(|m| m.deck_name(self.walker.as_ref().map_or(3, |w| w.decks.len())));
         let names = std::mem::take(&mut self.walk_names);
         let view = game_menu::MenuView {
             label: "Explore".into(),
@@ -974,7 +875,7 @@ impl Client {
         let (menu, options, controls) = (&mut self.menu, &mut self.options, &self.bindings.controls);
         let frame = self.ui.run(&mut self.r, f, self.time_s, |ctx| {
             if let Some(deck) = &map_deck {
-                map_overlay(ctx, deck, &labels);
+                shipmap::overlay(ctx, deck, &labels);
             }
             let painter = ctx.layer_painter(egui::LayerId::new(egui::Order::Background, egui::Id::new("walk-names")));
             let screen = ctx.content_rect();
@@ -1434,11 +1335,7 @@ impl App for Client {
             Event::KeyDown(keys::TAB) if self.map.is_some() => {
                 let n = self.walker.as_ref().map_or(3, |w| w.decks.len());
                 if let Some(m) = self.map.as_mut() {
-                    m.deck = match m.deck {
-                        None => Some(n - 1),
-                        Some(0) => None,
-                        Some(k) => Some(k - 1),
-                    };
+                    m.next_deck(n);
                 }
             }
             Event::KeyDown(keys::TAB) => {
@@ -1449,20 +1346,19 @@ impl App for Client {
             Event::KeyDown(keys::M) if self.walker.is_some() => {
                 self.map = match self.map {
                     Some(_) => None,
-                    None => Some(MapView { yaw: 2.1, pitch: 0.55, dist: 100.0, deck: None }),
+                    None => Some(shipmap::MapView::open()),
                 };
                 self.held.clear();
             }
             Event::Wheel(_, y) if self.map.is_some() => {
                 if let Some(m) = self.map.as_mut() {
-                    m.dist = (m.dist * 1.12f32.powf(-y)).clamp(25.0, 260.0);
+                    m.zoom(y);
                 }
             }
             Event::MouseMotion(dx, dy) if self.captured && self.map.is_some() => {
                 let k = self.options.look_rad_px();
                 if let Some(m) = self.map.as_mut() {
-                    m.yaw -= dx * k;
-                    m.pitch = (m.pitch + dy * k).clamp(0.1, 1.5);
+                    m.turn(dx, dy, k);
                 }
             }
             Event::MouseDown => {
