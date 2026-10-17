@@ -412,8 +412,9 @@ its own arithmetic.
   MISSION), the briefing's solid screen slides down out of the console's screen, under the band, uncovering the
   console that was behind it the whole time; it shows Launch in 0:00 with a full bar while it goes and takes no
   presses. The band stays where it is, and the bridge stays lit behind (the law: no cut).
-- **The console rising** keeps its curve and reads its 600 ms from `motion_ms.console_rise` instead of a second copy
-  in `drill.rs` (`CONSOLE_RISE_S`).
+- **The console rising** reads its 600 ms and its curve from the data (`console_rise`) instead of a second copy in
+  `drill.rs` (`CONSOLE_RISE_S`, a smoothstep for the camera and a squared curve for the panels): the camera and the
+  console now move on the one `in_out_cubic` curve, a little steeper in the middle than the smoothstep it had.
 - **Reduced motion**: the approved design has no such option, so none is added here; it would be an Options row,
   which needs the mockup first. Every motion is under 0.4 s and none moves the camera.
 

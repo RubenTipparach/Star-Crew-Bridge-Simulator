@@ -143,7 +143,8 @@ def style(page):
             "tool (openspec/changes/ui-art-direction design 9). Sizes are reference pixels on data/ui/reference.json's "
             "1920 x 1080 frame; colours are sRGB hex; glyphs are SVG fragments on a 24-unit grid, stroked 2 units wide "
             "with round caps and joins, a fill of currentColor or var(--accent) filled. min_text_px is the owner's "
-            "answer to Q8 (2026-10-16): no text is drawn under 12 output pixels."
+            "answer to Q8 (2026-10-16): no text is drawn under 12 output pixels. motion_ease names each motion's curve (linear, "
+            "out_cubic or in_out_cubic, design 18a)."
         ),
         "safe_px": ui["safe_px"],
         "grid_px": ui["grid_px"],
@@ -154,6 +155,7 @@ def style(page):
         "accent_alt": ui["accent_alt"],
         "roles": ui["roles"],
         "motion_ms": ui["motion_ms"],
+        "motion_ease": ui["motion_ease"],
         "glyphs": glyphs(page),
     }
 

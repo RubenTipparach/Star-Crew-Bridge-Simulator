@@ -36,6 +36,7 @@ mod hud;
 mod hull;
 mod lobby;
 mod look;
+mod motion;
 mod nameplate;
 mod onfoot;
 mod options;
