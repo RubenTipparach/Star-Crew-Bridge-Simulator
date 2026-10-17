@@ -5592,7 +5592,7 @@ function titleBand() {
   const startW = 34 + 13 * 9.4 + 46, startX = 1180 - cond0.length * 9.4 - 22 - 8 - (34 + 13 * 9.4) - 8 - startW;
   for (const [w, r, id] of open) {
     const tw = 44 + w.length * 8.6;
-    if (START && x + tw > startX - 6) break;
+    if ((START || WARP) && x + tw > startX - 6) break;
     s += `<g ${id ? `data-act="swap:${id}"` : ""}${tipAttr(id ? `${w.toLowerCase()} is open: swap to it` : `${w.toLowerCase()} is open (its console is not in this mockup yet)`)}>`;
     s += `<rect x="${x}" y="4" width="${tw}" height="24" rx="5" fill="transparent" stroke="${C.line2}" stroke-dasharray="4 3"/>`;
     s += icon(r, x + 13, 16, 13, id ? ROLE[r] : C.faint) + text(x + 24, 21, 12, id ? C.text : C.faint, w, { ls: 1.5, w: 700 });
@@ -5625,11 +5625,26 @@ function titleBand() {
     s += text(kx + kw + 7, 21, 13, C.text, "START MISSION", { ls: 1.5, w: 700 });
     s += text(sx + startW - 10, 21, 13, C.dim, `${START.ready}/${START.aboard}`, { a: "end" }) + "</g>";
   }
+  // PROPOSED (warp-to-mission 7): the jump chip in START MISSION's place, on every console, from Departure to the jump:
+  // the destination, then who the jump waits on (HELM) or, while the spool runs, its ring and the seconds left.
+  const warping = !starting && WARP && WARP.stage !== "arrived" && x <= sx;
+  if (warping) {
+    const spool = WARP.stage === "spool", wc = spool ? C.warn : ROLE.helm;
+    s += `<g${tipAttr(spool ? `Jumping to ${WARP.dest.toLowerCase()}: ${Math.ceil(WARP.left)} s` : `Helm jumps to ${WARP.dest.toLowerCase()}`)}>`;
+    s += `<rect x="${sx}" y="4" width="${startW}" height="24" rx="5" fill="${wc}1f" stroke="${wc}"/>`;
+    s += jumpIcon(sx + 15, 16, 15, wc) + text(sx + 28, 21, 13, C.text, WARP.dest, { ls: 1.5, w: 700 });
+    if (spool) {
+      const rx = sx + startW - 44;
+      s += `<circle cx="${rx}" cy="16" r="6.5" fill="none" stroke="${C.faint}" stroke-width="2.5"/><path d="${arcPath(rx, 16, 6.5, 0, Math.min(WARP.charge, 0.999) * 360)}" fill="none" stroke="${C.warn}" stroke-width="2.5"/>`;
+      s += text(sx + startW - 10, 21, 13, C.text, `${Math.ceil(WARP.left)} s`, { a: "end", w: 700 });
+    } else s += icon("helm", sx + startW - 54, 16, 13, ROLE.helm) + text(sx + startW - 10, 21, 13, C.dim, "HELM", { a: "end", ls: 1 });
+    s += "</g>";
+  }
   // The newest order to the station shown: at 470, or after the tabs when they reach past it, short of LEAVE STATION;
-  // left out when the tabs leave it no room (or START MISSION has its place).
-  const o = newestOrderFor(S.id);
-  if (o && !starting && leaveX - 8 - Math.max(470, x) >= 60) {
-    const ox = Math.max(470, x), ow = Math.min(300, leaveX - 8 - ox);
+  // left out when the tabs leave it no room (or START MISSION has its place; short of the jump chip while it shows).
+  const o = newestOrderFor(S.id), orderEnd = warping ? sx : leaveX;
+  if (o && !starting && orderEnd - 8 - Math.max(470, x) >= 60) {
+    const ox = Math.max(470, x), ow = Math.min(300, orderEnd - 8 - ox);
     s += `<g data-act="ack"${tipAttr("Acknowledge [Y]")}><rect x="${ox}" y="4" width="${ow}" height="24" rx="5" fill="${C.warn}1f" stroke="${C.warn}"/>`;
     s += icon("command", ox + 16, 16, 14, C.warn) + text(ox + 30, 21, 13, C.text, `CAPTAIN: ${o.verb}`, { ls: 1.5, w: 700 });
     s += icon("check", ox + ow - 16, 16, 14, C.warn) + "</g>";
@@ -5652,6 +5667,30 @@ let leaveDown = null;
  */
 const START_KEY = "Return";
 let START = null;
+/**
+ * PROPOSED, for approval (openspec/changes/warp-to-mission design 5 and 7): the mission's first jump, from the departure
+ * point to the destination. null, or { stage: "ready" (Departure: helm may jump), "spool" (Warp: the spool under way) or
+ * "arrived" (the 3 s after the jump), dest: the destination's name, charge: the spool's fraction of 800 MJ (the berth
+ * leaves 680 MJ: 0.85), left: seconds left on the spool, off: the bow's angle off the jump vector, degrees, stretch: the
+ * stars' stretch toward the bow (0 to 1, the spool's last 3 s) }. Nothing draws it until WARP is set, so every
+ * approved shot is unchanged.
+ */
+let WARP = null;
+/** The 6.0 s spool from the berth's charge, the 3 s alignment hold and stretch, ARRIVED's 3 s (warp-to-mission 4, 5). */
+const WARP_SPOOL_S = 6, WARP_STRETCH_S = 3, WARP_ARRIVED_S = 3, WARP_CHARGE = 680 / 800;
+/** The jump icon (helm-nav-map.html's), PROPOSED: it joins ICONS (and data/ui/console_style.json) once approved. */
+const JUMP_ICON = '<path d="M3 12h12M3 7h9M3 17h9M14 6l6 6-6 6"/>';
+function jumpIcon(x, y, s, col) {
+  return `<g transform="translate(${x - s / 2},${y - s / 2}) scale(${s / 24})" fill="none" stroke="${col}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${JUMP_ICON}</g>`;
+}
+/** The warp's state played forward from the hold's end (the page's own clock; the shots set WARP directly). */
+function warpTick() {
+  if (!WARP || WARP.t0 == null) return;
+  const e = now() - WARP.t0;
+  if (e < WARP_SPOOL_S) Object.assign(WARP, { stage: "spool", left: WARP_SPOOL_S - e, charge: WARP_CHARGE + (1 - WARP_CHARGE) * (e / WARP_SPOOL_S), stretch: clamp((e - (WARP_SPOOL_S - WARP_STRETCH_S)) / WARP_STRETCH_S, 0, 1) });
+  else if (e < WARP_SPOOL_S + WARP_ARRIVED_S) { Object.assign(WARP, { stage: "arrived", left: 0, charge: 0, stretch: 0 }); backFromDeparture(); G.orders = G.orders.filter((o) => o.verb !== "JUMP"); }
+  else WARP = null;
+}
 function leaveShare() { return leaveDown == null ? 0 : clamp((now() - leaveDown) / STAND_HOLD_S, 0, 1); }
 /** Stars: fixed directions in reference axes (seeded), so they wheel past as the ship yaws, pitches and rolls. */
 const STARS = Array.from({ length: 1400 }, (_, i) => {
@@ -5727,12 +5766,24 @@ function lookBand() {
   s += `<svg x="333" y="21" width="614" height="194" viewBox="0 0 614 194">`;
   const B = feedBasis(), foc = (307 / Math.tan(35 * D2R)) * G.zoom, qi = quat.conj(F.q);
   const projectShip = (d) => { const cz = v3.dot(d, B.f); if (cz <= 0.01) return null; return [307 + (v3.dot(d, B.r) / cz) * foc, 97 - (v3.dot(d, B.u) / cz) * foc]; };
+  // PROPOSED (warp-to-mission 7, patrol-mission 11.5): in the spool's last 3 s the stars stretch away from the bow.
+  const stretch = WARP && WARP.stage === "spool" ? WARP.stretch || 0 : 0;
   for (const st0 of STARS) {
     const p = projectShip(quat.rot(qi, st0.d));
     if (!p || p[0] < 0 || p[0] > 614 || p[1] < 0 || p[1] > 194) continue;
-    s += `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${st0.big ? 1.4 : 0.8}" fill="#cfd8e6" opacity="${st0.lum.toFixed(2)}"/>`;
+    if (stretch > 0) {
+      const k = 0.08 + 0.9 * stretch, ex = p[0] + (p[0] - 307) * k, ey = p[1] + (p[1] - 97) * k;
+      s += `<path d="M${p[0].toFixed(1)} ${p[1].toFixed(1)}L${ex.toFixed(1)} ${ey.toFixed(1)}" stroke="#dfe8f6" stroke-width="${st0.big ? 1.6 : 1}" stroke-linecap="round" opacity="${Math.min(1, st0.lum + 0.3 * stretch).toFixed(2)}"/>`;
+    } else s += `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${st0.big ? 1.4 : 0.8}" fill="#cfd8e6" opacity="${st0.lum.toFixed(2)}"/>`;
+  }
+  // Before the jump the ship is at the station, not at the fight: no contacts, the destination's diamond where the jump
+  // vector meets the view (helm-nav-map 8).
+  if (WARP && WARP.stage !== "arrived") {
+    const p = projectShip(quat.rot(qi, quat.rot(F.q, [Math.sin(WARP.off * D2R), 0, Math.cos(WARP.off * D2R)])));
+    if (p) s += `<path d="M${p[0].toFixed(1)} ${(p[1] - 9).toFixed(1)}l9 9-9 9-9-9z" fill="none" stroke="${ROLE.helm}" stroke-width="2"/>` + text(p[0] + 14, p[1] + 4, 11, ROLE.helm, WARP.dest, { ls: 1.5, w: 700 });
   }
   for (const c of G.contacts) {
+    if (WARP && WARP.stage !== "arrived") break;
     if (c.hull <= 0 || c.iff === "unknown") continue;
     const rp = v3.sub(relPos(c.p), BOW_EYE), p = projectShip(rp);
     if (!p || p[0] < -40 || p[0] > 654 || p[1] < -40 || p[1] > 234) continue;
@@ -6311,8 +6362,9 @@ function helm() {
     const bear = tubesBear(), [t0x, t0y] = S.dir(-5, 1), [t1x, t1y] = S.dir(5, 1);
     b += `<path d="M${S.cx} ${S.cy}L${t0x.toFixed(1)} ${t0y.toFixed(1)}L${t1x.toFixed(1)} ${t1y.toFixed(1)}Z" fill="${bear ? C.ok : accent()}" opacity="${bear ? 0.35 : 0.1}"${tipAttr(bear ? "Tubes bear on the target" : "Tubes' cone")}/>`;
     const wp = S.at(G.wp);
-    b += `<path d="M${S.cx} ${S.cy}L${wp.x} ${wp.y}" stroke="${accent()}" stroke-width="2" stroke-dasharray="6 5" opacity="${G.ap === "COURSE" ? 1 : 0.45}"/>`;
-    b += `<path d="M${wp.x} ${wp.by}V${wp.y}" stroke="${accent()}" stroke-dasharray="2 3"/><path d="M${wp.x} ${wp.y - 9}l9 9-9 9-9-9z" fill="none" stroke="${accent()}" stroke-width="2"${tipAttr("Waypoint")}/>`;
+    // PROPOSED (warp-to-mission 2): no local waypoint at the departure; the destination is a jump away.
+    if (!(WARP && WARP.stage !== "arrived")) b += `<path d="M${S.cx} ${S.cy}L${wp.x} ${wp.y}" stroke="${accent()}" stroke-width="2" stroke-dasharray="6 5" opacity="${G.ap === "COURSE" ? 1 : 0.45}"/>`;
+    if (!(WARP && WARP.stage !== "arrived")) b += `<path d="M${wp.x} ${wp.by}V${wp.y}" stroke="${accent()}" stroke-dasharray="2 3"/><path d="M${wp.x} ${wp.y - 9}l9 9-9 9-9-9z" fill="none" stroke="${accent()}" stroke-width="2"${tipAttr("Waypoint")}/>`;
     b += feedCone(S) + shipGlyph({ cls: "corvette", iff: "friendly" }, S.cx, S.cy, 22, S.hdg, C.text);
     b += scannerContacts(S, (c) => `target:${c.id}`, (c) => `${c.id} · ${rangeKm(c).toFixed(1)} km · elevation ${Math.round(elevOf(relPos(c.p)))}°`);
     b = scanWrap("nav", S, b) + rangeCtl(12, 6, "nav") + scanReset(w - 46, 6, "nav");
@@ -6338,6 +6390,8 @@ function helm() {
     if (e.gimbal) b += `<g${tipAttr("Nose straight up or down: roll turns like yaw")}>` + text(x0, h - 2, 11, C.warn, "NOSE VERTICAL", { ls: 1 }) + "</g>";
     return b;
   });
+  // PROPOSED (warp-to-mission 5): from Departure to 3 s after the jump, helm-nav-map's JUMP panel stands in ORIENT's cell.
+  if (WARP) { s += jumpPanel(); return s; }
   s += panel("ORIENT", grid(8, 2, 4, 2), (w, h) => {
     // The attitude order (flight-and-navigation 6a) on three thumbwheels, whole degrees, and its exact quaternion.
     const q = quat.fromEuler(F.oe.h, F.oe.p, F.oe.r), plan = slewPlan(q);
@@ -6361,6 +6415,40 @@ function helm() {
     return b;
   });
   return s;
+}
+
+/**
+ * PROPOSED (warp-to-mission 5): helm-nav-map.html's JUMP panel (its design 4 and 8) on the HELM tab, in ORIENT's cell:
+ * the ALIGN cue, ALIGN, and JUMP held 0.6 s with the spool's ring and seconds; the destination at the top right.
+ */
+function jumpPanel() {
+  return panel("JUMP", grid(8, 2, 4, 2), (w, h) => {
+    const W = WARP, arrived = W.stage === "arrived", spool = W.stage === "spool", al = !arrived && W.off < 5;
+    let b = icon("target", w - 22 - W.dest.length * 8.4, -7, 14, arrived ? C.ok : C.text) + text(w - 12, -2, 13, C.text, W.dest, { a: "end", ls: 1.5, w: 700 });
+    // The ALIGN cue (helm-nav-map 8): the 5 degree cone drawn 6 times wide, the bow line at its angle, the angle under it.
+    const cx = 14, cy = 4, cw = 112, ch = 118, ax = cx + cw / 2, ay = cy + ch - 14, Lc = ch - 30;
+    const cone = 5 * 6 * D2R, bow = Math.min(W.off, 5) * 6 * D2R;
+    b += `<rect x="${cx}" y="${cy}" width="${cw}" height="${ch}" rx="8" fill="${C.panel2}" stroke="${C.line2}"/>`;
+    b += `<path d="M${ax} ${ay}L${(ax - Lc * Math.sin(cone)).toFixed(1)} ${(ay - Lc * Math.cos(cone)).toFixed(1)}A${Lc} ${Lc} 0 0 1 ${(ax + Lc * Math.sin(cone)).toFixed(1)} ${(ay - Lc * Math.cos(cone)).toFixed(1)}Z" fill="${al ? C.ok + "33" : "#2a374733"}" stroke="${al ? C.ok : C.faint}" stroke-width="1.5"/>`;
+    b += `<path d="M${ax} ${ay}L${(ax + Lc * 0.92 * Math.sin(bow)).toFixed(1)} ${(ay - Lc * 0.92 * Math.cos(bow)).toFixed(1)}" stroke="${arrived ? C.faint : al ? C.ok : C.text}" stroke-width="4" stroke-linecap="round"/>`;
+    b += `<g${tipAttr("Bow off the jump vector")}>` + text(ax, cy + ch + 24, 22, arrived ? C.faint : al ? C.ok : C.text, arrived ? "-" : `${Math.round(W.off)}°`, { a: "middle", w: 700 }) + "</g>";
+    b += button({ x: 140, y: 4, w: w - 154, h: 46, icon: "course", label: "ALIGN", off: arrived, act: "walign", fs: 16, is: 20, tip: "Turn the bow onto the jump vector" });
+    if (arrived) {
+      b += button({ x: 140, y: 58, w: w - 154, h: 84, icon: "check", label: "ARRIVED", on: true, col: C.ok, fs: 24, is: 28, tip: "Arrived" });
+      b += text(140 + (w - 154) / 2, 164, 14, C.dim, "cooldown 60 s", { a: "middle" });
+    } else {
+      const col = spool ? C.warn : accent(), bx = 140, by = 58, bw = w - 154, bh = 84;
+      b += `<g ${spool ? "" : 'data-hold="jump"'}${tipAttr(spool ? `Spooling: ${Math.ceil(W.left)} s [hold] [J] aborts` : "Jump [hold] [J]")}>`;
+      b += `<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" rx="7" fill="${col}29" stroke="${col}" stroke-width="2"/>`;
+      if (!spool && HOLD.key === "jump") b += `<rect x="${bx}" y="${by}" width="${bw * clamp((now() - HOLD.t0) / HOLD_S, 0, 1)}" height="${bh}" rx="7" fill="${col}" opacity="0.35"/>`;
+      b += jumpIcon(bx + 28, by + bh / 2, 28, col) + text(bx + 52, by + bh / 2 + 1, 26, col, "JUMP", { b: "middle", ls: 1.2, w: 700 });
+      // The ring is the drive's charge (the berth's 85 %, then the spool to full).
+      const rx = bx + bw - 34, ry = by + bh / 2;
+      b += `<circle cx="${rx}" cy="${ry}" r="19" fill="none" stroke="${C.faint}" stroke-width="5"/><path d="${arcPath(rx, ry, 19, 0, Math.min(W.charge, 0.999) * 360)}" fill="none" stroke="${spool ? C.warn : col}" stroke-opacity="${spool ? 1 : 0.55}" stroke-width="5" stroke-linecap="round"/>`;
+      b += "</g>" + text(bx + bw / 2, 164, 14, spool ? C.text : C.dim, spool ? `${Math.ceil(W.left)} s` : "hold", { a: "middle", w: spool ? 700 : 400 });
+    }
+    return b;
+  });
 }
 
 // =================================================================== TACTICAL
@@ -7366,6 +7454,8 @@ function holdDone(key) {
     if (i >= 0 && c) { G.tubes[i].state = "EMPTY"; G.missiles.push({ pos: F.P.slice(), target: c.id, chance: missileHit(c), n: ++G.hits }); }
   }
   if (k === "lfire") fireLaser(v);
+  // PROPOSED (warp-to-mission 5): JUMP held, the spool starts from the berth's charge.
+  if (k === "jump" && WARP && WARP.stage === "ready") WARP.t0 = now();
   if (k === "ping") G.ping = 2;
   if (k === "redalert") setAlert(st.alert !== "red_alert");
   if (k === "brk") { if (v.startsWith("gen")) st.genClosed[v] = !st.genClosed[v]; else st.tieClosed[v] = !st.tieClosed[v]; }
@@ -7508,6 +7598,7 @@ let PAUSED = false;
 function frame() {
   const t = now(), d = Math.min(0.25, t - last); last = t;
   if (!PAUSED) advanceTime(d);
+  warpTick();
   if (!DRAG || DRAG.kind === "joy" || DRAG.kind === "flip" || DRAG.kind === "shieldcam" || DRAG.kind === "feedview" || DRAG.kind === "scancam" || DRAG.kind === "gunaim") render();
   requestAnimationFrame(frame);
 }
@@ -7671,8 +7762,24 @@ window.MOCKUP_SHOTS = [
   // Science's NPC still walking to the seat.
   { name: "start-captain", setup: () => { station = "captain"; captainTab = "CMD"; START = { ready: 3, aboard: 8 }; render(); } },
   { name: "solo-start", setup: () => { soloOn("helm"); soloCrew("science").seated = false; START = { ready: 4, aboard: 5 }; render(); } },
-].map((shot) => ({ name: shot.name, setup: () => { PAUSED = true; undoCoolingShot(); SOLO = null; START = null; G.objOpen = false; G.gun.trigger = false; retireFighters(); shot.setup(); render(); } }));
+  // PROPOSED, for approval (warp-to-mission 5 and 7), not parity states: START MISSION pressed, the Tern at Tamsin
+  // Station with the bow on the Shoals relay, helm's JUMP ready; then the spool with 2 s left and the stars stretching;
+  // then just arrived, the Hound ahead; and the spool seen from Tactical's band.
+  { name: "warp-ready", setup: () => { station = "helm"; warpOrder(); stillAtDeparture(); WARP = { stage: "ready", dest: "THE SHOALS", charge: WARP_CHARGE, left: WARP_SPOOL_S, off: 1, stretch: 0 }; render(); } },
+  { name: "warp-spool", setup: () => { station = "helm"; warpOrder(); stillAtDeparture(); WARP = { stage: "spool", dest: "THE SHOALS", charge: WARP_CHARGE + (1 - WARP_CHARGE) * (4 / 6), left: 2, off: 1, stretch: 1 / 3 }; render(); } },
+  { name: "warp-arrived", setup: () => { station = "helm"; G.orders = G.orders.filter((o) => o.verb !== "JUMP"); WARP = { stage: "arrived", dest: "THE SHOALS", charge: 0, left: 0, off: 0, stretch: 0 }; render(); } },
+  { name: "warp-band-tactical", setup: () => { station = "tactical"; HOLD.key = null; stillAtDeparture(); WARP = { stage: "spool", dest: "THE SHOALS", charge: WARP_CHARGE + (1 - WARP_CHARGE) * (4 / 6), left: 2, off: 1, stretch: 1 / 3 }; render(); } },
+].map((shot) => ({ name: shot.name, setup: () => { PAUSED = true; undoCoolingShot(); SOLO = null; START = null; WARP = null; G.objOpen = false; G.gun.trigger = false; retireFighters(); backFromDeparture(); shot.setup(); render(); } }));
 
+/** START MISSION counts as the captain's JUMP order (warp-to-mission 5): helm's band shows it until helm acts. */
+function warpOrder() { G.orders = G.orders.filter((o) => o.to !== "helm"); sendOrder("helm", "JUMP"); }
+/**
+ * At the departure point the Tern is still relative to the station and the fight is not in the scene (warp-to-mission
+ * 2): the contacts are set aside until the jump brings them back.
+ */
+let AWAY = null;
+function stillAtDeparture() { F.V = [0, 0, 0]; F.speedSet = 0; F.strafe = [0, 0]; if (!AWAY) { AWAY = G.contacts; G.contacts = []; } }
+function backFromDeparture() { if (AWAY) { G.contacts = AWAY; AWAY = null; } }
 fit(); render();
 requestAnimationFrame(frame);
 // A flat page: no 3D scene for tools/mockups/zfight.mjs to check.
@@ -7683,6 +7790,8 @@ window.MOCKUP_FLAT = true;
 {
   const q = new URLSearchParams(location.search), seat = q.get("seat");
   if (seat && STATIONS.some((o) => o.id === seat)) soloOn(seat);
+  // ?warp=1 (PROPOSED, warp-to-mission): the Departure, helm's JUMP ready to hold.
+  if (q.get("warp") === "1") { station = seat || "helm"; warpOrder(); stillAtDeparture(); WARP = { stage: "ready", dest: "THE SHOALS", charge: WARP_CHARGE, left: WARP_SPOOL_S, off: 1, stretch: 0 }; render(); }
   if (q.get("embed") === "1") {
     document.body.classList.add("embed");
     addEventListener("pointerdown", (e) => { if (parent !== window) parent.postMessage({ kind: "console-touched", x: e.clientX, y: e.clientY }, "*"); });
