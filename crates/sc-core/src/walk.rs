@@ -469,6 +469,23 @@ pub fn in_poly(poly: &[[f32; 2]], x: f32, z: f32) -> bool {
     inside
 }
 
+/// Which way ladder `l` takes a body whose feet are at `feet`: up (true) from its foot, down (false) from its top, or
+/// None when it is out of `reach_m` across the floor or neither end is this floor. Use climbs by it, and the prompt
+/// names it.
+pub fn ladder_way(l: &WalkLadder, feet: [f32; 3], reach_m: f32) -> Option<bool> {
+    let [x, y, z] = feet;
+    if (l.x_m - x).hypot(l.z_m - z) > reach_m {
+        return None;
+    }
+    if (y - l.lo_m).abs() < 0.4 {
+        Some(true)
+    } else if (y - l.hi_m).abs() < 0.4 {
+        Some(false)
+    } else {
+        None
+    }
+}
+
 /// What a body is told to do this step.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Input {
@@ -554,6 +571,17 @@ impl Body {
     /// The horizontal speed, m/s.
     pub fn speed(&self) -> f32 {
         self.vel[0].hypot(self.vel[2])
+    }
+
+    /// The ladders Use would climb from where the body stands: (one goes up from here, one goes down from here). The
+    /// rule [`Body::step`] climbs by, so a prompt never offers a climb the body cannot make.
+    pub fn ladders_here(&self, w: &WalkWorld, d: &WalkData) -> (bool, bool) {
+        if self.action.is_some() {
+            return (false, false);
+        }
+        let reach = d.ladder.reach_m as f32;
+        let ways: Vec<bool> = w.ladders.iter().filter_map(|l| ladder_way(l, self.feet, reach)).collect();
+        (ways.contains(&true), ways.contains(&false))
     }
 
     /// On a ladder or going through a hatch.
@@ -724,13 +752,7 @@ impl Body {
         let mut order: Vec<&WalkLadder> = w.ladders.iter().collect();
         order.sort_by_key(|l| ((y - l.hi_m).abs() < 0.4) != down);
         for l in order {
-            if (l.x_m - x).hypot(l.z_m - z) > reach {
-                continue;
-            }
-            let up = (y - l.lo_m).abs() < 0.4;
-            if !up && (y - l.hi_m).abs() >= 0.4 {
-                continue;
-            }
+            let Some(up) = ladder_way(l, self.feet, reach) else { continue };
             let (a, b) = if up { (l.lo_m, l.hi_m) } else { (l.hi_m, l.lo_m) };
             let speed = if up { d.ladder.up_m_s } else { d.ladder.down_m_s } as f32;
             self.start(vec![

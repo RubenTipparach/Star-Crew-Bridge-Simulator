@@ -776,7 +776,18 @@ impl DrillApp {
         let b = &self.bindings;
         let use_key = || vec![KeyTok::Key(b.use_label.clone())];
         match seat {
-            Some(st) => Some(seat_prompt(st, me.slot, &crew, &others, &b.use_label)),
+            Some(st) => {
+                // A seat at a ladder's top (the gunner's pod): E sits, and the ladder is its own act on the down key,
+                // so a player who stood up can always climb out (the owner, 2026-10-17: "I also get stuck in gunner
+                // seat. Using ladders should be a separate option").
+                let mut p = seat_prompt(st, me.slot, &crew, &others, &b.use_label);
+                if let Some((keys, verb)) =
+                    foot.ladder_act(b).filter(|(k, _)| !k.contains(&KeyTok::Key(b.use_label.clone())))
+                {
+                    p.acts.push((keys, verb.into()));
+                }
+                Some(p)
+            }
             None if repairing => None,
             None if reach_job.is_some() => reach_job.as_ref().map(|(_, title)| Prompt::act(title, use_key(), "Repair")),
             None if at_locker && me.agent < 1.0 => Some(Prompt::act("Extinguisher", use_key(), "Take")),
