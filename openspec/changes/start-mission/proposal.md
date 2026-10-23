@@ -10,10 +10,14 @@ Today a round waits in Muster until every person aboard has sat down, sitting be
 design 6, finding 8), and every seated player is ready (`coop-drill` 1). A crew that is slow to its seats, or a bot
 still walking the decks, holds everyone else at the briefing. Nothing on a console lets the captain say "go".
 
+The owner, 2026-10-17, after playing the build: "I need a button to actually start the mission. Not just have the
+mission autostart". The automatic start this change first kept (design 1, as written on 2026-10-16) is what they
+asked to remove: the round began the moment the player sat down, so START MISSION was rarely seen and never needed.
+
 ## What Changes
 
-- **The round still starts by itself** when every person aboard is seated and every seated player is ready, as today
-  (design 1).
+- **The round never starts by itself** (design 1, revised 2026-10-17). Muster ends only when START MISSION is
+  pressed. READY stays as a signal the captain reads on the chip (`ready/aboard`), never a trigger.
 - **START MISSION** (design 2): the person in the captain's seat may start the countdown at any moment of Muster, ready
   or not. When no person holds the captain's seat (single player, where an NPC or automation has it; or a crew with no
   captain), any seated person may. The server decides: a request from anyone else is refused with "Captain's call".

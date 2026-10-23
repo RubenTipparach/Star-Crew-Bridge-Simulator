@@ -24,7 +24,7 @@ use sc_core::combat::chat::{self, Said, Voice};
 use sc_core::combat::data::{DrillData, Profile};
 use sc_core::combat::patrol::{self, PatrolMemory};
 use sc_core::combat::seats::{claim_rule, ClaimRule, Occupant};
-use sc_core::combat::{Bridge, Command, Phase, Station};
+use sc_core::combat::{may_start, Bridge, Command, Phase, Station};
 
 /// A bot playing one station.
 pub struct Bot {
@@ -39,6 +39,8 @@ pub struct Bot {
     /// Seconds to read the briefing before READY.
     pub read_s: f64,
     muster_seen: Option<f64>,
+    /// When it last pressed START MISSION (a crew of bots alone), seconds.
+    start_asked: f64,
     claimed_at: f64,
     /// When the bot next decides at a station the core's automation has no function for (its reaction time).
     next_s: f64,
@@ -67,6 +69,7 @@ impl Bot {
             mem: Memory::default(),
             read_s: data.mission.bot_ready_s,
             muster_seen: None,
+            start_asked: f64::NEG_INFINITY,
             claimed_at: f64::NEG_INFINITY,
             next_s: 0.0,
             hostile_near_s: f64::NEG_INFINITY,
@@ -153,6 +156,17 @@ impl Bot {
                 let seen = *self.muster_seen.get_or_insert(now);
                 if !s.ready() && now - seen >= self.read_s {
                     s.set_ready(true);
+                }
+                // A crew of bots alone (a networking rig, a capture's `--bot`) has no person to press START MISSION:
+                // once every seated member has read the briefing, a bot presses it (start-mission 1 and 2). With a
+                // person aboard `may_start` refuses a bot, and it never asks.
+                let crew: Vec<(u8, Option<Station>, bool)> =
+                    s.crew.iter().map(|c| (c.slot, c.station, c.bot)).collect();
+                let all_read = s.crew.iter().filter(|c| c.station.is_some()).all(|c| c.ready);
+                let me = s.slot.unwrap_or(u8::MAX);
+                if s.ready() && all_read && may_start(&crew, me).is_ok() && now - self.start_asked >= 2.0 {
+                    s.start_mission();
+                    self.start_asked = now;
                 }
             }
             // A patrol under way (patrol-mission design 9): the station's part by the rule the drill's automation uses.

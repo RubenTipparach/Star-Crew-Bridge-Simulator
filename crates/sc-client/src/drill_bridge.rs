@@ -37,6 +37,8 @@ pub struct BridgeView {
     /// or DOORs are not loaded in": a floor hatch, a ladder's well or a doorway looks into the room beyond, whatever
     /// its deck).
     rooms: Vec<(Mesh, [f64; 3], Bounds)>,
+    /// Each room's deck letter (`A` the top), in `rooms`' order: for the ship map.
+    room_decks: Vec<char>,
     /// The walk's collision, for whether one person sees another (crew-nameplates 2).
     world: Option<sc_core::walk::WalkWorld>,
     /// The viewscreens on the command deck.
@@ -83,6 +85,7 @@ impl BridgeView {
         let t = &d.index.textures;
         let tex = r.make_texture_array_mips(t.size_px, t.layers, &d.texture_levels());
         let (mut rooms, mut figures, mut triangles) = (Vec::new(), Vec::new(), 0);
+        let mut room_decks = Vec::new();
         for c in &d.index.compartments {
             let idx = d.indices_of(c);
             match (c.deck.as_str(), c.id.as_str()) {
@@ -98,6 +101,7 @@ impl BridgeView {
                     }
                     let v = d.vertices_of(c);
                     rooms.push((r.make_mesh(v, Indices::U32(&idx)), c.origin_m, bounds(v, c.origin_m)));
+                    room_decks.push(deck.chars().next().unwrap_or('A'));
                 }
             }
         }
@@ -126,6 +130,7 @@ impl BridgeView {
         let hull = crate::hull::HullView::load(r, &d)?;
         Ok(Self {
             rooms,
+            room_decks,
             world,
             views,
             figures,
@@ -165,6 +170,51 @@ impl BridgeView {
             self.points.push(PointGroup { origin, fixed: mesh(&fixed), hung: mesh(&hung), brackets: mine });
         }
         triangles
+    }
+
+    /// The ship map (ship-plan-view 5, `shipmap`) into `t`'s pass: every deck's rooms cut and pulled apart, a figure
+    /// for every body aboard with its name (`names` gives a slot's name and whether it is this player). `decks` are the
+    /// walk's floor heights, lowest first.
+    #[allow(clippy::too_many_arguments)]
+    pub fn draw_map(
+        &self,
+        r: &mut Renderer,
+        t: &Target,
+        m: &crate::shipmap::MapView,
+        aspect: f32,
+        decks: &[f32],
+        bodies: &[(BodySnap, String)],
+        names: impl Fn(u8) -> (String, bool),
+        lighting: [f32; 3],
+    ) -> Vec<crate::shipmap::MapLabel> {
+        let rooms: Vec<crate::shipmap::MapRoom<'_>> = self
+            .rooms
+            .iter()
+            .zip(&self.room_decks)
+            .map(|((mesh, o, _), d)| crate::shipmap::MapRoom { mesh, origin: *o, deck: *d })
+            .collect();
+        let c = crate::look::look().c();
+        let map_bodies: Vec<crate::shipmap::MapBody<'_>> = bodies
+            .iter()
+            .map(|(b, division)| {
+                let (name, own) = names(b.slot);
+                crate::shipmap::MapBody {
+                    feet: b.pos,
+                    yaw: b.yaw,
+                    figure: self.figures.iter().find(|(d, _)| d == division).or(self.figures.first()).map(|(_, m)| m),
+                    name,
+                    colour: if own { c.accent.0 } else { c.text.0 },
+                    own,
+                }
+            })
+            .collect();
+        let lk = crate::shipmap::MapLook {
+            tex: &self.tex,
+            panel_first: self.panel_first,
+            panel_glow: self.panel_glow,
+            lighting,
+        };
+        crate::shipmap::draw(r, t, m, aspect, decks, &rooms, &lk, &map_bodies)
     }
 
     /// Whether a person whose feet are at `to` is in sight from the eye at `eye` (ship frame, metres): a ray at chest

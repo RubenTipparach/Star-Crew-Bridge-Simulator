@@ -13,11 +13,39 @@
 The owner's words (survey 2, Q3, 2026-10-16): "approve, but need a start mission button when everyone is ready, or
 captain can start even when everyone is not ready. it doesnt matter."
 
-## 1. The round starts by itself, as today
+## 1. The round waits for START MISSION (revised 2026-10-17)
 
-Nothing changes in the automatic start: in Muster, once at least one player is seated, every seated player is ready,
-and (on foot) every person aboard is seated, the drill moves to Countdown, and after `mission.countdown_s` to Engage (or
-to the patrol). "When everyone is ready" in the owner's words is this rule; the button adds the other half.
+The owner, 2026-10-17, after playing: "I need a button to actually start the mission. Not just have the mission
+autostart". Until then (as first written on 2026-10-16) Muster ended by itself once every seated player was ready and,
+on foot, every person aboard was seated; and since sitting down in Muster is a person's READY (`browser-page-fit`
+design 6, finding 8), the round began the moment the player sat. START MISSION was seldom seen and never needed.
+
+Now:
+
+- **Muster never ends by itself.** Only START MISSION (section 2: the captain, or any seated person when no person is
+  captain; in single player the player, from any seat) moves the drill to Countdown, and after `mission.countdown_s`
+  to Engage (or to the patrol). Nothing changes in the Countdown or after it.
+- **READY stays, as a signal.** Sitting still marks a person ready, a bot is ready once it has read its briefing, and
+  the briefing's READY still toggles it. The count is what the captain reads on the chip (`ready/aboard`, section 4)
+  to decide whether to wait or go. It no longer triggers anything.
+- **Back to Muster if nobody is seated** during the countdown, as before.
+- **Nothing on screen promises a launch that is not coming.** "Launch in" and its bar show only in Countdown, after
+  the press (as they already did: the briefing draws them only in Countdown). The briefing's READY in single player no
+  longer says "Crew sitting down" (which promised a start when the crew sat): pressed, it reads "Ready", as it does in
+  a crew.
+- **A bot never starts a round a person is in.** With a person aboard, START MISSION is always a person's. A crew
+  of bots alone (a networking test's rig of `sc-bot`s, a scripted capture's `--bot`) has nobody to press it, so there
+  a bot presses it once every seated member has read the briefing (section 2's table). Every tool that used to let
+  the round start by itself presses START MISSION as a player would: the scripted `--shots` runs already press the
+  chip once it shows; the playtest presses it a moment after it shows; the browser smoke (`tools/web/smoke.mjs`)
+  clicks it, and taps it in its `--touch` run; headless tests call `Drill::start_mission` or send
+  `ClientMsg::StartMission`.
+- **On touch** the chip is the control: it sits in the console's title band, 202 x 24 lp, a finger's tap on it sends
+  the request (the band's hit areas take a tap as a click), and no keyboard is needed. The smoke's `--touch` run
+  presses it with a tap.
+
+"When everyone is ready" in the owner's 2026-10-16 words is the chip's count turning `8/8`: the captain sees it and
+presses.
 
 ## 2. Who may start
 
@@ -27,17 +55,17 @@ A request is taken only when all of these hold, else refused and nothing changes
 | Check | Refused with |
 | --- | --- |
 | The drill is in Muster (in Countdown the start is already under way) | `WrongPhase` ("Not now") |
-| The sender is a person, not a bot client | `NotYourStation` |
+| The sender is a person, or a bot in a crew with no person aboard | `NotYourStation` |
 | The sender is seated at a station (the control is on a console) | `NotYourStation` |
 | The sender holds the captain's seat, or no person holds it | `CaptainsCall` ("Captain's call") |
 
 The last row is the owner's "captain can start", made to hold in every crew:
 
-- **A person is captain**: only they may start. Everyone else waits for the captain or for all to be ready.
+- **A person is captain**: only they may start. Everyone else waits for the captain.
 - **No person is captain** (an NPC or automation holds the seat): any seated person may start. In single player that is
   the player, at any seat: "it doesnt matter".
 
-A bot never starts a round: it is ready once seated, which the automatic start already counts.
+A bot never starts a round a person is in: it is ready once seated, which the chip's count shows.
 
 ## 3. One rule
 
@@ -64,7 +92,7 @@ Engage and the patrol, so the two never meet; START wins if they did.
   number the captain acts on (wait, or go);
 - tip: "Start now: 3 of 8 ready".
 
-When the station's own tabs reach past its left edge it is not drawn; its key still works. A click or a tap on it, or the key,
+Since the round no longer starts by itself (section 1) it is always drawn: in single player the crew's tabs (and OBJECTIVES after them) stop short of it as the swap chips do, so at the captain's console, with two pages and seven crew tabs, the last tabs give way while the round waits (2026-10-17; a touch player has no Return key). A click or a tap on it, or the key,
 sends the request once; the server's refusal, if any, shows as every refusal does.
 
 `ConsoleView` carries it as `start: { key: "Return", ready: 3, aboard: 8 }` (the mockup's `consoleState().start`, none
@@ -85,8 +113,8 @@ and sends `ServerMsg::Refused` on an error, as `Claim` does. `Refusal::CaptainsC
 
 - `sc-core`: the captain's request starts the countdown with nobody else ready; another seated person's request is
   refused while a person is captain and nothing changes; with no person in the captain's seat a seated person starts
-  it; a bot's request is refused; outside Muster it is refused; the round still starts by itself when everyone is
-  ready.
+  it; a bot's request is refused; outside Muster it is refused; the round waits in Muster with every person seated
+  and ready until START MISSION is pressed; on foot, sitting down marks a person ready and still does not start it.
 - `sc-net`: the message round trips; a server test: the captain's message moves the drill to Countdown, another
   station's gets `Refused(CaptainsCall)`.
 - `sc-client`: in single player the player seated at Helm, a bot in the captain's seat and the crew still walking,
@@ -99,7 +127,8 @@ and sends `ServerMsg::Refused` on an error, as `Claim` does. `Refusal::CaptainsC
 ## 7a. As built (2026-10-16)
 
 - The rule, the message and the chip as above; `may_start` is called by the server and by the client's title band.
-- On foot in single player the round already starts once the player sits, if every seated NPC has said READY:
+- (Superseded by section 1's 2026-10-17 revision: the round no longer starts by itself.) On foot in single player the
+  round already started once the player sat, if every seated NPC has said READY:
   NPCs still walking do not hold it (`coop-drill`'s Muster counts people, and seated players). START MISSION shows
   there while a seated NPC is still reading its briefing (`bot_ready_s`), or a person in a crew is not yet seated.
   In a crew of people it is what lets the captain go without the last one: the capture is a captain and a helmsman,

@@ -250,6 +250,12 @@ pub struct DrillApp {
     bridge: Option<crate::drill_bridge::BridgeView>,
     /// The overview of the bridge is up (V).
     overview: bool,
+    /// The ship map while it is open on foot (M, or MAP by thumb; ship-plan-view 5, touch-controls 3).
+    map: Option<crate::shipmap::MapView>,
+    /// The map's first frame since it opened has been said (`ship map drawn`): what the smoke test looks for.
+    map_said: bool,
+    /// `--playtest`: when START MISSION first showed, and when the script last pressed it (local seconds).
+    playtest_start: Option<(f64, f64)>,
     /// The scripted shots: since when this player's body, and another's, has been seen walking.
     walk_seen: (Option<f64>, Option<f64>),
     /// The game menu on Esc (game-menu), and the options it sets.
@@ -464,6 +470,9 @@ impl DrillApp {
             main_rig: console::rig::FeedRig::default(),
             bridge: None,
             overview: args_watch,
+            map: None,
+            map_said: false,
+            playtest_start: None,
             walk_seen: (None, None),
             menu: Default::default(),
             options: crate::options::Options::load(),
@@ -634,8 +643,12 @@ impl DrillApp {
         }
         let seat = sc_core::combat::bodies::seat_in_reach(&self.seat_points, foot.body.feet, reach, reach_dy);
         let menu = self.menu.open();
-        let (held, mut pressed) =
-            if menu { (HashSet::new(), HashSet::new()) } else { (self.held.clone(), self.pressed.clone()) };
+        // On the map the body stands where it was (ship-plan-view 5): the keys are the map's.
+        let (held, mut pressed) = if menu || self.map.is_some() {
+            (HashSet::new(), HashSet::new())
+        } else {
+            (self.held.clone(), self.pressed.clone())
+        };
         let mut sit = None;
         if let (Some(st), true) = (seat, pressed.contains(&use_key)) {
             pressed.remove(&use_key);
@@ -725,8 +738,10 @@ impl DrillApp {
                 }
                 (input, false)
             }
-            // At a machine the body stays: the game has the hands.
-            None if repairing => (sc_core::walk::Input { yaw: self.look.0, ..Default::default() }, false),
+            // At a machine, or on the map, the body stays: the game (or the map) has the hands.
+            None if repairing || self.map.is_some() => {
+                (sc_core::walk::Input { yaw: self.look.0, ..Default::default() }, false)
+            }
             None => {
                 let mut i = crate::onfoot::OnFoot::keys_input(&held, &pressed, self.look.0, &self.bindings);
                 // The touch layer's stick walks the body as the keys do, by how far it is pushed (touch-controls 3).
@@ -773,7 +788,18 @@ impl DrillApp {
         let b = &self.bindings;
         let use_key = || vec![KeyTok::Key(b.use_label.clone())];
         match seat {
-            Some(st) => Some(seat_prompt(st, me.slot, &crew, &others, &b.use_label)),
+            Some(st) => {
+                // A seat at a ladder's top (the gunner's pod): E sits, and the ladder is its own act on the down key,
+                // so a player who stood up can always climb out (the owner, 2026-10-17: "I also get stuck in gunner
+                // seat. Using ladders should be a separate option").
+                let mut p = seat_prompt(st, me.slot, &crew, &others, &b.use_label);
+                if let Some((keys, verb)) =
+                    foot.ladder_act(b).filter(|(k, _)| !k.contains(&KeyTok::Key(b.use_label.clone())))
+                {
+                    p.acts.push((keys, verb.into()));
+                }
+                Some(p)
+            }
             None if repairing => None,
             None if reach_job.is_some() => reach_job.as_ref().map(|(_, title)| Prompt::act(title, use_key(), "Repair")),
             None if at_locker && me.agent < 1.0 => Some(Prompt::act("Extinguisher", use_key(), "Take")),
@@ -871,6 +897,22 @@ impl DrillApp {
         // A UI run presses READY itself, after its menus are shot over the briefing (design 18a).
         if muster && self.tour.is_none() && self.session.as_ref().is_some_and(|s| !s.ready()) {
             self.ready_held = true;
+        }
+        // The round waits for START MISSION (start-mission 1): the script presses it 5 s after the chip shows, as a
+        // player who read the band would (and a recording sees the round wait), and again each 2 s while it stays up
+        // (a press lost to a reconnect). A UI run presses it only once the briefing is shot (its step 5, as READY).
+        let shown = muster && self.start_seen.is_some() && self.tour.as_ref().is_none_or(|t| t.step >= 5);
+        let seen =
+            if shown { *self.playtest_start.get_or_insert((self.time_s, f64::NEG_INFINITY)) } else { (0.0, 0.0) };
+        if shown && self.time_s - seen.0 >= 5.0 && self.time_s - seen.1 >= 2.0 {
+            if let Some(s) = self.session.as_ref() {
+                println!("sc-client: playtest: pressed START MISSION");
+                s.start_mission();
+            }
+            self.playtest_start = Some((seen.0, self.time_s));
+        }
+        if !shown {
+            self.playtest_start = None;
         }
         if at.stand {
             if st == Station::Engineering {
@@ -1018,11 +1060,20 @@ impl DrillApp {
         }
         self.touch_stick = Some((hands.forward, hands.right, hands.run));
         let k = self.options.look_rad_px() / crate::options::LOOK_RAD_PX;
-        self.look.0 -= hands.look.0 * k;
-        self.look.1 = (self.look.1 - hands.look.1 * k).clamp(-1.5, 1.5);
+        match self.map.as_mut() {
+            // On the map a drag turns it, as the mouse does.
+            Some(m) => m.turn(hands.look.0, hands.look.1, self.options.look_rad_px()),
+            None => {
+                self.look.0 -= hands.look.0 * k;
+                self.look.1 = (self.look.1 - hands.look.1 * k).clamp(-1.5, 1.5);
+            }
+        }
         for b in hands.taps {
             match b {
-                Btn::Map => self.overview = !self.overview,
+                // MAP opens the ship map (touch-controls 3), as M does; it once toggled the bridge's overview, which is
+                // what the owner saw (2026-10-17: "Map button on mobile isn't pulling up the map", "It just shows
+                // bridge screen").
+                Btn::Map => self.toggle_map(free),
                 Btn::Menu => {
                     self.menu.escape();
                     self.held.clear();
@@ -1032,6 +1083,18 @@ impl DrillApp {
                 _ => {}
             }
         }
+    }
+
+    /// M, or MAP by thumb: open or close the ship map, on foot only (seated, the console is the screen).
+    fn toggle_map(&mut self, free: bool) {
+        self.map = match self.map {
+            Some(_) => None,
+            None if free => Some(crate::shipmap::MapView::open()),
+            None => None,
+        };
+        println!("sc-client: map {}", if self.map.is_some() { "open" } else { "closed" });
+        self.map_said = false;
+        self.held.clear();
     }
 
     /// Give the mouse back (the menu, a console). The playtest keeps it: its pointer is hidden from the recording.
@@ -2012,6 +2075,12 @@ impl App for DrillApp {
                 sc_client::platform::capture_mouse(true);
             }
             Event::MouseButton(1, down) => self.mouse_left = down && self.captured,
+            Event::MouseMotion(dx, dy) if self.captured && self.map.is_some() => {
+                let k = self.options.look_rad_px();
+                if let Some(m) = self.map.as_mut() {
+                    m.turn(dx, dy, k);
+                }
+            }
             Event::MouseMotion(dx, dy) if self.captured => {
                 let k = self.options.look_rad_px();
                 self.look.0 -= dx * k;
@@ -2020,6 +2089,19 @@ impl App for DrillApp {
             // While the menu is up, its keys are its own (the game underneath runs on, design 2).
             Event::KeyDown(_) if self.menu.open() => {}
             Event::KeyDown(keys::V) => self.overview = !self.overview,
+            Event::KeyDown(keys::M) if self.free => self.toggle_map(true),
+            // On the map: Tab steps the decks, the wheel zooms.
+            Event::KeyDown(keys::TAB) if self.map.is_some() => {
+                let n = self.foot.as_ref().map_or(3, |f| f.decks.len());
+                if let Some(m) = self.map.as_mut() {
+                    m.next_deck(n);
+                }
+            }
+            Event::Wheel(_, y) if self.map.is_some() => {
+                if let Some(m) = self.map.as_mut() {
+                    m.zoom(y);
+                }
+            }
             Event::KeyDown(keys::F3) => self.show_net = !self.show_net,
             Event::KeyDown(k) => {
                 if !self.held.contains(&k) {
@@ -2177,6 +2259,9 @@ impl App for DrillApp {
             sc_client::platform::capture_mouse(true);
         }
         self.free = free;
+        if !free && self.map.take().is_some() {
+            println!("sc-client: map closed");
+        }
         // Seated: hold Stand to get up (E, or Backspace; at Helm, where E rolls the ship, Backspace).
         self.stand_up(dt, station, mine.map(|b| b.posture));
         self.playtest_seated(dt, station, mine.map(|b| b.posture));
@@ -2231,7 +2316,36 @@ impl App for DrillApp {
             }
             // The bridge's viewscreens show the feed: rendered first, in its own pass.
             self.render_feed(ships.as_ref(), None);
-            if let Some(bv) = &self.bridge {
+            let map_now = self.map.filter(|_| own && free);
+            if let (Some(m), Some(bv)) = (map_now, self.bridge.as_ref()) {
+                // The ship map (ship-plan-view 5): the decks pulled apart, every body aboard named.
+                let red = ships.as_ref().is_some_and(|(_, _, s)| s.bridge.red_alert);
+                let decks = self.foot.as_ref().map(|f| f.decks.clone()).unwrap_or_default();
+                let crew = self.session.as_ref().map(|s| s.crew.clone()).unwrap_or_default();
+                let names = |slot: u8| {
+                    let name = crew.iter().find(|c| c.slot == slot).map_or_else(String::new, |c| c.name.clone());
+                    (name, Some(slot) == me)
+                };
+                let lighting = if red { [0.0, 1.0, 0.0] } else { [1.0, 0.0, 0.0] };
+                self.r.begin_3d(&self.bridge_target, [0.012, 0.016, 0.026, 1.0]);
+                let labels =
+                    bv.draw_map(&mut self.r, &self.bridge_target, &m, aspect, &decks, &bodies, names, lighting);
+                self.r.end_pass();
+                if !self.map_said {
+                    println!("sc-client: ship map drawn: {}, {} names", m.deck_name(decks.len()), labels.len());
+                    self.map_said = true;
+                }
+                bridge_ui = Some(BridgeUi {
+                    labels: Vec::new(),
+                    plate: None,
+                    touch: touching,
+                    objective: None,
+                    red_alert: red,
+                    agent: None,
+                    hint: None,
+                    map: Some((m.deck_name(decks.len()), labels)),
+                });
+            } else if let Some(bv) = &self.bridge {
                 let attitude = ships.as_ref().map_or(Quat::IDENTITY, |(t, _, _)| t.rot.as_quat());
                 let red = ships.as_ref().is_some_and(|(_, _, s)| s.bridge.red_alert);
                 // The bridge's eye in the system's frame, where the Hound, bolts and bursts are.
@@ -2361,6 +2475,7 @@ impl App for DrillApp {
                     red_alert: red,
                     agent: mine.filter(|b| own && b.agent > 0.0 && b.posture != Posture::Seated).map(|b| b.agent),
                     hint,
+                    map: None,
                 });
             }
         }
@@ -2442,7 +2557,15 @@ impl App for DrillApp {
             if let Some(v) = console_view.as_ref() {
                 // A long press's finger is the hover on a touch screen (touch-controls 4): the tip shows there.
                 let hover = finger_hover.or_else(|| ctx.input(|i| i.pointer.hover_pos()));
-                painted = Some(console::paint(ctx, v, true, hover));
+                let p = console::paint(ctx, v, true, hover);
+                // START MISSION is said where it is drawn, so the browser's smoke test can press it by thumb.
+                if v.start.is_some() {
+                    let want = Some(console::kit::Hit::Act(console::kit::Act::Start));
+                    if let Some(r) = p.0.regions.iter().rev().find(|r| r.hit == want) {
+                        crate::ui::mark_rect(ctx, "START MISSION", r.rect);
+                    }
+                }
+                painted = Some(p);
                 ctx.input(|i| {
                     for e in &i.events {
                         match e {
@@ -2505,6 +2628,7 @@ impl App for DrillApp {
         let mut start_now = start_shown && !self.menu.open() && self.pressed.contains(&self.bindings.start_key);
         if let Some((hits, _)) = painted.as_ref().filter(|_| start_shown) {
             if crate::seat::band_pressed(hits, &self.pointer, &crate::console::kit::Act::Start) {
+                println!("sc-client: ui clicked START MISSION");
                 self.pointer.clear();
                 start_now = true;
             }
@@ -2794,6 +2918,8 @@ struct BridgeUi {
     agent: Option<f32>,
     /// The first-time hint: the player's station, and its marker on screen and distance.
     hint: Option<(String, Option<(Pos2, f32)>)>,
+    /// The ship map, when it is open: its deck's name and the names over its markers.
+    map: Option<(String, Vec<crate::shipmap::MapLabel>)>,
 }
 
 impl UiView {
@@ -2961,6 +3087,14 @@ fn mission_label(m: &sc_core::combat::data::MissionFile) -> String {
 /// the objective card top left, the centre dot, the alert chip at alert only, the prompt plate below the dot, the
 /// extinguisher's bar beside it, and the first time aboard the hint with its marker. No roster, phase or clock.
 fn bridge_overlay(ctx: &egui::Context, b: &BridgeUi) {
+    if let Some((deck, labels)) = &b.map {
+        crate::shipmap::overlay(ctx, deck, labels, b.touch);
+        if b.red_alert {
+            let painter = ctx.layer_painter(egui::LayerId::new(egui::Order::Middle, egui::Id::new("bridge-names")));
+            crate::hud::alert_chip(&painter, ctx.content_rect(), true);
+        }
+        return;
+    }
     let screen = ctx.content_rect();
     let painter = ctx.layer_painter(egui::LayerId::new(egui::Order::Middle, egui::Id::new("bridge-names")));
     for l in &b.labels {
@@ -3266,6 +3400,30 @@ mod tests {
     ];
 
     #[test]
+    fn with_the_map_open_the_screen_is_the_ship_map_and_not_the_bridge_hud() {
+        // Regression (the owner, 2026-10-17: "Map button on mobile isn't pulling up the map", "It just shows bridge
+        // screen"): MAP toggled the bridge's overview. Open, the screen names the ship map and its deck, and the walking
+        // HUD (the objective, the dot, the prompt) is gone.
+        let b = BridgeUi {
+            labels: Vec::new(),
+            plate: Some((crate::hud::Prompt::act("Helm", vec![crate::look::KeyTok::Key("E".into())], "Sit down"), 1.0)),
+            touch: true,
+            objective: Some("Report to the helm".into()),
+            red_alert: false,
+            agent: None,
+            hint: None,
+            map: Some(("All decks".into(), Vec::new())),
+        };
+        let (drawn, _) = texts_drawn((1920, 1080), |ctx| bridge_overlay(ctx, &b));
+        let texts: Vec<String> = drawn.iter().map(|d| d.text.to_lowercase()).collect();
+        assert!(
+            texts.iter().any(|t| t == "ship map") && texts.iter().any(|t| t == "all decks"),
+            "its title: {texts:?}"
+        );
+        assert!(!texts.iter().any(|t| t.contains("report to") || t.contains("sit down")), "no bridge HUD: {texts:?}");
+    }
+
+    #[test]
     fn the_walking_hud_is_one_objective_and_a_dot_with_no_roster_phase_or_clock() {
         // Before (ui-art-direction design 1): "Patrol: the Shoals   PATROL   00:03" and eight crew across the top, over
         // one another in the browser, and BRIDGE (V) along the bottom.
@@ -3277,6 +3435,7 @@ mod tests {
             red_alert: false,
             agent: None,
             hint: Some(("Helm".into(), None)),
+            map: None,
         };
         let bad = check("walking HUD", |ctx| bridge_overlay(ctx, &b));
         assert!(bad.is_empty(), "{bad:#?}");

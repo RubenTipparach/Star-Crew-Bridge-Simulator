@@ -16,6 +16,7 @@ mod deckc;
 mod dock;
 mod figure;
 mod glb;
+mod podcut;
 mod safety_points;
 mod walk_report;
 

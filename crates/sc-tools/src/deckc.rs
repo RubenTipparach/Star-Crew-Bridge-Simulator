@@ -627,7 +627,7 @@ pub(crate) fn hull(
     indices: &mut Vec<u32>,
     tex_blob: &mut Vec<u8>,
 ) -> Result<Option<DeckHull>, String> {
-    let Some((source, model)) = exterior_model(root, ship)? else { return Ok(None) };
+    let Some((source, mut model)) = exterior_model(root, ship)? else { return Ok(None) };
     let (lo, hi) = model.bounds();
     let ext = read_json(root, "data/ships/exteriors.json")?;
     let budget = ext["ships"]
@@ -638,6 +638,10 @@ pub(crate) fn hull(
     if model.triangles() as u64 > budget {
         return Err(format!("{source}: {} triangles, over the exterior budget of {budget}", model.triangles()));
     }
+
+    // The turret pods' cut (`podcut`): every pod's air taken out of the hull, so a gunner sees the pod and not the skin
+    // and the turret's base running through it.
+    cut_pods(root, ship, &mut model)?;
 
     // The frame: the centre of the bounds to the centimetre, and the smallest power of two that brings the farthest
     // corner inside the vertex's +/-32 m.
@@ -735,6 +739,14 @@ pub(crate) fn hull(
     }))
 }
 
+/// Cut the ship's turret pods (`data/ships/<ship>/layout.json`, compartments of kind `pod`) out of its exterior model's
+/// triangles (`podcut`). Returns how many triangles were cut.
+pub(crate) fn cut_pods(root: &Path, ship: &str, model: &mut crate::glb::Glb) -> Result<usize, String> {
+    let rel = format!("data/ships/{ship}/layout.json");
+    let pods = crate::podcut::pods(&read_json(root, &rel)?).map_err(|e| format!("{rel}: {e}"))?;
+    Ok(model.primitives.iter_mut().map(|p| crate::podcut::cut(p, &pods)).sum())
+}
+
 /// Expand a rectangular power-of-two image into the renderer's square layer without changing normalized UVs.
 /// Exact pixel replication retains every source texel; the shared mip builder filters only after expansion.
 fn square_hull_image(image: &crate::glb::Image) -> Vec<u8> {
@@ -767,15 +779,18 @@ mod tests {
         let (mut v, mut x, mut t) = (Vec::new(), Vec::new(), Vec::new());
         let h = hull(root(), "tern", &mut v, &mut x, &mut t).unwrap().expect("the Tern has an exterior model");
         assert_eq!(h.parts.len(), 7);
-        assert_eq!(h.parts.iter().map(|p| p.count as usize / 3).sum::<usize>(), 4440);
+        // The model's 4440 triangles, less those the pods' cut replaced, plus the pieces it left (podcut).
+        let mut cut_model = crate::glb::read(&root().join(&h.source)).unwrap();
+        cut_pods(root(), "tern", &mut cut_model).unwrap();
+        assert_eq!(h.parts.iter().map(|p| p.count as usize / 3).sum::<usize>(), cut_model.triangles());
         assert_eq!(h.scale, 2.0, "an 81.5 m hull needs half-size positions to fit +/-32 m");
         let sizes: Vec<(u32, u32)> = h.arrays.iter().map(|a| (a.size_px, a.layers)).collect();
         assert!(sizes.contains(&(1024, 1)) && sizes.contains(&(128, 2)), "the hull atlas and the two tiles: {sizes:?}");
         assert!(sizes.contains(&(2048, 1)), "the rectangular nacelle paint expands into one square layer: {sizes:?}");
         println!("Compiled hull texture allocation: {} bytes ({:.4} MiB)", t.len(), t.len() as f64 / 1048576.0);
         assert!(h.parts.iter().filter(|p| p.array.is_none()).count() == 2, "the screens and light panels glow");
-        // Every corner, unpacked, against the model's own.
-        let model = crate::glb::read(&root().join(&h.source)).unwrap();
+        // Every corner, unpacked, against the model's own (after the pods' cut).
+        let model = cut_model;
         let mut k = 0usize;
         for p in &model.primitives {
             for &i in &p.indices {
@@ -790,6 +805,30 @@ mod tests {
                 k += 1;
             }
         }
+    }
+
+    #[test]
+    fn no_part_of_the_hull_is_left_inside_a_turret_pod() {
+        // Regression (the owner, 2026-10-17: "hull is clipping in the gunner pod, there's no hole in the geometry
+        // carved for that"): the skin, its plating and the turret's base crossed the dorsal pod at chest height.
+        let model = exterior_model(root(), "tern").unwrap().expect("the Tern's model").1;
+        let pods = crate::podcut::pods(&read_json(root(), "data/ships/tern/layout.json").unwrap()).unwrap();
+        assert_eq!(pods.len(), 4, "the Tern's four turret pods");
+        let inside = |m: &crate::glb::Glb| {
+            let mut n = 0;
+            for p in &m.primitives {
+                for t in p.indices.chunks_exact(3) {
+                    let c: [f32; 3] =
+                        std::array::from_fn(|k| t.iter().map(|&i| p.positions[i as usize][k]).sum::<f32>() / 3.0);
+                    n += usize::from(pods.iter().any(|pr| crate::podcut::inside(pr, c, 0.0)));
+                }
+            }
+            n
+        };
+        assert!(inside(&model) > 0, "the model as drawn crosses a pod: the cut has work to do");
+        let mut cut = exterior_model(root(), "tern").unwrap().expect("the Tern's model").1;
+        cut_pods(root(), "tern", &mut cut).unwrap();
+        assert_eq!(inside(&cut), 0, "after the cut no triangle of the hull lies inside a pod");
     }
 
     #[test]

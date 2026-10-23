@@ -121,6 +121,8 @@ fn a_captains_order_from_the_console_is_said_in_chat_as_theirs() {
     // Into Engage: orders are applied only in a fight.
     cap.set_ready(true);
     tac.set_ready(true);
+    // The round waits for START MISSION (start-mission 1): the captain's call.
+    cap.start_mission();
     let mut ticks = 0;
     while server.drill.phase != sc_core::combat::Phase::Engage && ticks < 2000 {
         run(&mut server, &mut [&mut cap, &mut tac], 1);

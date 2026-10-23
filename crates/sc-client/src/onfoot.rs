@@ -161,7 +161,23 @@ impl OnFoot {
             return Some(p);
         }
         let reach = self.data.lift_call_m as f32;
-        self.world.landing_near(f[0], f[1], f[2], reach, &self.doors).map(|_| Prompt::act("Lift", use_key, "Call"))
+        if self.world.landing_near(f[0], f[1], f[2], reach, &self.doors).is_some() {
+            return Some(Prompt::act("Lift", use_key, "Call"));
+        }
+        self.ladder_act(b).map(|(keys, verb)| Prompt::act("Ladder", keys, verb))
+    }
+
+    /// The ladder's own act where the body stands, a separate one from a seat's (the owner, 2026-10-17: "Using ladders
+    /// should be a separate option"): up from a ladder's foot on the use key, down from its top on the down key, so a
+    /// seat in reach at a ladder's top (the gunner's pod) keeps E for sitting and Q always climbs out. By thumb the
+    /// down key is DOWN. The rule is the walk's own (`Body::ladders_here`).
+    pub fn ladder_act(&self, b: &crate::bindings::Bindings) -> Option<(Vec<crate::look::KeyTok>, &'static str)> {
+        use crate::look::KeyTok;
+        match self.body.ladders_here(&self.world, &self.data) {
+            (_, true) => Some((vec![KeyTok::Key(b.down_label.clone())], "Climb down")),
+            (true, false) => Some((vec![KeyTok::Key(b.use_label.clone())], "Climb up")),
+            (false, false) => None,
+        }
     }
 
     /// Run the cars `dt` seconds and tell the walk world where they are.
@@ -277,5 +293,49 @@ mod tests {
             }
         }
         assert!(failed.is_empty(), "seats a body cannot walk away from: {}", failed.join("; "));
+    }
+
+    /// Regression (the owner, 2026-10-17: "I also get stuck in gunner seat. Using ladders should be a separate
+    /// option"): the gunner's seat stands at the top of the pod's ladder, so E at the stand-up spot sat the body down
+    /// again and nothing said how to climb. Standing up there, the ladder is its own act on the down key and it takes
+    /// the body back down to deck A. Needs the compiled deck; skipped without one.
+    #[test]
+    fn a_gunner_who_stands_up_climbs_out_of_the_pod_on_the_down_key() {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let Ok(bytes) = std::fs::read(root.join("compiled/tern.deck")) else {
+            eprintln!("no compiled deck: skipped");
+            return;
+        };
+        let Ok(d) = sc_core::deck::read(&bytes) else {
+            eprintln!("a compiled deck of another version: skipped (rebuild it with sc-tools deckc)");
+            return;
+        };
+        std::env::set_current_dir(&root).expect("the repository");
+        let mut f = OnFoot::from_deck(&d).expect("the walk");
+        let data = DrillData::shipped();
+        let (bridge, _) =
+            sc_server::bridge::load(&data, &root, Some(&root.join("compiled/tern.deck"))).expect("bridge");
+        if !bridge.has(Station::Gunner) {
+            eprintln!("no gunner's seat aboard: skipped");
+            return;
+        }
+        f.place(bridge.stand_point(Station::Gunner));
+        // Let the body settle on the pod's floor.
+        for _ in 0..30 {
+            f.step(Input::default(), false, 1.0 / 30.0);
+        }
+        let b = crate::bindings::Bindings::shipped();
+        let act = f.ladder_act(&b).expect("standing up in the pod, the ladder is offered");
+        assert_eq!(act, (vec![crate::look::KeyTok::Key(b.down_label.clone())], "Climb down"), "on its own key, not E");
+        let pod_floor = f.body.feet[1];
+        f.step(Input { use_: true, down: true, ..Input::default() }, false, 1.0 / 30.0);
+        for _ in 0..(30 * 4) {
+            f.step(Input::default(), false, 1.0 / 30.0);
+        }
+        assert!(
+            f.body.feet[1] < pod_floor - 2.5 && !f.body.climbing(),
+            "the down key climbed out of the pod to the deck below: from {pod_floor:.2} to {:.2?}",
+            f.body.feet
+        );
     }
 }

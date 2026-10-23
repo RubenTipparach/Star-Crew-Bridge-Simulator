@@ -131,10 +131,16 @@ mobile" notice in place of the game. This is a dashboard setting, not a file the
 
 - **The layer appears at the first finger.** The engine cannot ask the page whether the screen is a touch screen,
   so the layer shows from the first touch and hides at the next key or mouse use.
-- **MAP is the drill's overview** of the bridge (its V key): the drill has no deck map yet. The map's pinch and deck
-  tabs come with one.
-- **DOWN shows in a lift's car**, where the prompt names Q. A ladder has no prompt yet, so DOWN does not show at one;
-  the keyboard's Q still works there.
+- **MAP opens the ship map** (2026-10-17; ship-plan-view 5, the same map as the tour's M, `shipmap`): it was the
+  drill's overview of the bridge (its V key), which is what the owner saw ("Map button on mobile isn't pulling up the
+  map", "It just shows bridge screen"). On the map a drag turns it; the keyboard's M opens it on foot, Tab steps the
+  decks and the wheel zooms. A pinch and the deck tabs by thumb are still to come. The smoke test's `--touch` run taps
+  MAP and fails unless the map opens and shuts.
+- **DOWN shows at a ladder's top** (2026-10-17) as in a lift's car: a ladder has its own prompt, "Ladder [E] Climb up"
+  at its foot and "Ladder [Q] Climb down" at its top, and at a seat on a ladder's top (the gunner's pod) the seat's
+  "[E] Sit down" and the ladder's "[Q] Climb down" are two acts, USE and DOWN by thumb. The owner, 2026-10-17: "I
+  also get stuck in gunner seat. Using ladders should be a separate option..when in gunner seat it's only sit or
+  leave. There's no climbing out".
 - **The console's finger** presses the nearest control within 22 px (`console.reach_px`) of where it lands, at the
   control's centre; a press that moves more than 10 px, or is held 0.5 s, presses nothing, and the held one shows the
   control's tip at the finger. A drag, a hold or a tap-to-drag control (the schematic's) takes the finger at once,
