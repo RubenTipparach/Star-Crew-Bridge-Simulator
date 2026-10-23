@@ -67,7 +67,8 @@ def obs_running() -> bool:
                               "/FI", "STATUS ne UNKNOWN"],
                              capture_output=True, text=True).stdout
         return "obs64.exe" in out
-    return subprocess.run(["pgrep", "-x", "obs"], capture_output=True).returncode == 0
+    name = "OBS" if sys.platform == "darwin" else "obs"
+    return subprocess.run(["pgrep", "-x", name], capture_output=True).returncode == 0
 
 
 def clear_stale_crash_markers():
@@ -89,6 +90,8 @@ def close_obs():
     cleanly; force it only as a last resort, then clear what that leaves."""
     polite, force = ((["taskkill", "/IM", "obs64.exe"], ["taskkill", "/F", "/IM", "obs64.exe"])
                      if sys.platform == "win32" else
+                     (["pkill", "-x", "OBS"], ["pkill", "-9", "-x", "OBS"])
+                     if sys.platform == "darwin" else
                      (["pkill", "-x", "obs"], ["pkill", "-9", "-x", "obs"]))
     subprocess.run(polite, capture_output=True)
     for _ in range(40):
@@ -250,10 +253,13 @@ def find_window(c, pattern_exe: str | None, pattern_title: str | None, timeout: 
     while time.monotonic() < deadline:
         items = c.get_input_properties_list_property_items(SOURCE, "window").property_items
         for item in items:
+            # Windows: 'Title:WindowClass:app.exe'. macOS: a window number, with
+            # '[App] Title' as the item's name.
             value = item["itemValue"]
-            if pattern_exe and value.lower().endswith(":" + pattern_exe.lower()):
+            label = value if isinstance(value, str) else str(item.get("itemName", ""))
+            if pattern_exe and label.lower().endswith(":" + pattern_exe.lower()):
                 return value
-            if pattern_title and pattern_title.lower() in value.lower():
+            if pattern_title and pattern_title.lower() in label.lower():
                 return value
         time.sleep(0.5)
     sys.exit("target window never appeared")
@@ -358,10 +364,15 @@ def main():
             if not a.start_on:
                 start_evt.set()
 
-            c.create_input(SCENE, SOURCE, "window_capture", {"method": 2, "cursor": False}, True)
+            # macOS: ScreenCaptureKit's capture of one window (type 1); the legacy
+            # window_capture hangs OBS on macOS 15 once it captures.
+            kind, base = (("screen_capture", {"type": 1, "show_cursor": False})
+                          if sys.platform == "darwin" else
+                          ("window_capture", {"method": 2, "cursor": False}))
+            c.create_input(SCENE, SOURCE, kind, base, True)
             input_created = True
             window = find_window(c, a.window_exe, a.window_title, 120)
-            c.set_input_settings(SOURCE, {"window": window, "method": 2, "cursor": False}, True)
+            c.set_input_settings(SOURCE, {**base, "window": window}, True)
             item = c.get_scene_item_id(SCENE, SOURCE).scene_item_id
             print(f"found window {window}")
             # On program first: OBS renders only what is showing, and a window
