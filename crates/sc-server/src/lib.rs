@@ -147,6 +147,33 @@ impl DrillServer {
         self.net.addr
     }
 
+    /// Register with a matchmaker (matchmaker design 10.3) under `name`, in its public list or by code only.
+    pub fn list(
+        &self,
+        mm: sc_net::matchmaker::Matchmaker,
+        key: String,
+        name: &str,
+        listed: bool,
+    ) -> Result<sc_net::transport::Listed, String> {
+        let reg = sc_net::matchmaker::Register {
+            name: name.to_owned(),
+            listed,
+            mission: self.drill.data.mission.id.clone(),
+            protocol: PROTOCOL,
+            seats: sc_core::combat::MAX_PLAYERS as u8,
+            previous_code: None,
+        };
+        self.net.list(mm, key, reg)
+    }
+
+    /// What a heartbeat tells the list: the phase and the crew aboard.
+    pub fn heartbeat(&self) -> sc_net::matchmaker::Heartbeat {
+        sc_net::matchmaker::Heartbeat {
+            phase: format!("{:?}", self.drill.phase),
+            crew: self.drill.players.iter().filter(|p| p.left.is_none()).count() as u8,
+        }
+    }
+
     /// Where a client connects to reach this server: its address, or the local link's door.
     pub fn dial(&self) -> Dial {
         self.net.dial()

@@ -27,6 +27,10 @@ matchmaker is what lets both of them find the server without anyone forwarding a
 
 ## What Changes
 
+- **A server browser** (owner, 2026-10-23: "I want a server browser, we can host server stuff on fly
+  io"): running sessions list themselves, players pick one and join it in any phase, and no account
+  is needed (a name kept on the player's machine). Design section 10; it replaces "codes only" (MM2).
+
 - **A matchmaker service**, `sc-matchmaker`, in the workspace, deployed to Fly.io: a session
   directory keyed by join codes, the signalling relay (offers, answers, ICE candidates), and the
   ICE server list (STUN, and short-lived TURN credentials) handed to both ends of each join.

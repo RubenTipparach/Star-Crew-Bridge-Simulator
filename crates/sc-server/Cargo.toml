@@ -11,6 +11,8 @@ publish.workspace = true
 sc-core.workspace = true
 sc-net.workspace = true
 serde_json.workspace = true
+# The host key that holds a listing in the matchmaker (matchmaker design 7).
+getrandom = "0.2"
 
 [lints]
 workspace = true

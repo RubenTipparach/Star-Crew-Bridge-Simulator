@@ -7,6 +7,12 @@
 //!
 //! Usage: sc-server [--root .] [--mission drill-hound] [--listen 0.0.0.0:7700] [--host-ip IP] [--seed N]
 //!                  [--loss 0.1] [--delay-ms 50] [--rounds N] [--seconds S] [--seated] [--deck compiled/tern.deck]
+//!                  [--list NAME | --unlisted] [--matchmaker http://host:port]
+//!
+//! `--list NAME` puts the session in the matchmaker's public list (the server browser, matchmaker design 10);
+//! `--unlisted` registers it to be joined by its code only. The matchmaker is `--matchmaker`, else the one in
+//! `data/matchmaker/client.json`. The host key that holds the listing is made on the first run and kept in
+//! `settings/host-key`.
 //!
 //! The crew are on foot (design 9) unless `--seated`: a claim is a walk across the bridge, on paths from the
 //! compiled deck's walk grid when it is there.
@@ -104,6 +110,32 @@ fn main() -> ExitCode {
         host_ip,
         server.addr().port()
     );
+    // The server browser (matchmaker design 10.3): listed, or by code only, when asked.
+    let list_name = value("--list");
+    let unlisted = args.iter().any(|a| a == "--unlisted");
+    let listed = if list_name.is_some() || unlisted {
+        let mm = sc_net::matchmaker::Matchmaker::configured(&root, value("--matchmaker").as_deref());
+        let key = host_key(&root);
+        let name = list_name.clone().unwrap_or_else(|| server.drill.data.mission.title.clone());
+        match mm.and_then(|m| key.and_then(|k| server.list(m.clone(), k, &name, list_name.is_some()).map(|l| (l, m)))) {
+            Ok((l, m)) => {
+                println!(
+                    "{} sc-server: {} at {} as \"{name}\", join code {}",
+                    stamp(start),
+                    if list_name.is_some() { "listed" } else { "registered unlisted" },
+                    m.url,
+                    l.code()
+                );
+                Some(l)
+            }
+            Err(e) => {
+                eprintln!("sc-server: the matchmaker: {e}");
+                return ExitCode::FAILURE;
+            }
+        }
+    } else {
+        None
+    };
     let mut clock = FixedClock::new(TICK_HZ, 8);
     let mut last = Instant::now();
     loop {
@@ -118,6 +150,9 @@ fn main() -> ExitCode {
                 println!("{} {line}", stamp(start));
             }
         }
+        if let Some(l) = &listed {
+            l.set(server.heartbeat());
+        }
         if rounds.is_some_and(|r| server.results.len() >= r)
             || seconds.is_some_and(|s| start.elapsed().as_secs_f64() >= s)
         {
@@ -126,4 +161,23 @@ fn main() -> ExitCode {
         }
         std::thread::sleep(Duration::from_millis(2));
     }
+}
+
+/// The host key that holds this server's listing (matchmaker design 7): made from the operating system's random
+/// source on the first run and kept in `settings/host-key`.
+fn host_key(root: &std::path::Path) -> Result<String, String> {
+    let path = root.join("settings/host-key");
+    if let Ok(k) = std::fs::read_to_string(&path) {
+        let k = k.trim().to_owned();
+        if k.len() >= 16 {
+            return Ok(k);
+        }
+    }
+    let mut bytes = [0u8; 16];
+    getrandom::getrandom(&mut bytes).map_err(|e| format!("no random source for the host key: {e}"))?;
+    let key: String = bytes.iter().map(|b| format!("{b:02x}")).collect();
+    std::fs::create_dir_all(root.join("settings"))
+        .and_then(|()| std::fs::write(&path, format!("{key}\n")))
+        .map_err(|e| format!("{}: {e}", path.display()))?;
+    Ok(key)
 }

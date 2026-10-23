@@ -1,0 +1,9 @@
+{
+  "heartbeat_s": 10,
+  "listing_ttl_s": 30,
+  "code_hold_s": 600,
+  "answer_wait_s": 10,
+  "join_attempts_per_min": 10,
+  "join_attempts_per_day": 200,
+  "max_listings": 1000
+}

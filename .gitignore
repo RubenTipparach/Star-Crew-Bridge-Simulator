@@ -15,3 +15,5 @@ __pycache__/
 # Written by tools/consoles/compare.py from the committed mockup and engine pictures.
 docs/screenshots/parity/*-compare.png
 docs/screenshots/parity/parity-report.json
+# A server's matchmaker host key (sc-server --list): a secret of that machine, never committed
+/settings/host-key

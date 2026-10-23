@@ -1,0 +1,4 @@
+{
+  "url": "http://star-crew-bridge-simulator.fly.dev",
+  "stun": ["stun.l.google.com:19302", "stun.cloudflare.com:3478"]
+}
