@@ -179,6 +179,20 @@ name (with the dice to roll one); Options gains a Profile tab where the name, ra
 changed later. The name is what the server and the other players see; the server cleans it and
 refuses nothing for a clash (two players may share a name; slots tell them apart).
 
+### 10.2a Creating a crew, and its name (owner, 2026-10-23)
+
+- **Create crew hosts on the creator's machine** (owner's answer: "On the creator's machine"; "fly io
+  just exposes servers for players to join"). The client starts the drill server in its own process
+  with a real network endpoint, lists it, and puts its creator aboard over loopback. The crew lasts
+  while its creator's game runs. Fly.io runs only the matchmaker.
+- **The crew's name starts as its creator's name** and **anyone aboard can change it** ("server name
+  by default inherits its creator, but anybody can change serve name"): the Esc menu's crew panel
+  holds the name with a pencil and the join code beside it; a rename goes to the server as a command,
+  the server tells the crew and puts the new name in its next heartbeat, and the list shows it.
+- **A crew takes a player while a seat is free** ("as long as theres a slot availible someone can
+  join"), in any phase (10.1).
+- Mockups: `ui-art-direction.html` states `browser` (with Create crew) and `crewname`.
+
 ### 10.3 Listing
 
 - **A server lists itself when started with `--list "NAME"`** and a matchmaker URL (`--matchmaker`,

@@ -166,6 +166,7 @@
     <div class="pos t-label dim" style="left: 96px; top: 894px; display: flex; align-items: center; gap: 12px"><span class="key">R</span> Refresh</div>
     <div class="pos" style="left: 1296px; top: 250px; width: 528px">
       <div class="btn-primary t-title">Join</div>
+      <div class="btn-secondary t-label" style="margin-top: 12px">Create crew</div>
       <div class="t-label dim" style="margin-top: 56px">Code</div>
       <div style="display: flex; gap: 8px; margin-top: 16px">
         <div class="panel t-body" style="flex: 1; height: 64px; display: flex; align-items: center; padding: 0 20px; letter-spacing: 0.3em; color: var(--faint)">K7M2QX</div>
@@ -588,6 +589,18 @@ function build() {
   document.querySelectorAll("img[data-bg]").forEach((im) => (im.src = $(`section.after[data-id="${im.dataset.bg}"] .world > img`).src));
   document.querySelectorAll("svg[data-ico]").forEach((sv) => (sv.innerHTML = ICONS[sv.dataset.ico]));
   $("#profileCards").innerHTML = $("#lobbyCards").innerHTML;
+  // The in-game menu of a multiplayer crew: the crew's name, which anyone aboard can change, and its code.
+  const pause = $('section.after[data-id="pause"]'), cn = pause.cloneNode(true);
+  cn.dataset.id = "crewname";
+  cn.querySelectorAll("[id]").forEach((e) => e.removeAttribute("id"));
+  const crewHead = [...cn.querySelectorAll(".t-label.dim")].find((e) => e.textContent.trim() === "Crew");
+  crewHead.outerHTML = `<div style="display:flex;align-items:center;gap:8px;padding:16px 32px 12px;border-top:1px solid var(--line)">
+    <div class="panel t-body" style="flex:1;height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 18px;border-color:var(--line2)">Hurath of House Zarlen
+      <svg class="i dim" viewBox="0 0 24 24" style="width:22px"><path d="M4 20h4L19 9l-4-4L4 16z M14 6l4 4"/></svg></div>
+    <div class="panel t-label dim" style="height:56px;display:flex;align-items:center;padding:0 18px;letter-spacing:0.3em">K7M2QX</div></div>`;
+  pause.after(cn);
+  cn.querySelector(".panel > div:nth-child(2)").innerHTML = $("#pauseObj").innerHTML;
+  cn.querySelector(".panel").lastElementChild.innerHTML = $("#pauseCrew").innerHTML;
   $("#compassStrip").innerHTML = compassStrip(-24, [["Helm", 18, 6, "helm"]]);
   document.querySelectorAll(".reticle").forEach((e) => (e.outerHTML = '<div class="fill" style="pointer-events:none"><div style="position:absolute;left:50%;top:50%;width:calc(var(--s)*6px);height:calc(var(--s)*6px);border-radius:50%;background:rgba(232,238,246,0.85);transform:translate(-50%,-50%)"></div></div>'));
   // Seg and chip styles are drawn here so they share the tokens.
@@ -664,9 +677,10 @@ const STATES = [
     note: "<b>Before:</b> egui's default typeface (Ubuntu Light) and pill buttons, a lilac focus on an amber button, a centred box floating on a stock planet, a subtitle (SCS TERN) in a third colour. <b>After:</b> the game's own typeface in one family, a left-hung column on the Tern's own key art, one accent for focus, square solid rows. UI draw calls: about 12." },
   { id: "lobby", name: "Single player", before: ["b_lobby"],
     note: "<b>Before:</b> greyed pills for stations that do not exist, ROLL and TOUR as dev words, four colours. <b>After:</b> station cards with the consoles' role icons, unbuilt stations locked, a dice for a new name, one primary action. The officer's name is the player's own: no Lt. Player." },
-  { id: "browser", name: "Multiplayer", note: "<b>New (owner, 2026-10-23: \"I want a server browser\").</b> The crews running now, from the matchmaker: name, mission, phase (colour and a diamond), seats aboard as pips. Any phase can be joined. A full crew or another version is greyed. Join is the big control; a code joins an unlisted crew. Your officer at the top right; Options > Profile changes it. No login." },
+  { id: "browser", name: "Multiplayer", note: "<b>New (owner, 2026-10-23: \"I want a server browser\").</b> The crews running now, from the matchmaker: name, mission, phase (colour and a diamond), seats aboard as pips. Any phase can be joined. A full crew or another version is greyed. Join is the big control; Create crew hosts one on your own machine, named after you; a code joins an unlisted crew. Your officer at the top right; Options > Profile changes it. No login." },
   { id: "name", name: "First start", note: "<b>New (owner: \"no login needed, just local profile storage, ask players for player name\").</b> The first start only (owner: \"have random name gen placeholder\"): the empty field shows a rolled name greyed as its placeholder; Continue keeps it, typing replaces it, the dice rolls another. Kept on this machine." },
   { id: "profile", name: "Options: profile", note: "<b>New (owner: \"make it editable in settings\").</b> A fourth Options tab: rank, name and the dice, the station you would like. The same controls as the officer panel." },
+  { id: "crewname", name: "Menu: crew name", note: "<b>New (owner, 2026-10-23: \"server name by default inherits its creator, but anybody can change serve name\").</b> In a multiplayer crew the Esc menu's crew panel opens with the crew's name, the creator's name at first; anyone aboard edits it there (the pencil) and the server browser shows the new name at the next heartbeat. The join code beside it, to give friends. A crew takes a player while a seat is free." },
   { id: "compass", name: "Walking: compass", note: "<b>Changed (owner: \"station marker should be on bottom or top of the screen with the compass, so that its not smack in the middle of my fps game\").</b> The marker leaves the middle of the view for a compass strip at the top: bow, port, stern, starboard marks as you turn, the station's diamond, word and distance at its bearing; an arrow at the strip's end when it is behind you, and a chevron when it is on another deck." },
   { id: "controls", name: "Options > Controls", before: ["b_strip"],
     note: "<b>Before:</b> the key strip under the itch.io player, running text in a monospace face, plus a lighting key any player could press. <b>After:</b> a square panel in Options with three pages (on foot, at a console, touch), keycaps beside short action names, grouped. The lights sit under Captain, the only seat that may change them." },
