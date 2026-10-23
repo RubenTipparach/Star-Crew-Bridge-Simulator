@@ -56,6 +56,10 @@ pub enum Control {
     Target,
     /// The viewscreen's CHASE.
     Chase,
+    /// The helm's FLIP: turn about to the reciprocal heading (playtest-seats-and-retreat design 3).
+    Flip,
+    /// The helm's thrust lever, pressed at its foot and dragged to its top: full speed ahead.
+    FullAhead,
 }
 
 /// Where a person stands to watch the bridge's main viewscreen (ship frame, metres) and the way they face (radians,
@@ -158,6 +162,12 @@ pub struct Playtest {
     /// When it last finished a repair, and whether the one in hand has opened.
     repaired_at: f64,
     repair_open: bool,
+    /// Whether the script ends after its last beat (the seat tour, the retreat) instead of going round again, and
+    /// whether it has.
+    ends: bool,
+    finished: bool,
+    /// A fire or a repair is answered at most this often, seconds.
+    answer_every_s: f64,
 }
 
 /// A fire is answered at most this often, seconds.
@@ -167,6 +177,17 @@ const SPRAY_FROM_M: f32 = 2.2;
 /// How far back from a fire's middle the hands stand to spray it, metres (the cone's reach, fire.extinguisher.reach_m
 /// 3.0, less a step).
 const STAND_BACK_M: f32 = 2.4;
+
+/// The seat tour's seconds at each console.
+const SEAT_WORK_S: f64 = 4.0;
+/// The retreat: seconds into the fight before turning to run, seconds running before getting up, and a quiet spell's
+/// seconds; fires and repairs answered this soon after the last.
+const RETREAT_AFTER_S: f64 = 30.0;
+const RUN_S: f64 = 20.0;
+const QUIET_S: f64 = 15.0;
+const ANSWER_SOON_S: f64 = 3.0;
+/// Holding stand this long and still seated is logged (the seat tour's record of a seat it cannot leave), seconds.
+const STAND_WARN_S: f64 = 15.0;
 
 /// Behind a seat, where a person stands to sit down, metres.
 const BEHIND_M: f32 = 0.8;
@@ -293,6 +314,69 @@ impl Playtest {
             fought_at: f64::NEG_INFINITY,
             repaired_at: f64::NEG_INFINITY,
             repair_open: false,
+            ends: false,
+            finished: false,
+            answer_every_s: FIGHT_EVERY_S,
+        }
+    }
+
+    /// The seat tour (`--playtest-seats`, playtest-seats-and-retreat design 1): to every station's seat aboard in turn,
+    /// sit, a few seconds at its console, stand, and on to the next, ladders and the gunner's pod included; it ends
+    /// after the last seat. No fire or repair interrupts it.
+    pub fn seats() -> Self {
+        let mut beats = Vec::new();
+        for st in Station::ALL {
+            beats.extend([Beat::To(st), Beat::Sit, Beat::Work(SEAT_WORK_S), Beat::Stand]);
+        }
+        let mut p = Self::with(beats, 0);
+        p.ends = true;
+        p.fought_at = f64::INFINITY;
+        p.repaired_at = f64::INFINITY;
+        p
+    }
+
+    /// The retreat and repair (`--playtest-retreat`, design 3): at the helm through the opening exchange, FLIP and full
+    /// speed away, then up to fight every fire and play every repair game the hits left, answered as soon as seen; it
+    /// ends once a quiet spell passes with nothing burning or broken in reach.
+    pub fn retreat() -> Self {
+        let beats = vec![
+            Beat::To(Station::Helm),
+            Beat::Sit,
+            Beat::Engaged(RETREAT_AFTER_S),
+            Beat::Press(Control::Flip),
+            Beat::Work(1.0),
+            Beat::Press(Control::FullAhead),
+            Beat::Work(RUN_S),
+            Beat::Stand,
+            Beat::Look(QUIET_S),
+            Beat::Look(QUIET_S),
+            Beat::Look(QUIET_S),
+        ];
+        let mut p = Self::with(beats, 0);
+        p.ends = true;
+        p.answer_every_s = ANSWER_SOON_S;
+        p
+    }
+
+    /// Whether a script that ends has run its last beat.
+    pub fn finished(&self) -> bool {
+        self.finished
+    }
+
+    /// The beat in hand, in words, for a recording's caption.
+    pub fn caption(&self) -> String {
+        match self.beat() {
+            Some(Beat::To(st)) => format!("Walking to {}", st.name()),
+            Some(Beat::Sit) => "Sitting down".into(),
+            Some(Beat::Work(_) | Beat::Engaged(_)) => "At the console".into(),
+            Some(Beat::Stand) => "Standing up".into(),
+            Some(Beat::Press(c)) => format!("Pressing {c:?}"),
+            Some(Beat::Locker) => "To the locker for an extinguisher".into(),
+            Some(Beat::Fight) => "Putting out a fire".into(),
+            Some(Beat::Repair) => "Repairing a machine".into(),
+            Some(Beat::Room(r)) => format!("Walking to {r}"),
+            Some(Beat::Look(_) | Beat::Gaze(..) | Beat::Screen(_)) => "Looking round".into(),
+            None => "Done".into(),
         }
     }
 
@@ -321,9 +405,17 @@ impl Playtest {
     fn next(&mut self) {
         println!("sc-client: playtest: {:?} done after {:.1} s", self.beat(), self.t);
         self.k += 1;
-        // After the first sit, the round goes on: the tour again, as long as the fight lasts.
+        // After the first sit, the round goes on: the tour again, as long as the fight lasts; a script that ends stops.
         if self.k >= self.beats.len() {
-            self.k = self.loop_from;
+            if self.ends {
+                self.k = self.beats.len();
+                if !self.finished {
+                    println!("sc-client: playtest: the script is done");
+                }
+                self.finished = true;
+            } else {
+                self.k = self.loop_from;
+            }
         }
         self.t = 0.0;
         self.plan = None;
@@ -351,7 +443,7 @@ impl Playtest {
         if !fighting
             && hands.fires.is_empty()
             && !hands.jobs.is_empty()
-            && self.clock - self.repaired_at > FIGHT_EVERY_S
+            && self.clock - self.repaired_at > self.answer_every_s
         {
             self.beats.insert(self.k, Beat::Repair);
             self.t = 0.0;
@@ -359,7 +451,7 @@ impl Playtest {
             self.repair_open = false;
         }
         let fighting = matches!(self.beat(), Some(Beat::Locker | Beat::Fight | Beat::Repair));
-        if !fighting && !hands.fires.is_empty() && self.clock - self.fought_at > FIGHT_EVERY_S {
+        if !fighting && !hands.fires.is_empty() && self.clock - self.fought_at > self.answer_every_s {
             let mut add = vec![Beat::Fight];
             if !hands.carrying {
                 add.insert(0, Beat::Locker);
@@ -521,6 +613,7 @@ impl Playtest {
                 let press = (self.t / 0.5).floor() != ((self.t - dt) / 0.5).floor() || self.t <= dt + 1e-9;
                 let sit = press.then_some(in_reach).flatten();
                 if self.t > 8.0 {
+                    println!("sc-client: playtest: could not sit (no seat in reach after 8 s)");
                     self.next();
                 }
                 (still, sit)
@@ -614,6 +707,9 @@ impl Playtest {
             );
         }
         if arrived(feet) || self.t > GIVE_UP_S {
+            if !arrived(feet) {
+                println!("sc-client: playtest: gave up walking after {GIVE_UP_S:.0} s at {feet:.2?}");
+            }
             self.next();
             return Input { yaw: look.0, ..Input::default() };
         }
@@ -659,7 +755,7 @@ impl Playtest {
         self.clock += dt;
         let mut out = AtConsole { schematic: None, stand: false, press: None };
         if fire
-            && self.clock - self.fought_at > FIGHT_EVERY_S
+            && self.clock - self.fought_at > self.answer_every_s
             && matches!(self.beat(), Some(Beat::Work(_)))
             && self.t > 8.0
         {
@@ -689,7 +785,12 @@ impl Playtest {
                 }
             }
             // The stand key held until the body is up; the beat ends on foot.
-            Some(Beat::Stand) => out.stand = true,
+            Some(Beat::Stand) => {
+                out.stand = true;
+                if self.t > STAND_WARN_S && self.t - dt <= STAND_WARN_S {
+                    println!("sc-client: playtest: still seated after holding stand {STAND_WARN_S:.0} s at {st:?}");
+                }
+            }
             Some(Beat::Engaged(secs)) => {
                 if !engaged {
                     self.t = 0.0;
@@ -735,5 +836,26 @@ mod tests {
             assert!(off < 0.02, "{} stands {off} m off", w.id());
             assert!((f64::from(yaw) - n[0].atan2(n[2])).abs() < 0.01, "{} faces out", w.id());
         }
+    }
+
+    #[test]
+    fn the_seat_tour_sits_at_every_station_once_and_ends() {
+        let p = Playtest::seats();
+        let sat: Vec<Station> =
+            p.beats.iter().filter_map(|b| if let Beat::To(st) = b { Some(*st) } else { None }).collect();
+        assert_eq!(sat, Station::ALL.to_vec(), "every seat aboard, in order");
+        assert_eq!(p.beats.iter().filter(|b| matches!(b, Beat::Sit)).count(), Station::ALL.len());
+        assert_eq!(p.beats.iter().filter(|b| matches!(b, Beat::Stand)).count(), Station::ALL.len(), "and up again");
+        assert!(p.ends && !p.finished());
+    }
+
+    #[test]
+    fn the_retreat_flips_and_runs_before_it_stands_to_fight_fires() {
+        let p = Playtest::retreat();
+        let at = |want: &Beat| p.beats.iter().position(|b| b == want).unwrap();
+        let (flip, run, stand) =
+            (at(&Beat::Press(Control::Flip)), at(&Beat::Press(Control::FullAhead)), at(&Beat::Stand));
+        assert!(flip < run && run < stand, "turn away, open the throttle, then get up");
+        assert!(p.ends && p.answer_every_s < FIGHT_EVERY_S, "damage is answered sooner than on the tour");
     }
 }

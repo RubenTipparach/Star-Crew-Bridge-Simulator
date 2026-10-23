@@ -1498,4 +1498,17 @@ mod mission_clock_tests {
         m.time_limit_s = Some(900.0);
         assert_eq!(m.fight_ends_s(), 600.0);
     }
+
+    #[test]
+    fn the_mastiff_drill_loads_and_its_enemy_outguns_the_hound() {
+        // playtest-seats-and-retreat design 2: a heavier ship that can hurt the Tern enough to make the crew run.
+        let mastiff = DrillData::shipped_with(
+            "data/missions/drill-mastiff.json",
+            include_str!("../../../../data/missions/drill-mastiff.json"),
+        );
+        let hound = DrillData::shipped();
+        assert_eq!(mastiff.enemy.id, "mastiff");
+        assert!(mastiff.enemy.combat.hull_mj > hound.enemy.combat.hull_mj, "the Mastiff takes more killing");
+        assert!(mastiff.enemy.combat.turrets.len() > hound.enemy.combat.turrets.len(), "and fires more guns");
+    }
 }
