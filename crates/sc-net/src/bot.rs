@@ -52,6 +52,10 @@ pub struct Bot {
     voice: Voice,
     /// A hunting helm has said it is bringing her about onto the hostile.
     hunting: bool,
+    /// Sat at this station before the round's fight began. A helm taken over in the fight holds the heading and speed
+    /// it found for the rest of the round (playtest-seats-and-retreat design 3a: leaving a station changes who operates
+    /// it, never what it holds).
+    from_start: bool,
     /// Its patrol decisions' memory (patrol-mission design 9).
     patrol_mem: PatrolMemory,
 }
@@ -76,6 +80,7 @@ impl Bot {
             manual: false,
             voice: Voice::default(),
             hunting: false,
+            from_start: false,
             patrol_mem: PatrolMemory::default(),
         }
     }
@@ -143,6 +148,7 @@ impl Bot {
         if self.playing != Some(station) {
             self.playing = Some(station);
             self.mem = Memory::default();
+            self.from_start = false;
             if let Some(x) = chat::said_seated(data, station) {
                 self.voice.offer(x, now, &data.chat.limits);
             }
@@ -150,6 +156,7 @@ impl Bot {
         match s.phase() {
             Some(Phase::Muster) => {
                 self.mem = Memory::default();
+                self.from_start = true;
                 self.patrol_mem = PatrolMemory::default();
                 self.next_s = 0.0;
                 self.hostile_near_s = f64::NEG_INFINITY;
@@ -195,6 +202,8 @@ impl Bot {
                 let now = s.latest().map(|x| x.phase_s).unwrap_or(0.0);
                 let p = &self.profile;
                 let mut cmds = match station {
+                    // A helm taken over in the fight flies on as it was left: nothing of its own.
+                    Station::Helm if !self.from_start => Vec::new(),
                     Station::Helm => {
                         let c = automation::helm(&pic, &p.helm, &data.tern_flight, &mut self.mem.helm, now);
                         // A hunting helm says so once, when it first turns onto the hostile.
@@ -248,7 +257,9 @@ impl Bot {
                 if now >= self.next_s {
                     self.next_s = now + react;
                     if let Some(b) = s.latest().map(|x| x.bridge.clone()) {
-                        if b.orders.iter().any(|(to, _, done)| *to == station && !done) {
+                        // A holding helm acknowledges no order it is not flying (crew-chat design 3).
+                        let holds = station == Station::Helm && !self.from_start;
+                        if !holds && b.orders.iter().any(|(to, _, done)| *to == station && !done) {
                             cmds.push(Command::Ack(station));
                         }
                         match station {
@@ -268,7 +279,13 @@ impl Bot {
                     s.command(c);
                 }
             }
-            _ => self.muster_seen = None,
+            // Between fights (the countdown, the debrief): seated now is seated from the next fight's start.
+            _ => {
+                self.muster_seen = None;
+                if matches!(s.phase(), Some(Phase::Countdown | Phase::Debrief)) {
+                    self.from_start = true;
+                }
+            }
         }
     }
 

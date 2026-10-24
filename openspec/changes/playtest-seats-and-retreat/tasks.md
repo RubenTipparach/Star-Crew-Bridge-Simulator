@@ -8,10 +8,12 @@ The owner asked for it on 2026-10-23 (the proposal).
 
 ## 2. Build
 
-- [ ] 2.1 `Playtest::seats`, its per-seat log and `--playtest-seats`.
-- [ ] 2.2 The Mastiff and `drill-mastiff`.
-- [ ] 2.3 `Control::Flip` and `Control::FullAhead`; `Playtest::retreat` and `--playtest-retreat`.
-- [ ] 2.4 Tests.
+- [x] 2.1 `Playtest::seats`, its per-seat log and `--playtest-seats`.
+- [x] 2.2 The Mastiff and `drill-mastiff`.
+- [x] 2.3 `Control::Flip` and `Control::FullAhead`; `Playtest::retreat` and `--playtest-retreat`.
+- [x] 2.4 Tests.
+
+- [ ] 2.5 The first run's fixes (design 3a): the holding helm bot, the retreat's seated wait, the end at Debrief.
 
 ## 3. Runs
 

@@ -45,6 +45,29 @@ retreat: `Press(Flip)` (the bow away), `Press(FullAhead)` (the throttle dragged 
 then back to the helm. Two new presses: FLIP's button, and the throttle lever pressed at its foot and dragged to its
 top. Run with `--all-hands` so the crew, not damage-control teams, fix the ship.
 
+## 3a. What the first run found, and the fixes
+
+The first filmed run (2026-10-24, cloud, 720p, `--record`) lost the Tern: "Defeat in 148 s", hull 0 MJ, 1,914 MJ taken.
+FLIP and the throttle worked (the bow came round to 180 degrees in 12 s and the speed rose from 60 to 115 m/s), but the
+retreat was undone twice over:
+
+- **The script got up too soon.** A fire burned 8 s into the 20 s run, and the seated "answer a fire" rule stood the
+  player up with the range still closing. In the retreat that rule waits: seated, the script does not get up for a
+  fire before its run beat is done; on foot it answers every fire and every repair as soon as it sees one.
+- **The bot that took the empty helm threw the player's course away.** Within seconds it said "Bringing her about onto
+  the Mastiff heavy corvette" and flew bow on into the fight, which breaks a rule CLAUDE.md section 7 already states:
+  "Leaving a station changes who operates it, never what it holds." The fix: **a bot that sits at the helm during an
+  engagement holds the heading and speed it found there** for the rest of the round. It steers nothing, and it does
+  not acknowledge an order it is not flying (a holding helm that said "Aye, closing on the Mastiff" would be saying
+  something it is not doing, crew-chat design 3). A player who sits back down flies again, and a new round starts as
+  every round does. A bot seated at the helm from the round's start hunts as before. Recommendation taken (ask only
+  with screenshots).
+- **The run did not end with the round.** After the defeat it went on fighting fires aboard a dead ship. A scripted
+  run now ends 8 s into the Debrief.
+
+The Mastiff's numbers stay as section 2 has them: it is meant to win a straight fight, and the second run shows
+whether a retreat that holds its course gets away from it.
+
 ## 4. The recorded runs
 
 - **PI-1, the seat tour, real time:** `sc-client --solo --playtest-seats --window`, recorded with the Pi's screen

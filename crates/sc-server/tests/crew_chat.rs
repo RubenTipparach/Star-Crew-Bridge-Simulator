@@ -134,3 +134,46 @@ fn a_captains_order_from_the_console_is_said_in_chat_as_theirs() {
     let l = heard[1].iter().find(|l| l.kind == Kind::Order && l.slot == cap.slot).expect("the order in chat");
     assert_eq!((l.name.as_str(), l.text.as_str()), ("Lt. Player", "Tactical, engage the Hound corvette"));
 }
+
+#[test]
+fn a_bot_that_takes_the_helm_in_the_fight_holds_the_course_it_found() {
+    // playtest-seats-and-retreat design 3a: leaving a station changes who operates it, never what it holds. A bot
+    // that sits at the helm mid-fight neither hunts the hostile nor acknowledges an order to close on it.
+    let data = DrillData::shipped();
+    let mut server = local_server();
+    let mut cap = join(&server, "Lt. Player", Station::Captain);
+    run(&mut server, &mut [&mut cap], 30);
+    cap.set_ready(true);
+    cap.start_mission();
+    let mut ticks = 0;
+    while server.drill.phase != sc_core::combat::Phase::Engage && ticks < 2000 {
+        run(&mut server, &mut [&mut cap], 1);
+        ticks += 1;
+    }
+    assert_eq!(server.drill.phase, sc_core::combat::Phase::Engage);
+    let mut bot_s =
+        Session::connect(server.dial(), "Lt. Sil Saren", true, Some(Station::Helm), Impair::default(), 2).unwrap();
+    let mut bot = Bot::new(&data, Station::Helm);
+    let chase = data.order_verbs(Station::Helm).iter().position(|v| v[0] == "CHASE").unwrap() as u8;
+    let mut heard = Vec::new();
+    for t in 0..(8.0 * TICK_HZ) as usize {
+        if t == (4.0 * TICK_HZ) as usize {
+            assert_eq!(bot_s.station(), Some(Station::Helm), "seated before the order comes");
+            cap.command(sc_core::combat::Command::Order(Station::Helm, chase));
+        }
+        server.poll();
+        server.tick();
+        cap.update();
+        bot_s.update();
+        bot.drive(&mut bot_s, &data);
+        heard.extend(cap.drain_chat());
+    }
+    assert_eq!(bot_s.station(), Some(Station::Helm), "the bot took the helm");
+    let said: Vec<&str> = heard.iter().filter(|l| l.npc).map(|l| l.text.as_str()).collect();
+    assert!(!said.iter().any(|t| t.starts_with("Bringing her about") || t.starts_with("Aye, closing")), "{said:?}");
+    assert!(
+        server.drill.bridge.orders.iter().any(|o| o.to == Station::Helm && !o.done),
+        "the order to close stands unacknowledged: nobody is flying it ({:?})",
+        server.drill.bridge.orders
+    );
+}

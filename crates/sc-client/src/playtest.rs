@@ -168,6 +168,8 @@ pub struct Playtest {
     finished: bool,
     /// A fire or a repair is answered at most this often, seconds.
     answer_every_s: f64,
+    /// Seated, a fire gets the player up from a Work beat; the retreat sits out its run first (design 3a).
+    seated_answers: bool,
 }
 
 /// A fire is answered at most this often, seconds.
@@ -317,6 +319,7 @@ impl Playtest {
             ends: false,
             finished: false,
             answer_every_s: FIGHT_EVERY_S,
+            seated_answers: true,
         }
     }
 
@@ -355,6 +358,7 @@ impl Playtest {
         let mut p = Self::with(beats, 0);
         p.ends = true;
         p.answer_every_s = ANSWER_SOON_S;
+        p.seated_answers = false;
         p
     }
 
@@ -755,6 +759,7 @@ impl Playtest {
         self.clock += dt;
         let mut out = AtConsole { schematic: None, stand: false, press: None };
         if fire
+            && self.seated_answers
             && self.clock - self.fought_at > self.answer_every_s
             && matches!(self.beat(), Some(Beat::Work(_)))
             && self.t > 8.0
@@ -857,5 +862,6 @@ mod tests {
             (at(&Beat::Press(Control::Flip)), at(&Beat::Press(Control::FullAhead)), at(&Beat::Stand));
         assert!(flip < run && run < stand, "turn away, open the throttle, then get up");
         assert!(p.ends && p.answer_every_s < FIGHT_EVERY_S, "damage is answered sooner than on the tour");
+        assert!(!p.seated_answers, "but not from the helm before the run is done");
     }
 }

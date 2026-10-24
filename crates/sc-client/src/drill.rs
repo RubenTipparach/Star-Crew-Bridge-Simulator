@@ -1736,7 +1736,9 @@ impl DrillApp {
         if self.args.record {
             let cue = self.playtest.as_ref().map_or_else(|| "Playing".to_owned(), |p| p.caption());
             self.film_write(f, &cue);
-            if self.playtest.as_ref().is_some_and(|p| p.finished()) {
+            // Done at the script's end, or 8 s into the Debrief: the round is over (design 3a).
+            let over = self.phase_seen.is_some_and(|(_, p, t)| p == Phase::Debrief && self.time_s - t > 8.0);
+            if self.playtest.as_ref().is_some_and(|p| p.finished()) || (self.args.script.is_some() && over) {
                 self.done = true;
             }
             return;
