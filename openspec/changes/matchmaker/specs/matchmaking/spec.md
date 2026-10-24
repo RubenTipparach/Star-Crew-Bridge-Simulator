@@ -83,3 +83,16 @@ profile kept on their own machine.
 - **WHEN** the game starts with no kept profile
 - **THEN** it asks for a name (or a rolled one) before any game, keeps it on that machine, and Options can change it later
 
+### Requirement: A browser joins by code through the matchmaker
+
+The web build SHALL join a session by its code through the matchmaker over HTTPS with the browser's own WebRTC,
+with the same three channels as the native client, and SHALL refuse a typed address with a plain reason.
+
+#### Scenario: A code typed in the browser
+- **WHEN** a player in the browser types a listed session's code on the Multiplayer page
+- **THEN** the page offers through the matchmaker, the data channels open, and the server welcomes the player
+
+#### Scenario: An address typed in the browser
+- **WHEN** a player in the browser types an IP address
+- **THEN** the loading screen says to join by code instead of showing a socket error
+

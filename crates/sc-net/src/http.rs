@@ -79,11 +79,20 @@ pub fn read_request(s: &mut TcpStream) -> Result<Request, String> {
 
 /// Answer a request and close.
 pub fn respond(s: &mut TcpStream, status: &str, kind: &str, body: &[u8]) -> Result<(), String> {
-    let head = format!(
-        "HTTP/1.1 {status}\r\nContent-Type: {kind}\r\nContent-Length: {}\r\nAccess-Control-Allow-Origin: *\r\nConnection: close\r\n\r\n",
-        body.len()
-    );
+    let head = response_head(status, kind, body.len());
     s.write_all(head.as_bytes()).and_then(|_| s.write_all(body)).map_err(|e| e.to_string())
+}
+
+/// A response's head. Every reply may be read by a page on another origin (the itch.io build calling the matchmaker
+/// on Fly.io, matchmaker design 10.7), so it allows any origin, the methods the API uses and the headers a request
+/// sends, which a browser's preflight asks about.
+fn response_head(status: &str, kind: &str, len: usize) -> String {
+    format!(
+        "HTTP/1.1 {status}\r\nContent-Type: {kind}\r\nContent-Length: {len}\r\nAccess-Control-Allow-Origin: *\r\n\
+         Access-Control-Allow-Methods: GET, POST, DELETE, OPTIONS\r\nAccess-Control-Allow-Headers: content-type, {}\r\n\
+         Connection: close\r\n\r\n",
+        crate::matchmaker::KEY_HEADER
+    )
 }
 
 /// Where a service is: `http://host[:port]`, the port 80 when none is given.
@@ -176,6 +185,17 @@ pub fn call(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn every_reply_lets_a_page_on_another_origin_preflight_a_json_post() {
+        // The itch.io page calls the matchmaker on Fly.io (matchmaker design 10.7): Chrome sends an OPTIONS before a
+        // POST with a JSON body and refuses the POST unless the reply allows its method and headers.
+        let h = response_head("200 OK", "application/json", 0).to_ascii_lowercase();
+        assert!(h.contains("access-control-allow-origin: *\r\n"));
+        assert!(h.contains("access-control-allow-methods: get, post, delete, options\r\n"));
+        assert!(h.contains("access-control-allow-headers: content-type, x-host-key\r\n"));
+        assert!(h.ends_with("connection: close\r\n\r\n"), "the head still ends where the body starts");
+    }
 
     #[test]
     fn urls_parse_with_and_without_a_port_and_https_is_refused_with_its_reason() {

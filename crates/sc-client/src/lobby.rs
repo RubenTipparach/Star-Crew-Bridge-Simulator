@@ -445,7 +445,8 @@ impl Lobby {
                 .font(font)
                 .text_color(c.text.0)
                 .vertical_align(egui::Align::Center);
-            ui.put(k.r(116.0, fy + 8.0, 592.0, 48.0), server);
+            // Marked like a button, so a scripted run finds it to type a join code (matchmaker design 10.7).
+            crate::ui::mark("SERVER", ui.put(k.r(116.0, fy + 8.0, 592.0, 48.0), server));
             let jy = fy + 64.0 + 24.0;
             let can = ready && !self.officer.server.trim().is_empty();
             let jk = if can { k.clone() } else { k.faded(0.45) };
