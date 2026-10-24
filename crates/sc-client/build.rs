@@ -18,6 +18,9 @@ fn main() {
     let root = root.canonicalize().expect("the repository root");
     let pre = root.join("web/pre.js");
     println!("cargo:rerun-if-changed={}", pre.display());
+    // The browser's WebRTC link (openspec/changes/matchmaker design 10.7): sc-net's web link calls into it.
+    let rtc = root.join("web/rtc.js");
+    println!("cargo:rerun-if-changed={}", rtc.display());
     for arg in [
         "-sMIN_WEBGL_VERSION=2".to_owned(),
         "-sMAX_WEBGL_VERSION=2".to_owned(),
@@ -27,6 +30,7 @@ fn main() {
         "-sFORCE_FILESYSTEM=1".to_owned(),
         "-sEXPORTED_RUNTIME_METHODS=FS,addRunDependency,removeRunDependency".to_owned(),
         format!("--pre-js={}", pre.display()),
+        format!("--js-library={}", rtc.display()),
     ] {
         println!("cargo:rustc-link-arg-bins={arg}");
     }

@@ -7,6 +7,13 @@ server browser is design section 10. Deploying needs the owner's Fly.io account.
 
 - [ ] 1.1 The signalling messages (design section 6) in `sc-net`, with size caps and unknown fields refused; round-trip tests; the browser's JavaScript module generated from or checked against the same schema.
 
+## 1b. The browser (design 10.7)
+
+- [x] 1.2 The web build's link: `web/rtc.js` drives `RTCPeerConnection` with the three channels, drops `.local` candidates, POSTs the offer to the matchmaker over HTTPS as `text/plain`, applies the answer and reports open, data and closed with a reason; `ClientNet` uses it for `Dial::Join` on emscripten; an address is refused in the browser with a plain reason.
+- [x] 1.3 The matchmaker's replies carry `Access-Control-Allow-Methods` and `Access-Control-Allow-Headers`; a test reads them.
+- [x] 1.4 The server field takes a bare code or `join:CODE` (the configured matchmaker) as well as `join:CODE@URL`.
+- [x] 1.5 Proven: the real web build in headless Chromium joins a listed local server by code through a local matchmaker and is welcomed (`node tools/web/join_test.mjs`, 2026-10-24: welcomed at Helm, the round's Muster heard; `docs/screenshots/web/join/aboard-by-code.png`).
+
 ## 2. The service
 
 - [x] 2.0 The server browser's HTTP API (design 10.4) in `sc-matchmaker`: listings with heartbeats and a time to live, the public list, codes held for a host key, the offer and answer relay with long polls; names cleaned; `data/matchmaker/config.json` validated on load; tests in the crate.
