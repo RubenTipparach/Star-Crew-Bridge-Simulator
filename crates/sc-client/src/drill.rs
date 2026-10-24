@@ -68,6 +68,15 @@ pub struct DrillArgs {
     /// Single player: a scripted player walks the ship, sits at stations and works them, for a recording of the game
     /// as it is played (`--playtest`, `crate::playtest`).
     pub playtest: bool,
+    /// Single player: a scripted test that ends, instead of the tour (`--playtest-seats`: every seat in turn;
+    /// `--playtest-retreat`: the helm, a retreat, fires and repairs; playtest-seats-and-retreat).
+    pub script: Option<String>,
+    /// With `--shots`: write every frame at 30 a second with the script's beat as its caption (`--record`), a real-time
+    /// video of any scripted run (`tools/video/film.sh`).
+    pub record: bool,
+    /// With `record`: frames written per second of the game (`--record-fps`, 30 unless given); fewer frames make a long
+    /// run quicker to film.
+    pub record_fps: f64,
     /// Single player with `--shots`: write every frame of a scripted run through the viewscreen's cameras, FWD,
     /// TARGET, CHASE round the ship and the bridge's main viewscreen, for a video (`--film`, chase-camera 3).
     pub film: bool,
@@ -526,6 +535,11 @@ impl DrillApp {
             app.tour = Some(Tour { frames: t.frame, args: t, step: 0, since: 0.0, lowered: 0 });
         } else if app.args.film && app.solo.is_some() {
             app.playtest = Some(crate::playtest::Playtest::film(app.args.station));
+        } else if let (Some(s), true) = (app.args.script.as_deref(), app.solo.is_some()) {
+            app.playtest = Some(match s {
+                "retreat" => crate::playtest::Playtest::retreat(),
+                _ => crate::playtest::Playtest::seats(),
+            });
         } else if app.args.playtest && app.solo.is_some() {
             // A patrol's script looks out of the windows as the patrol goes on (patrol-mission design 11).
             app.playtest = Some(if app.data.patrol.is_some() {
@@ -1722,6 +1736,31 @@ impl DrillApp {
             self.film(f, &snap);
             return;
         }
+        if self.args.record {
+            // The run's own trace every 5 s of the round (a measurement for playtest-seats-and-retreat design 3a).
+            if let [tern, hostile, ..] = snap.ships.as_slice() {
+                if (t / 5.0).floor() != ((t - 1.0 / self.args.record_fps) / 5.0).floor() {
+                    let h = tern.rot * glam::DVec3::Z;
+                    println!(
+                        "sc-client: record: t {t:5.1} s range {:6.0} m tern {:4.0} m/s set {:4.0} mode {:?} bow-to-hostile {:4.0} deg hull {:4.0} MJ",
+                        (hostile.pos - tern.pos).length(),
+                        tern.vel.length(),
+                        tern.speed_set,
+                        tern.helm_mode,
+                        h.angle_between(hostile.pos - tern.pos).to_degrees(),
+                        tern.hull
+                    );
+                }
+            }
+            let cue = self.playtest.as_ref().map_or_else(|| "Playing".to_owned(), |p| p.caption());
+            self.film_write(f, &cue);
+            // Done at the script's end, or 8 s into the Debrief: the round is over (design 3a).
+            let over = self.phase_seen.is_some_and(|(_, p, t)| p == Phase::Debrief && self.time_s - t > 8.0);
+            if self.playtest.as_ref().is_some_and(|p| p.finished()) || (self.args.script.is_some() && over) {
+                self.done = true;
+            }
+            return;
+        }
         if snap.patrol.is_some() {
             self.patrol_shots(f, &snap);
             return;
@@ -1959,6 +1998,12 @@ impl DrillApp {
                 }
             }
         };
+        self.film_write(f, cue);
+    }
+
+    /// One frame of a film or a recording, `film-NNNNN.png` in the shots folder, and `cue` in `film-cues.txt` when it
+    /// changes.
+    fn film_write(&mut self, f: &Frame, cue: &str) {
         self.film_frame += 1;
         if self.film_cue != cue {
             self.film_cue = cue.to_owned();
@@ -2123,8 +2168,10 @@ impl App for DrillApp {
         // countdown too (chase-camera 3; owner, 2026-10-14: "normal time please, I dont like the speedup"). Without
         // --shots the film runs on the clock, for a recorder on a machine with a GPU (obs-record); everything else
         // steps by the frame, as a player's game does.
-        let filming = (self.args.film && self.args.shots.is_some()) || self.tour.as_ref().is_some_and(|t| t.args.video);
-        let dt = if filming { 1.0 / 30.0 } else { f.elapsed_s.clamp(0.0, 0.1) };
+        let filming = ((self.args.film || self.args.record) && self.args.shots.is_some())
+            || self.tour.as_ref().is_some_and(|t| t.args.video);
+        let fps = if self.args.record { self.args.record_fps } else { 30.0 };
+        let dt = if filming { 1.0 / fps } else { f.elapsed_s.clamp(0.0, 0.1) };
         self.time_s += dt;
         if let Some(h) = self.solo.as_mut() {
             h.step(dt, &self.data);
@@ -2641,19 +2688,38 @@ impl App for DrillApp {
         }
         // The script's press: the middle of the control as drawn, pressed and let go, as a player's pointer would.
         if let (Some(c), Some((hits, _))) = (self.playtest_press.take(), painted.as_ref()) {
-            use crate::console::kit::{Act, Hit};
-            let want = Hit::Act(match c {
-                crate::playtest::Control::Screen => Act::ViewTake,
-                crate::playtest::Control::Target => Act::Feed("TARGET".into()),
-                crate::playtest::Control::Chase => Act::Feed("CHASE".into()),
-            });
-            match hits.regions.iter().rev().find(|r| r.hit.as_ref() == Some(&want)) {
-                Some(r) => {
-                    let p = r.rect.center();
-                    println!("sc-client: playtest: pressed {c:?}");
-                    self.pointer.extend([PointerEv::Press(p), PointerEv::Release(p)]);
+            use crate::console::kit::{Act, Drag, Hit};
+            let want = match c {
+                crate::playtest::Control::Screen => Some(Act::ViewTake),
+                crate::playtest::Control::Target => Some(Act::Feed("TARGET".into())),
+                crate::playtest::Control::Chase => Some(Act::Feed("CHASE".into())),
+                crate::playtest::Control::Flip => Some(Act::OFlip),
+                // The lever: pressed at its foot and dragged to its top, as a pointer would (the seat's own drag).
+                crate::playtest::Control::FullAhead => {
+                    match hits.regions.iter().find(|r| r.hit == Some(Hit::Drag(Drag::Throttle))) {
+                        Some(r) => {
+                            let (foot, top) = (r.track.center_bottom(), r.track.center_top() - egui::vec2(0.0, 20.0));
+                            println!("sc-client: playtest: pressed {c:?}");
+                            self.pointer.extend([
+                                PointerEv::Press(foot),
+                                PointerEv::Move(top),
+                                PointerEv::Release(top),
+                            ]);
+                        }
+                        None => println!("sc-client: playtest: no throttle lever on the console"),
+                    }
+                    None
                 }
-                None => println!("sc-client: playtest: no {c:?} on the console"),
+            };
+            if let Some(want) = want.map(Hit::Act) {
+                match hits.regions.iter().rev().find(|r| r.hit.as_ref() == Some(&want)) {
+                    Some(r) => {
+                        let p = r.rect.center();
+                        println!("sc-client: playtest: pressed {c:?}");
+                        self.pointer.extend([PointerEv::Press(p), PointerEv::Release(p)]);
+                    }
+                    None => println!("sc-client: playtest: no {c:?} on the console"),
+                }
             }
         }
         if let Some(b) = self.bridge.as_mut() {

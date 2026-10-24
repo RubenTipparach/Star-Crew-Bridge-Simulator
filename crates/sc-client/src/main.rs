@@ -683,6 +683,9 @@ impl Client {
                     seed: l.seed(),
                     hand_test: hand_dir,
                     playtest: false,
+                    script: None,
+                    record: false,
+                    record_fps: 30.0,
                     film: false,
                     film_orbit: false,
                     all_hands: false,
@@ -1547,6 +1550,9 @@ fn main() -> ExitCode {
             seed: 0,
             hand_test: None,
             playtest: false,
+            script: None,
+            record: false,
+            record_fps: 30.0,
             film: false,
             film_orbit: false,
             all_hands: false,
@@ -1589,6 +1595,18 @@ fn main() -> ExitCode {
             seed: 7,
             hand_test: None,
             playtest: args.iter().any(|a| a == "--playtest"),
+            script: if args.iter().any(|a| a == "--playtest-seats") {
+                Some("seats".into())
+            } else if args.iter().any(|a| a == "--playtest-retreat") {
+                Some("retreat".into())
+            } else {
+                None
+            },
+            record: args.iter().any(|a| a == "--record"),
+            record_fps: value("--record-fps")
+                .and_then(|v| v.to_str()?.parse::<f64>().ok())
+                .filter(|v| v.is_finite() && *v >= 1.0)
+                .unwrap_or(30.0),
             film: args.iter().any(|a| a == "--film" || a == "--film-orbit"),
             film_orbit: args.iter().any(|a| a == "--film-orbit"),
             all_hands: args.iter().any(|a| a == "--all-hands"),

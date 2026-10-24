@@ -1,0 +1,288 @@
+sc-client: OpenGL ES 3.2 Mesa 25.2.8-0ubuntu0.24.04.4 on llvmpipe (LLVM 20.1.2, 256 bits) (offscreen)
+sc-client: the sky of the Shoals is bloom: 7993 vertices, 15982 triangles, 1600 stars, 226 heads
+sc-client: the Hound placeholder is 140 triangles
+sc-client: the relay placeholder is 136 triangles
+sc-client: single player: the crew on foot, paths on the walk grid (8222 cells on 3 decks, 238 ms)
+sc-client: single player on the local server: the player at Helm, 7 NPCs (Tactical Lt. Sil Saren, Engineering Lt. Jaya Strandraari, Science Lt. Elaya Corregan, Captain Lt. Xa'lensha, Port laser Lt. Kiya Ashberg, Starboard laser Lt. Ni'lenru, Gunner Lt. Haro Lundivan)
+sc-client: the rooms' open floor for fires, 30 ms
+sc-client: the bridge for the crew on foot, 44568 triangles
+sc-client: 45 extinguisher brackets round the ship, 7380 triangles
+sc-client: walk world of 94394 triangles built in 55 ms; 6 ladders, 3 hatches, 58 doors
+sc-client: walk grid of 8222 walkable cells on 3 decks built in 53 ms
+sc-client: connecting to the local server as Lt. Hurath of House Zarlen for Helm
+sc-client: window 960 x 540, 960 x 540 pixels
+sc-client: server: Lt. Sil Saren (bot) joined from 0.0.0.0:0 as slot 0, wanting Tactical
+sc-client: server: Lt. Jaya Strandraari (bot) joined from 0.0.0.0:0 as slot 1, wanting Engineering
+sc-client: server: Lt. Elaya Corregan (bot) joined from 0.0.0.0:0 as slot 2, wanting Science
+sc-client: server: Lt. Xa'lensha (bot) joined from 0.0.0.0:0 as slot 3, wanting Captain
+sc-client: server: Lt. Kiya Ashberg (bot) joined from 0.0.0.0:0 as slot 4, wanting Port laser
+sc-client: server: Lt. Ni'lenru (bot) joined from 0.0.0.0:0 as slot 5, wanting Starboard laser
+sc-client: server: Lt. Haro Lundivan (bot) joined from 0.0.0.0:0 as slot 6, wanting Gunner
+sc-client: server: Lt. Hurath of House Zarl joined from 0.0.0.0:0 as slot 7, wanting Helm
+sc-client: round 0 Muster
+sc-client: prompt: Extinguisher [E] Take
+sc-client: prompt: Lift [E] Call
+sc-client: prompt: Extinguisher [E] Take
+sc-client: prompt: Captain [E] Relieve Lt. Xa'lensha
+sc-client: record: t   5.0 s range   6021 m tern   60 m/s set   60 mode Hold bow-to-hostile    5 deg hull  400 MJ
+sc-client: playtest: Some(To(Helm)) done after 6.6 s
+sc-client: prompt: Helm [E] Sit down
+sc-client: chat: [00:06] REPORT Lt. Ni'lenru (NPC) (Starboard laser): At Starboard laser
+sc-client: chat: [00:07] REPORT Lt. Xa'lensha (NPC) (Captain): At Captain
+sc-client: playtest: Some(Sit) done after 0.1 s
+sc-client: sat at Helm
+sc-client: ui START MISSION at 545 3 152 18
+sc-client: ui claim Helm at 529 80 383 36
+sc-client: ui claim Tactical at 529 116 383 36
+sc-client: ui claim Engineering at 529 152 383 36
+sc-client: ui claim Science at 529 188 383 36
+sc-client: ui claim Captain at 529 224 383 36
+sc-client: ui claim Port laser at 529 260 383 36
+sc-client: ui claim Starboard laser at 529 296 383 36
+sc-client: ui claim Gunner at 529 332 383 36
+sc-client: ui READY at 528 430 384 40
+sc-client: START MISSION (scripted)
+sc-client: server: round 0 phase Countdown
+sc-client: round 0 Countdown
+sc-client: chat: [00:09] REPORT Lt. Kiya Ashberg (NPC) (Port laser): At Port laser
+sc-client: chat: [00:10] REPORT Lt. Sil Saren (NPC) (Tactical): At Tactical
+sc-client: chat: [00:13] REPORT Lt. Haro Lundivan (NPC) (Gunner): At Gunner
+sc-client: record: t   5.0 s range   6021 m tern   60 m/s set   60 mode Hold bow-to-hostile    5 deg hull  400 MJ
+sc-client: server: round 0 phase Engage
+sc-client: record: t   5.0 s range   6021 m tern   60 m/s set   60 mode Hold bow-to-hostile    5 deg hull  400 MJ
+sc-client: round 0 Engage
+sc-client: chat: [00:13] INTENT Lt. Sil Saren (NPC) (Tactical): Locking the Mastiff heavy corvette
+sc-client: chat: [00:13] ORDER Lt. Xa'lensha (NPC) (Captain): Science, scan the Mastiff heavy corvette
+sc-client: ui claim Helm at 529 82 383 36
+sc-client: ui claim Tactical at 529 118 383 36
+sc-client: ui claim Engineering at 529 154 383 36
+sc-client: ui claim Science at 529 190 383 36
+sc-client: ui claim Captain at 529 226 383 36
+sc-client: ui claim Port laser at 529 262 383 36
+sc-client: ui claim Starboard laser at 529 298 383 36
+sc-client: ui claim Gunner at 529 334 383 36
+sc-client: ui claim Helm at 529 95 383 36
+sc-client: ui claim Tactical at 529 131 383 36
+sc-client: ui claim Engineering at 529 167 383 36
+sc-client: ui claim Science at 529 203 383 36
+sc-client: ui claim Captain at 529 239 383 36
+sc-client: ui claim Port laser at 529 275 383 36
+sc-client: ui claim Starboard laser at 529 311 383 36
+sc-client: ui claim Gunner at 529 347 383 36
+sc-client: ui claim Helm at 529 129 383 36
+sc-client: ui claim Tactical at 529 165 383 36
+sc-client: ui claim Engineering at 529 201 383 36
+sc-client: ui claim Science at 529 237 383 36
+sc-client: ui claim Captain at 529 273 383 36
+sc-client: ui claim Port laser at 529 309 383 36
+sc-client: ui claim Starboard laser at 529 345 383 36
+sc-client: ui claim Gunner at 529 381 383 36
+sc-client: ui claim Helm at 529 195 383 36
+sc-client: ui claim Tactical at 529 231 383 36
+sc-client: ui claim Engineering at 529 267 383 36
+sc-client: ui claim Science at 529 303 383 36
+sc-client: ui claim Captain at 529 339 383 36
+sc-client: ui claim Port laser at 529 375 383 36
+sc-client: ui claim Starboard laser at 529 411 383 36
+sc-client: ui claim Gunner at 529 447 383 36
+sc-client: ui claim Helm at 529 303 383 36
+sc-client: ui claim Tactical at 529 339 383 36
+sc-client: ui claim Engineering at 529 375 383 36
+sc-client: ui claim Science at 529 411 383 36
+sc-client: ui claim Captain at 529 447 383 36
+sc-client: ui claim Port laser at 529 483 383 36
+sc-client: ui claim Starboard laser at 529 519 383 36
+sc-client: ui claim Gunner at 529 555 383 36
+sc-client: ui claim Helm at 529 434 383 36
+sc-client: ui claim Tactical at 529 470 383 36
+sc-client: ui claim Engineering at 529 506 383 36
+sc-client: ui claim Science at 529 542 383 36
+sc-client: ui claim Captain at 529 578 383 36
+sc-client: ui claim Port laser at 529 614 383 36
+sc-client: ui claim Starboard laser at 529 650 383 36
+sc-client: ui claim Gunner at 529 686 383 36
+sc-client: ui claim Helm at 529 520 383 36
+sc-client: ui claim Tactical at 529 556 383 36
+sc-client: ui claim Engineering at 529 592 383 36
+sc-client: ui claim Science at 529 628 383 36
+sc-client: ui claim Captain at 529 664 383 36
+sc-client: ui claim Port laser at 529 700 383 36
+sc-client: ui claim Starboard laser at 529 736 383 36
+sc-client: ui claim Gunner at 529 772 383 36
+sc-client: ui claim Helm at 529 569 383 36
+sc-client: ui claim Tactical at 529 605 383 36
+sc-client: ui claim Engineering at 529 641 383 36
+sc-client: ui claim Science at 529 677 383 36
+sc-client: ui claim Captain at 529 713 383 36
+sc-client: ui claim Port laser at 529 749 383 36
+sc-client: ui claim Starboard laser at 529 785 383 36
+sc-client: ui claim Gunner at 529 821 383 36
+sc-client: ui claim Helm at 529 590 383 36
+sc-client: ui claim Tactical at 529 626 383 36
+sc-client: ui claim Engineering at 529 662 383 36
+sc-client: ui claim Science at 529 698 383 36
+sc-client: ui claim Captain at 529 734 383 36
+sc-client: ui claim Port laser at 529 770 383 36
+sc-client: ui claim Starboard laser at 529 806 383 36
+sc-client: ui claim Gunner at 529 842 383 36
+sc-client: ui claim Helm at 529 596 383 36
+sc-client: ui claim Tactical at 529 632 383 36
+sc-client: ui claim Engineering at 529 668 383 36
+sc-client: ui claim Science at 529 704 383 36
+sc-client: ui claim Captain at 529 740 383 36
+sc-client: ui claim Port laser at 529 776 383 36
+sc-client: ui claim Starboard laser at 529 812 383 36
+sc-client: ui claim Gunner at 529 848 383 36
+sc-client: chat: [00:14] REPORT Lt. Jaya Strandraari (NPC) (Engineering): At Engineering
+sc-client: chat: [00:16] ACK Science (NPC) (Science): Aye, scanning
+sc-client: chat: [00:17] ORDER Lt. Xa'lensha (NPC) (Captain): Tactical, engage the Mastiff heavy corvette
+sc-client: chat: [00:18] ACK Lt. Sil Saren (NPC) (Tactical): Aye, engaging the Mastiff heavy corvette
+sc-client: record: t   5.0 s range   4915 m tern   60 m/s set   60 mode Hold bow-to-hostile    5 deg hull  400 MJ
+sc-client: chat: [00:21] ORDER Lt. Xa'lensha (NPC) (Captain): Helm, close on the Mastiff heavy corvette
+sc-client: chat: [00:25] REPORT Lt. Elaya Corregan (NPC) (Science): At Science
+sc-client: chat: [00:30] INTENT Lt. Sil Saren (NPC) (Tactical): Turrets free
+sc-client: record: t  20.0 s range   1624 m tern   60 m/s set   60 mode Hold bow-to-hostile    7 deg hull  400 MJ
+sc-client: chat: [00:37] REPORT Computer (NPC): Shields at 74%
+sc-client: record: t  25.0 s range   1095 m tern   60 m/s set   60 mode Hold bow-to-hostile   32 deg hull  400 MJ
+sc-client: chat: [00:41] INTENT Lt. Sil Saren (NPC) (Tactical): Shields to port
+sc-client: chat: [00:43] INTENT Lt. Kiya Ashberg (NPC) (Port laser): Port laser firing
+sc-client: chat: [00:43] REPORT Computer (NPC): Shields at 43%
+sc-client: playtest: Some(Engaged(30.0)) done after 30.0 s
+sc-client: playtest: Some(Press(Flip)) done after 0.0 s
+sc-client: playtest: pressed Flip
+sc-client: record: t  30.0 s range   1244 m tern   60 m/s set   60 mode Hold bow-to-hostile   69 deg hull  400 MJ
+sc-client: playtest: Some(Work(1.0)) done after 1.0 s
+sc-client: playtest: Some(Press(FullAhead)) done after 0.0 s
+sc-client: playtest: pressed FullAhead
+sc-client: chat: [00:45] INTENT Lt. Sil Saren (NPC) (Tactical): Shields to balanced
+sc-client: chat: [00:48] INTENT Lt. Ni'lenru (NPC) (Starboard laser): Starboard laser firing
+sc-client: record: t  35.0 s range   1503 m tern   99 m/s set  400 mode Hold bow-to-hostile  126 deg hull  400 MJ
+sc-client: record: t  40.0 s range   1599 m tern  125 m/s set  400 mode Hold bow-to-hostile   86 deg hull  400 MJ
+sc-client: record: t  45.0 s range   1510 m tern  186 m/s set  400 mode Hold bow-to-hostile  101 deg hull  400 MJ
+sc-client: chat: [01:03] INTENT Lt. Sil Saren (NPC) (Tactical): Shields to stern
+sc-client: record: t  50.0 s range   1937 m tern  261 m/s set  400 mode Hold bow-to-hostile  136 deg hull  400 MJ
+sc-client: playtest: Some(Work(20.0)) done after 20.0 s
+sc-client: chat: [01:05] ACK Helm (NPC) (Helm): Aye, closing on the Mastiff heavy corvette
+sc-client: stood up
+sc-client: playtest: Some(Stand) done after 0.6 s
+sc-client: prompt: Helm [E] Sit down
+sc-client: prompt: Helm [E] Relieve Lt. Sil Saren
+sc-client: chat: [01:07] INTENT Engineering (NPC) (Engineering): Power to combat settings
+sc-client: chat: [01:08] INTENT Tactical (NPC) (Tactical): Shields to balanced
+sc-client: record: t  55.0 s range   2716 m tern  336 m/s set  400 mode Hold bow-to-hostile  158 deg hull  400 MJ
+sc-client: chat: [01:09] REPORT Lt. Sil Saren (NPC) (Helm): At Helm
+sc-client: chat: [01:13] REPORT Lt. Xa'lensha (NPC) (Science): At Science
+sc-client: chat: [01:13] INTENT Port laser (NPC) (Port laser): Port laser firing
+sc-client: record: t  60.0 s range   3720 m tern  397 m/s set  400 mode Hold bow-to-hostile  168 deg hull  400 MJ
+sc-client: chat: [01:13] INTENT Lt. Jaya Strandraari (NPC) (Tactical): Shields to stern
+sc-client: chat: [01:15] ORDER Lt. Kiya Ashberg (NPC) (Captain): Tactical, engage the Mastiff heavy corvette
+sc-client: chat: [01:15] ACK Lt. Jaya Strandraari (NPC) (Tactical): Aye, engaging the Mastiff heavy corvette
+sc-client: chat: [01:16] REPORT Lt. Elaya Corregan (NPC) (Engineering): At Engineering
+sc-client: chat: [01:17] INTENT Lt. Ni'lenru (NPC) (Starboard laser): Starboard laser firing
+sc-client: record: t  65.0 s range   4892 m tern  400 m/s set  400 mode Hold bow-to-hostile  173 deg hull  400 MJ
+sc-client: chat: [01:19] ORDER Lt. Kiya Ashberg (NPC) (Captain): Helm, close on the Mastiff heavy corvette
+sc-client: playtest: Some(Look(15.0)) done after 15.0 s
+sc-client: record: t  70.0 s range   6082 m tern  400 m/s set  400 mode Hold bow-to-hostile  175 deg hull  400 MJ
+sc-client: chat: [01:28] REPORT Computer (NPC): Hull breach in the torpedo room
+sc-client: record: t  75.0 s range   7277 m tern  400 m/s set  400 mode Hold bow-to-hostile  177 deg hull  305 MJ
+sc-client: prompt: Port laser [E] Sit down
+sc-client: record: t  80.0 s range   8474 m tern  400 m/s set  400 mode Hold bow-to-hostile  177 deg hull  305 MJ
+sc-client: playtest: Some(Locker) done after 6.2 s
+sc-client: prompt: Ladder [Q] Climb down
+sc-client: prompt: Ladder [E] Climb up
+sc-client: record: t  85.0 s range   9673 m tern  400 m/s set  400 mode Hold bow-to-hostile  178 deg hull  305 MJ
+sc-client: prompt: Fire [hold F] Spray
+sc-client: record: t  90.0 s range  10872 m tern  400 m/s set  400 mode Hold bow-to-hostile  178 deg hull  305 MJ
+sc-client: record: t  95.0 s range  12071 m tern  400 m/s set  400 mode Hold bow-to-hostile  179 deg hull  304 MJ
+sc-client: record: t 100.0 s range  13271 m tern  400 m/s set  400 mode Hold bow-to-hostile  179 deg hull  304 MJ
+sc-client: playtest: Some(Fight) done after 23.9 s
+sc-client: prompt: Fire Find an extinguisher
+sc-client: record: t 105.0 s range  14470 m tern  400 m/s set  400 mode Hold bow-to-hostile  179 deg hull  304 MJ
+sc-client: prompt: Extinguisher [E] Take
+sc-client: playtest: Some(Locker) done after 1.2 s
+sc-client: prompt: Fire [hold F] Spray
+sc-client: prompt: Extinguisher Empty
+sc-client: record: t 110.0 s range  15670 m tern  400 m/s set  400 mode Hold bow-to-hostile  179 deg hull  304 MJ
+sc-client: record: t 115.0 s range  16870 m tern  400 m/s set  400 mode Hold bow-to-hostile  179 deg hull  303 MJ
+sc-client: record: t 120.0 s range  18070 m tern  400 m/s set  400 mode Hold bow-to-hostile  179 deg hull  303 MJ
+sc-client: prompt: Extinguisher [E] Take
+sc-client: playtest: Some(Fight) done after 15.1 s
+sc-client: record: t 125.0 s range  19270 m tern  400 m/s set  400 mode Hold bow-to-hostile  179 deg hull  303 MJ
+sc-client: playtest: Some(Locker) done after 0.1 s
+sc-client: prompt: Fire [hold F] Spray
+sc-client: prompt: Extinguisher Empty
+sc-client: chat: [02:31] REPORT Damage control (NPC): Fire out in the torpedo room
+sc-client: playtest: Some(Fight) done after 10.0 s
+sc-client: prompt: Gannet tubes and hoist [E] Repair
+sc-client: repairing Gannet tubes and hoist (Damaged)
+sc-client: repaired
+sc-client: playtest: Some(Repair) done after 9.1 s
+sc-client: prompt: Gannet tubes and hoist [E] Repair
+sc-client: prompt: Gannet tubes and hoist [E] Repair
+sc-client: repairing Gannet tubes and hoist (Damaged)
+sc-client: chat: [02:46] REPORT Computer (NPC): Hull breach in the engineering
+sc-client: chat: [02:46] ORDER Lt. Kiya Ashberg (NPC) (Captain): Engineering, repairs first
+sc-client: chat: [02:46] ACK Lt. Elaya Corregan (NPC) (Engineering): Aye, repairs first
+sc-client: chat: [02:48] REPORT Computer (NPC): Hull breach in the torpedo room
+sc-client: repaired
+sc-client: playtest: Some(Repair) done after 8.1 s
+sc-client: prompt: Gannet tubes and hoist [E] Repair
+sc-client: prompt: Impulse engines [E] Repair
+sc-client: prompt: Extinguisher [E] Take
+sc-client: prompt: Extinguisher [E] Take
+sc-client: prompt: Lift [E] Call
+sc-client: prompt: Extinguisher [E] Take
+sc-client: prompt: Extinguisher [E] Take
+sc-client: prompt: Extinguisher [E] Take
+sc-client: prompt: Extinguisher [E] Take
+sc-client: prompt: Extinguisher [E] Take
+sc-client: prompt: Lift [E] Call
+sc-client: prompt: Fire [hold F] Spray
+sc-client: playtest: Some(Fight) done after 22.4 s
+sc-client: prompt: Fire Find an extinguisher
+sc-client: prompt: Extinguisher [E] Take
+sc-client: playtest: Some(Locker) done after 2.1 s
+sc-client: prompt: Fire [hold F] Spray
+sc-client: playtest: Some(Fight) done after 16.4 s
+sc-client: prompt: Fire Find an extinguisher
+sc-client: prompt: Extinguisher [E] Take
+sc-client: playtest: Some(Locker) done after 1.6 s
+sc-client: prompt: Fire [hold F] Spray
+sc-client: chat: [03:42] ORDER Lt. Kiya Ashberg (NPC) (Captain): Stand down from red alert
+sc-client: chat: [03:42] ACK Lt. Elaya Corregan (NPC) (Engineering): Aye, cruise power
+sc-client: playtest: Some(Fight) done after 16.4 s
+sc-client: prompt: Fire Find an extinguisher
+sc-client: chat: [04:00] REPORT Computer (NPC): Hull breach in the engineering
+sc-client: prompt: Extinguisher [E] Take
+sc-client: playtest: Some(Locker) done after 1.6 s
+sc-client: prompt: Fire [hold F] Spray
+sc-client: chat: [04:03] REPORT Computer (NPC): Hull breach in the torpedo room
+sc-client: chat: [04:07] REPORT Damage control (NPC): Fire out in the magazine
+sc-client: playtest: stuck at [1.36, -3.50, 27.92], a fresh plan and a step aside
+sc-client: chat: [04:16] REPORT Damage control (NPC): Fire spreading to the aft passage
+sc-client: prompt: Extinguisher [E] Take
+sc-client: prompt: Ladder [E] Climb up
+sc-client: prompt: Extinguisher [E] Take
+sc-client: prompt: Extinguisher [E] Take
+sc-client: prompt: Extinguisher [E] Take
+sc-client: record: t 260.0 s range  51670 m tern  400 m/s set  400 mode Hold bow-to-hostile  180 deg hull  152 MJ
+sc-client: prompt: Fire [hold F] Spray
+sc-client: record: t 265.0 s range  52870 m tern  400 m/s set  400 mode Hold bow-to-hostile  180 deg hull  152 MJ
+sc-client: record: t 270.0 s range  54070 m tern  400 m/s set  400 mode Hold bow-to-hostile  180 deg hull  151 MJ
+sc-client: playtest: Some(Fight) done after 43.8 s
+sc-client: prompt: Fire Find an extinguisher
+sc-client: prompt: Extinguisher [E] Take
+sc-client: record: t 275.0 s range  55270 m tern  400 m/s set  400 mode Hold bow-to-hostile  180 deg hull  151 MJ
+sc-client: playtest: Some(Locker) done after 1.2 s
+sc-client: prompt: Fire [hold F] Spray
+sc-client: record: t 280.0 s range  56470 m tern  400 m/s set  400 mode Hold bow-to-hostile  180 deg hull  150 MJ
+sc-client: record: t 285.0 s range  57670 m tern  400 m/s set  400 mode Hold bow-to-hostile  180 deg hull  150 MJ
+sc-client: record: t 290.0 s range  58870 m tern  400 m/s set  400 mode Hold bow-to-hostile  180 deg hull  149 MJ
+sc-client: playtest: Some(Fight) done after 15.6 s
+sc-client: prompt: Fire Find an extinguisher
+sc-client: prompt: Extinguisher [E] Take
+sc-client: record: t 295.0 s range  60070 m tern  400 m/s set  400 mode Hold bow-to-hostile  180 deg hull  149 MJ
+sc-client: playtest: Some(Locker) done after 1.2 s
+sc-client: prompt: Fire [hold F] Spray
+sc-client: record: t 300.0 s range  61270 m tern  400 m/s set  400 mode Hold bow-to-hostile  180 deg hull  148 MJ
+sc-client: chat: [05:15] REPORT Computer (NPC): Hull breach in the hangar
