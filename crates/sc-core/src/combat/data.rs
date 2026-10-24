@@ -1391,7 +1391,7 @@ impl DrillData {
     }
 
     /// The shipped files with a mission's text.
-    fn shipped_with(mission_file: &str, mission_text: &str) -> Self {
+    pub(crate) fn shipped_with(mission_file: &str, mission_text: &str) -> Self {
         Self::parse(
             [
                 include_str!("../../../../data/ships/tern/flight.json"),

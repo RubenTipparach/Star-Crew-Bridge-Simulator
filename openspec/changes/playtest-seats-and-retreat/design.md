@@ -30,7 +30,7 @@ A heavy corvette, the Hound's model and insides (the client draws every enemy wi
 | Shield regeneration, MJ/s | 1.5 | 3.0 |
 | Turrets | 2 | 4 |
 | Gun aim spread, deg | 0.3 | 0.2 |
-| Missile tubes, load time | 2, 60 s | 4, 30 s |
+| Missile tubes, load time | 2, 60 s | 2, 60 s |
 | Orbit, m | 1,800 | 1,400 |
 
 Flight is the Hound's but slower (top speed 160 m/s against the Tern's 400, approach 160 m/s, orbit 140 m/s), so a
@@ -71,6 +71,14 @@ The second run (the holding helm in) flew the retreat right: the bow at 180 degr
 down, 272 m/s at the end of the run with the hull at 81%. It still lost the ship in 118 s, because a Mastiff at
 260 m/s kept the Tern inside its guns' 2.5 km. Its speeds come down (section 2): a heavy corvette wins a straight
 fight and loses a chase. Recommendation taken (ask only with screenshots).
+
+The third run, measured (`retreat_trace` in sc-core, an ignored test that prints the bare drill's retreat, and a line
+every 5 s in a recorded run's log): the retreat now works. The range passes the guns' 2.5 km at 55 s and is 18 km at
+120 s, the helm holding 400 m/s with the bow 179 degrees off the Mastiff. The ship was still lost at 123 s, to
+missiles: four tubes reloading every 30 s chase a fleeing Tern for their 60 s and took 200 MJ and then the last
+165 MJ at 9 and 18 km. The Mastiff's tubes go back to the Hound's (two, 60 s): its edge is its guns, hull and shields,
+which a retreat outruns; its missiles are as many as point defence already meets. In the bare drill the Tern then
+ends the run with 325 of 400 MJ. Recommendation taken (ask only with screenshots).
 
 ## 4. The recorded runs
 

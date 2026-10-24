@@ -5154,6 +5154,55 @@ mod tests {
         }
     }
 
+    /// Measurement (playtest-seats-and-retreat design 3a): the retreat from the Mastiff in the bare drill. 30 s of the
+    /// fight, FLIP and full speed, the helm left to hold; range, speeds and hull every 5 s.
+    #[test]
+    #[ignore = "a measurement: cargo test -p sc-core retreat_trace -- --ignored --nocapture"]
+    fn retreat_trace() {
+        let data = DrillData::shipped_with(
+            "data/missions/drill-mastiff.json",
+            include_str!("../../../../data/missions/drill-mastiff.json"),
+        );
+        let mut d = Drill::new(data, 7);
+        let h = d.join("Helm", false).unwrap();
+        d.claim(h, Station::Helm).unwrap();
+        d.set_ready(h, true).unwrap();
+        run_to_engage(&mut d);
+        let line = |d: &Drill| {
+            let (t, e) = (&d.ships[0], &d.ships[1]);
+            let pic = d.picture();
+            println!(
+                "t {:5.1} s  range {:6.0} m  tern {:5.0} m/s  mastiff {:5.0} m/s  hull {:5.0} MJ  alive {}",
+                d.phase_s,
+                (e.pos - t.pos).length(),
+                t.vel.length(),
+                e.vel.length(),
+                pic.own.hull_mj,
+                t.alive
+            );
+        };
+        for _ in 0..6 {
+            steps(&mut d, 5.0);
+            line(&d);
+        }
+        let (hd, p, r, _) = attitude::hpr_of(d.ships[0].rot);
+        d.command(h, Command::Orient(Some([hd + 180.0, p, r]))).unwrap();
+        d.command(h, Command::Stick { speed_set_mps: 1000.0, yaw: 0.0, pitch: 0.0, roll: 0.0 }).unwrap();
+        println!("flip and full ahead");
+        for k in 0..30 {
+            if k == 4 {
+                d.leave(h);
+                println!("helm left");
+            }
+            steps(&mut d, 5.0);
+            line(&d);
+            if d.phase != Phase::Engage {
+                println!("phase {:?}", d.phase);
+                break;
+            }
+        }
+    }
+
     #[test]
     fn a_turret_out_of_rounds_holds_fire_for_its_reload_then_has_them_all_again() {
         // The owner, 2026-10-11: "limited to 100 shots with a 30 second cooldown".

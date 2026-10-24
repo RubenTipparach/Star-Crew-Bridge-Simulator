@@ -1734,6 +1734,21 @@ impl DrillApp {
             return;
         }
         if self.args.record {
+            // The run's own trace every 5 s of the round (a measurement for playtest-seats-and-retreat design 3a).
+            if let [tern, hostile, ..] = snap.ships.as_slice() {
+                if (t / 5.0).floor() != ((t - 1.0 / 30.0) / 5.0).floor() {
+                    let h = tern.rot * glam::DVec3::Z;
+                    println!(
+                        "sc-client: record: t {t:5.1} s range {:6.0} m tern {:4.0} m/s set {:4.0} mode {:?} bow-to-hostile {:4.0} deg hull {:4.0} MJ",
+                        (hostile.pos - tern.pos).length(),
+                        tern.vel.length(),
+                        tern.speed_set,
+                        tern.helm_mode,
+                        h.angle_between(hostile.pos - tern.pos).to_degrees(),
+                        tern.hull
+                    );
+                }
+            }
             let cue = self.playtest.as_ref().map_or_else(|| "Playing".to_owned(), |p| p.caption());
             self.film_write(f, &cue);
             // Done at the script's end, or 8 s into the Debrief: the round is over (design 3a).
