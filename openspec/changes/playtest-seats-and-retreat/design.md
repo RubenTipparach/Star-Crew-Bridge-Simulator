@@ -33,7 +33,9 @@ A heavy corvette, the Hound's model and insides (the client draws every enemy wi
 | Missile tubes, load time | 2, 60 s | 4, 30 s |
 | Orbit, m | 1,800 | 1,400 |
 
-Flight is the Hound's but slower (top speed 260 m/s against the Tern's 400), so a retreat can open the range.
+Flight is the Hound's but slower (top speed 160 m/s against the Tern's 400, approach 160 m/s, orbit 140 m/s), so a
+retreat can open the range. The first numbers were 260, 260 and 180: the second run (section 3a) showed a Mastiff that
+kept the fleeing Tern inside its guns' 2.5 km.
 `drill-mastiff` is `drill-hound` with this enemy and its own title. Recommendation taken (ask only with screenshots):
 these numbers; the captures show what they do.
 
@@ -65,8 +67,10 @@ retreat was undone twice over:
 - **The run did not end with the round.** After the defeat it went on fighting fires aboard a dead ship. A scripted
   run now ends 8 s into the Debrief.
 
-The Mastiff's numbers stay as section 2 has them: it is meant to win a straight fight, and the second run shows
-whether a retreat that holds its course gets away from it.
+The second run (the holding helm in) flew the retreat right: the bow at 180 degrees, the helm held by the bot that sat
+down, 272 m/s at the end of the run with the hull at 81%. It still lost the ship in 118 s, because a Mastiff at
+260 m/s kept the Tern inside its guns' 2.5 km. Its speeds come down (section 2): a heavy corvette wins a straight
+fight and loses a chase. Recommendation taken (ask only with screenshots).
 
 ## 4. The recorded runs
 
