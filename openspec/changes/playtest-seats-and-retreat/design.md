@@ -80,6 +80,15 @@ missiles: four tubes reloading every 30 s chase a fleeing Tern for their 60 s an
 which a retreat outruns; its missiles are as many as point defence already meets. In the bare drill the Tern then
 ends the run with 325 of 400 MJ. Recommendation taken (ask only with screenshots).
 
+The filmed run (2026-10-24, `docs/videos/retreat-and-repair.mp4`, 960 x 540 at 15 frames a second, 5 min 24 s): the
+retreat holds (61 km from the Mastiff at 300 s, nothing hitting the Tern after the run), and on foot the player fights
+ten fires and plays the Gannet tubes and hoist repair game. The Tern is still lost at 302 s, burned from about 300 MJ
+to 0 by the fires: with `--all-hands` there are no damage-control teams, the seven bot crew stay at their stations, and
+one player with an extinguisher that runs dry after 15 s does not keep up with fires that spread. That is the
+all-hands rule working as written, not a fault in the retreat; whether one player alone should be able to save the
+ship (bots that leave a station to fight fires, a bigger extinguisher, slower spread) is a question for the owner with
+the video to look at.
+
 ## 4. The recorded runs
 
 - **PI-1, the seat tour, real time:** `sc-client --solo --playtest-seats --window`, recorded with the Pi's screen
