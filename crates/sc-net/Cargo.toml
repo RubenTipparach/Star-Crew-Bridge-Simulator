@@ -10,6 +10,9 @@ publish.workspace = true
 [dependencies]
 sc-core.workspace = true
 glam.workspace = true
+serde.workspace = true
+# STUN transaction ids (crate::stun).
+getrandom = "0.2"
 serde_json.workspace = true
 # WebRTC data channels, sans I/O (netcode-and-sessions section 2), with the pure Rust crypto backend so the Pi
 # needs no OpenSSL or C toolchain for it.

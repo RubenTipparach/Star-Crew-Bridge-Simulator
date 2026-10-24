@@ -1,6 +1,7 @@
 # Design: the matchmaker
 
-Status: **proposed** (2026-10-07). Nothing here is built. Facts about outside services are as of
+Status: **proposed** (2026-10-07), **amended 2026-10-23** for the server browser (section 10), which
+replaces sections 2, 3 and 6 where they differ. Being built on `feat/server-browser`. Facts about outside services are as of
 2026-10-07 and are verified again before deploying; their sources are in `docs/references.md`,
 "Transport and matchmaking".
 
@@ -65,7 +66,8 @@ make an offer, and the server must answer up to eight.
   one address. With a thousand live sessions, a random guess hits one about once in 1.07 million
   tries, so one address needs about 5,400 days (15 years) on average. A leaked code is ended by the
   host asking for a new one.
-- **Codes only, no public list.** It is a game among friends (recommendation taken, MM2).
+- ~~Codes only, no public list~~: replaced by the server browser (section 10; owner, 2026-10-23).
+  A code still joins a session that is not listed.
 
 The limits are data, with units in the keys, in the matchmaker's own config file
 (`data/matchmaker/config.json`: `join_attempts_per_min`, `join_attempts_per_day`, `code_hold_s`,
@@ -147,5 +149,100 @@ Per CLAUDE.md section 13 these take the recommendation; none has anything to loo
 | # | Question | Options | Recommendation | Status |
 | --- | --- | --- | --- | --- |
 | MM1 | Where TURN comes from | A managed TURN service / coturn on a virtual server / coturn on Fly | A managed service, credentials minted per join; coturn on a virtual server if its terms do not suit | Recommendation taken (ask only with screenshots) |
-| MM2 | Codes only, or also a public list of sessions | Codes only / a public list | Codes only: a game among friends | Recommendation taken (ask only with screenshots) |
+| MM2 | Codes only, or also a public list of sessions | Codes only / a public list | Codes only: a game among friends | **Owner's answer, 2026-10-23: a public list** ("I want a server browser, we can host server stuff on fly io"). Section 10 |
 | MM3 | Code length | 4 / 6 / 8 characters | 6 (section 3) | Recommendation taken (ask only with screenshots) |
+
+## 10. The server browser (owner, 2026-10-23)
+
+The owner, 2026-10-23: "can players see servers someone started? and hot join?", "lets build it",
+"I want a server browser, we can host server stuff on fly io", and "no login needed, just local
+profile storage, ask players for player name, make it editable in settings".
+
+### 10.1 What the player sees
+
+The Multiplayer page lists the sessions running now: each row is the session's name, its mission,
+its phase (muster, fight, debrief) and its crew as filled seats of eight. Picking a row and Join
+joins it, whatever its phase: **a crew can be joined in progress** ("hot join"). The joining body
+starts at the muster point on foot and walks to a free station; a station held by automation is
+taken over as any claim is (`coop-drill`, `bridge-stations` 6). A typed code still joins an
+unlisted session, and a typed address still joins on the LAN with no matchmaker at all.
+
+Joining in progress is already the server's rule (`sc-core` `Drill::join` takes a player in any
+phase while a seat is free, and `crew-chat` sends a late joiner the last lines); the browser only
+makes it findable. A full session is listed, greyed, with no Join.
+
+### 10.2 No login: a local profile
+
+There are no accounts. The profile is the officer kept in `settings/officer.json` (`lobby` design
+4), on the player's own machine (the browser's storage in the web build). The first start asks for a
+name (with the dice to roll one); Options gains a Profile tab where the name, rank and station are
+changed later. The name is what the server and the other players see; the server cleans it and
+refuses nothing for a clash (two players may share a name; slots tell them apart).
+
+### 10.2a Creating a crew, and its name (owner, 2026-10-23)
+
+- **Create crew hosts on the creator's machine** (owner's answer: "On the creator's machine"; "fly io
+  just exposes servers for players to join"). The client starts the drill server in its own process
+  with a real network endpoint, lists it, and puts its creator aboard over loopback. The crew lasts
+  while its creator's game runs. Fly.io runs only the matchmaker.
+- **The crew's name starts as its creator's name** and **anyone aboard can change it** ("server name
+  by default inherits its creator, but anybody can change serve name"): the Esc menu's crew panel
+  holds the name with a pencil and the join code beside it; a rename goes to the server as a command,
+  the server tells the crew and puts the new name in its next heartbeat, and the list shows it.
+- **A crew takes a player while a seat is free** ("as long as theres a slot availible someone can
+  join"), in any phase (10.1).
+- Mockups: `ui-art-direction.html` states `browser` (with Create crew) and `crewname`.
+
+### 10.3 Listing
+
+- **A server lists itself when started with `--list "NAME"`** and a matchmaker URL (`--matchmaker`,
+  default from `data/matchmaker/client.json`). Without `--list` it registers unlisted: joinable by
+  code only. Without a matchmaker it is a LAN server, as today.
+- **The list is public and holds no addresses**: name, mission, phase, seats filled and free,
+  protocol version and code. A server's IP is never shown; a client reaches it through the
+  signalling relay below.
+- **A listing lives while its server heartbeats**: every `heartbeat_s` (10 s) with its phase and
+  crew; one silent for `listing_ttl_s` (30 s) drops off the list. The code is held `code_hold_s`
+  (600 s) for the same host key, as section 3.
+- **Names are cleaned** like officer names (`sc-core::names`: length capped, the deny list), so the
+  public list shows nothing the game would not show in the crew list.
+
+### 10.4 Plain HTTP, not WebSockets
+
+Section 2 drew a WebSocket. The transport's signalling today is one HTTP POST of a complete offer
+answered with a complete answer (no trickle: `sc-net` `transport.rs`), so the matchmaker relays that
+same exchange over HTTP, which the native client already speaks and a browser's `fetch` speaks too:
+
+| Who | Request | Does |
+| --- | --- | --- |
+| Server | `POST /v1/servers` | Register: name, listed or not, mission, protocol, digests, seats, host key, previous code. Answers the code and a listing id |
+| Server | `POST /v1/servers/{id}/heartbeat` | Phase, crew, seats; refreshes the listing |
+| Server | `GET /v1/servers/{id}/offers` | Long poll (at most 20 s): the offers waiting for this server, each with a join id |
+| Server | `POST /v1/servers/{id}/answers` | The answer for a join id |
+| Server | `DELETE /v1/servers/{id}` | Unlist on a clean stop |
+| Client | `GET /v1/servers` | The public list |
+| Client | `POST /v1/join/{code}` | The client's offer and versions; held until the server answers (at most 10 s), then the answer, or a refusal naming the reason |
+
+Every request from a server carries its host key (a header); the matchmaker keeps a listing tied to
+the key that made it. Bodies are JSON with unknown fields refused and sizes capped (section 6).
+Fly's proxy ends TLS in front of it, so the browser reaches it over HTTPS; the native client's TLS
+is task 2.4 (until then it speaks plain HTTP, to a local matchmaker or to Fly's HTTP port).
+
+### 10.5 What reaches across the internet, and when
+
+| Server | Client | Connects with what is built here |
+| --- | --- | --- |
+| On the LAN | On the LAN | Yes: host candidates, as today |
+| With a public address (a cloud machine, a forwarded fixed UDP range) | Anywhere | Yes, once the server's peer sockets use a fixed port range it can forward or declare (task 3.3) |
+| Behind a home router | Behind another router | Needs STUN (server-reflexive candidates) and, for the rest, TURN: tasks 3.4 and 2.2 |
+
+**Dedicated servers on Fly.io** (the owner's "we can host server stuff on fly io"): an `sc-server`
+Machine with a dedicated IPv4 and its UDP range declared in `fly.toml`, bound to
+`fly-global-services`, is a public-address server in the table above. The matchmaker lists it like
+any other. That deployment is task 4.3.
+
+### 10.6 Costs
+
+A listing is under 300 bytes; the list of a hundred sessions is about 30 kB. A heartbeat is under
+200 bytes every 10 s; a long poll is one idle connection per server. The matchmaker keeps
+everything in memory: a thousand listings are well under 1 MB.

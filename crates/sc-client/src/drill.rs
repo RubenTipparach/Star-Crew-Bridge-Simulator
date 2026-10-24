@@ -425,6 +425,14 @@ impl DrillApp {
         // Single player joins its own server over the local link; a multiplayer game dials the server's address.
         let addr = match solo.as_ref() {
             Some(h) => Some(h.dial()),
+            // `join:CODE@URL`: a session found by its code through a matchmaker (the server browser, matchmaker 10).
+            None if args.server.starts_with("join:") => {
+                let rest = &args.server["join:".len()..];
+                let (code, url) = rest.split_once('@').unwrap_or((rest, ""));
+                sc_net::matchmaker::Matchmaker::configured(std::path::Path::new("."), Some(url))
+                    .ok()
+                    .map(|m| Dial::Join(m, code.to_owned()))
+            }
             None => {
                 let host =
                     if args.server.contains(':') { args.server.clone() } else { format!("{}:7700", args.server) };
@@ -2285,10 +2293,9 @@ impl App for DrillApp {
         self.touch_down = foot_prompt.as_ref().is_some_and(|p| p.has_key(&b.down_label));
         let use_word =
             foot_prompt.as_ref().filter(|_| touching).and_then(|p| p.touch_word(&b.use_label, &b.spray_label));
-        // The plate fades in and out (design 8); walking to a station picked from a tab says where.
-        let want = foot_prompt
-            .clone()
-            .or_else(|| mine.and_then(|b| b.going).map(|g| crate::hud::Prompt::note(g.name(), "On your way")));
+        // The plate fades in and out (design 8). Walking to a station picked from a tab shows no plate: the approved
+        // art direction has none, and the station's marker already says where (owner, 2026-10-23).
+        let want = foot_prompt.clone();
         let m = &crate::look::look().f.motion_ms;
         // Linear fades by the frame's share of each (a prompt can turn back mid-fade, so it steps rather than starts).
         let (fade_in, fade_out) = (crate::motion::progress(dt, m.prompt_in), crate::motion::progress(dt, m.prompt_out));

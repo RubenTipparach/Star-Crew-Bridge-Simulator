@@ -11,17 +11,19 @@
 //! server and its clients in one process, with no socket and no thread. Callers use the same methods either way.
 
 use std::collections::VecDeque;
-use std::io::{ErrorKind, Read, Write};
+use std::io::ErrorKind;
 use std::net::{IpAddr, SocketAddr, TcpListener, TcpStream, UdpSocket};
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
 use std::sync::{Arc, Mutex, Once};
 use std::thread;
 use std::time::{Duration, Instant};
 
+use crate::http::{read_request, respond};
 use crate::local::{LocalClient, LocalDoor, LocalServer};
+use crate::matchmaker::{self as mm, Heartbeat, Matchmaker, Register};
 use sc_core::rng::Rng;
-use str0m::change::{SdpAnswer, SdpOffer};
+use str0m::change::{SdpAnswer, SdpOffer, SdpPendingOffer};
 use str0m::channel::{ChannelConfig, ChannelId, Reliability};
 use str0m::net::{Protocol, Receive};
 use str0m::{Candidate, Event, IceConnectionState, Input, Output, Rtc, RtcConfig};
@@ -99,6 +101,29 @@ pub fn local_ip_toward(toward: IpAddr) -> std::io::Result<IpAddr> {
     let s = UdpSocket::bind(if toward.is_ipv4() { "0.0.0.0:0" } else { "[::]:0" })?;
     s.connect(SocketAddr::new(toward, 9))?;
     Ok(s.local_addr()?.ip())
+}
+
+/// How long a peer socket waits for each STUN server's answer.
+const STUN_WAIT: Duration = Duration::from_millis(400);
+
+/// Offer `socket`'s public address as a server-reflexive candidate too, when a STUN server answers and it differs from
+/// the host address (design 10.5). Loopback sockets and an empty list ask nothing.
+fn add_reflexive(rtc: &mut Rtc, socket: &UdpSocket, stun: &[String]) {
+    let Ok(local) = socket.local_addr() else { return };
+    if stun.is_empty() || local.ip().is_loopback() {
+        return;
+    }
+    if let Some(public) = crate::stun::public_addr(socket, stun, STUN_WAIT).filter(|p| *p != local) {
+        if let Ok(c) = Candidate::server_reflexive(public, local, "udp") {
+            rtc.add_local_candidate(c);
+        }
+    }
+}
+
+/// The address this machine reaches its LAN by (no packet is sent), or loopback when it has none: the host candidate
+/// of a server, and of a client that dials through the matchmaker and so does not know the server's address.
+pub fn lan_ip() -> IpAddr {
+    local_ip_toward(IpAddr::from([192, 168, 0, 1])).unwrap_or(IpAddr::from([127, 0, 0, 1]))
 }
 
 struct Outgoing {
@@ -271,8 +296,78 @@ pub struct ServerNet {
 }
 
 enum ServerLink {
-    Rtc { events: Receiver<NetEvent>, peers: Arc<Mutex<Vec<PeerSlot>>>, status: Arc<Mutex<String>> },
+    Rtc { events: Receiver<NetEvent>, peers: Arc<Mutex<Vec<PeerSlot>>>, status: Arc<Mutex<String>>, door: Acceptor },
     Local(LocalServer),
+}
+
+/// What turns a client's offer into a peer: shared by the LAN endpoint (`POST /rtc`) and the matchmaker's relay, so a
+/// peer is made one way however its offer arrived (CLAUDE.md 6.1).
+#[derive(Clone)]
+struct Acceptor {
+    tx: Sender<NetEvent>,
+    peers: Arc<Mutex<Vec<PeerSlot>>>,
+    host_ip: IpAddr,
+    impair: Impair,
+    seed: u64,
+    next_id: Arc<AtomicU32>,
+    /// STUN servers asked for each peer socket's public address, once the server is listed (design 10.5).
+    stun: Arc<Mutex<Vec<String>>>,
+}
+
+impl Acceptor {
+    /// Answer `offer` and start its peer; `from` is where the offer came from (`0.0.0.0:0` through the relay).
+    fn accept(&self, offer: SdpOffer, from: SocketAddr) -> Result<SdpAnswer, String> {
+        let socket = UdpSocket::bind(SocketAddr::new(self.host_ip, 0)).map_err(|e| e.to_string())?;
+        let local = socket.local_addr().map_err(|e| e.to_string())?;
+        let mut rtc = RtcConfig::new().build(Instant::now());
+        let cand = Candidate::host(local, "udp").map_err(|e| e.to_string())?;
+        rtc.add_local_candidate(cand);
+        let stun = self.stun.lock().expect("stun").clone();
+        add_reflexive(&mut rtc, &socket, &stun);
+        let answer = rtc.sdp_api().accept_offer(offer).map_err(|e| e.to_string())?;
+        let id = self.next_id.fetch_add(1, Ordering::Relaxed);
+        let (otx, orx) = mpsc::channel();
+        let stats = Arc::new(PeerStats::default());
+        self.peers.lock().expect("peers").push(PeerSlot { id, addr: from, outbox: otx, stats: stats.clone() });
+        let (tx, impair, seed) = (self.tx.clone(), self.impair, self.seed);
+        thread::Builder::new()
+            .name(format!("peer-{id}"))
+            .spawn(move || run_peer(rtc, socket, id, tx, orx, stats, impair, seed))
+            .map_err(|e| e.to_string())?;
+        Ok(answer)
+    }
+}
+
+/// A server's place in the matchmaker's list (matchmaker design 10.3): its code, and the state its heartbeats carry.
+pub struct Listed {
+    /// The join code.
+    pub code: Arc<Mutex<String>>,
+    beat: Arc<Mutex<Heartbeat>>,
+    stop: Arc<AtomicBool>,
+    mm: Matchmaker,
+    key: String,
+    id: Arc<Mutex<String>>,
+}
+
+impl Listed {
+    /// The state the next heartbeat carries.
+    pub fn set(&self, beat: Heartbeat) {
+        *self.beat.lock().expect("beat") = beat;
+    }
+
+    /// The code now (it changes only if the matchmaker lost it and gave another).
+    pub fn code(&self) -> String {
+        self.code.lock().expect("code").clone()
+    }
+}
+
+impl Drop for Listed {
+    /// A clean stop takes the session off the list at once, rather than after its time to live.
+    fn drop(&mut self) {
+        self.stop.store(true, Ordering::Relaxed);
+        let id = self.id.lock().expect("id").clone();
+        let _ = self.mm.unlist(&self.key, &id);
+    }
 }
 
 /// Where a client connects: a server's signalling address, or a server in this process.
@@ -280,6 +375,8 @@ enum ServerLink {
 pub enum Dial {
     /// A server over WebRTC.
     Addr(SocketAddr),
+    /// A server over WebRTC, found by its code through a matchmaker (matchmaker design 10).
+    Join(Matchmaker, String),
     /// A server in this process, over the local link.
     Local(LocalDoor),
 }
@@ -294,6 +391,7 @@ impl std::fmt::Display for Dial {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Dial::Addr(a) => write!(f, "{a}"),
+            Dial::Join(m, code) => write!(f, "code {code} at {}", m.url),
             Dial::Local(_) => f.write_str("the local server"),
         }
     }
@@ -310,17 +408,125 @@ impl ServerNet {
         let (tx, rx) = mpsc::channel();
         let peers: Arc<Mutex<Vec<PeerSlot>>> = Arc::new(Mutex::new(Vec::new()));
         let status = Arc::new(Mutex::new(String::from("{}")));
-        let (peers2, status2) = (peers.clone(), status.clone());
+        let door = Acceptor {
+            tx,
+            peers: peers.clone(),
+            host_ip,
+            impair,
+            seed,
+            next_id: Arc::new(AtomicU32::new(1)),
+            stun: Arc::new(Mutex::new(Vec::new())),
+        };
+        let (door2, status2) = (door.clone(), status.clone());
         thread::Builder::new().name("signalling".into()).spawn(move || {
-            let mut next_id: PeerId = 1;
             for stream in listener.incoming().flatten() {
                 let _ = stream.set_read_timeout(Some(Duration::from_secs(5)));
-                if let Err(e) = serve(stream, &tx, &peers2, &status2, host_ip, impair, seed, &mut next_id) {
+                if let Err(e) = serve(stream, &door2, &status2) {
                     eprintln!("sc-net: signalling: {e}");
                 }
             }
         })?;
-        Ok(Self { link: ServerLink::Rtc { events: rx, peers, status }, addr })
+        Ok(Self { link: ServerLink::Rtc { events: rx, peers, status, door }, addr })
+    }
+
+    /// Register with a matchmaker (matchmaker design 10.3), listed or by code only, and answer the offers it relays
+    /// through the same path as the LAN's. Two threads: one heartbeats (and registers again with the same code if the
+    /// matchmaker restarted), one long-polls for offers. A local server cannot be listed.
+    pub fn list(&self, mm: Matchmaker, key: String, reg: Register) -> Result<Listed, String> {
+        let ServerLink::Rtc { door, .. } = &self.link else {
+            return Err("a server in this process cannot be listed".into());
+        };
+        let first = mm.register(&key, &reg)?;
+        *door.stun.lock().expect("stun") = mm.stun.clone();
+        // Said once, so a host can tell whether players outside its network can be reached (design 10.5).
+        if let Ok(probe) = UdpSocket::bind(SocketAddr::new(door.host_ip, 0)) {
+            match crate::stun::public_addr(&probe, &mm.stun, STUN_WAIT) {
+                Some(a) => println!("sc-net: seen from the internet at {}", a.ip()),
+                None if !mm.stun.is_empty() => println!("sc-net: no STUN server answered; only this network can join"),
+                None => {}
+            }
+        }
+        let code = Arc::new(Mutex::new(first.code.clone()));
+        let id = Arc::new(Mutex::new(first.id.clone()));
+        let beat = Arc::new(Mutex::new(Heartbeat::default()));
+        let stop = Arc::new(AtomicBool::new(false));
+        let every = Duration::from_secs_f64(first.heartbeat_s.clamp(1.0, 60.0));
+        {
+            let (mm, key, code, id, beat, stop) =
+                (mm.clone(), key.clone(), code.clone(), id.clone(), beat.clone(), stop.clone());
+            thread::Builder::new()
+                .name("matchmaker-heartbeat".into())
+                .spawn(move || {
+                    let mut wait = every;
+                    while !stop.load(Ordering::Relaxed) {
+                        thread::sleep(wait);
+                        let now = beat.lock().expect("beat").clone();
+                        let at = id.lock().expect("id").clone();
+                        match mm.heartbeat(&key, &at, &now) {
+                            Ok(()) => wait = every,
+                            Err((404, _)) => {
+                                let mut again = reg.clone();
+                                again.previous_code = Some(code.lock().expect("code").clone());
+                                match mm.register(&key, &again) {
+                                    Ok(r) => {
+                                        println!("sc-net: registered with {} again, code {}", mm.url, r.code);
+                                        *code.lock().expect("code") = r.code;
+                                        *id.lock().expect("id") = r.id;
+                                        wait = every;
+                                    }
+                                    Err(e) => {
+                                        eprintln!("sc-net: matchmaker: {e}");
+                                        wait = (wait * 2).min(Duration::from_secs(30));
+                                    }
+                                }
+                            }
+                            Err((_, e)) => {
+                                eprintln!("sc-net: matchmaker heartbeat: {e}");
+                                wait = (wait * 2).min(Duration::from_secs(30));
+                            }
+                        }
+                    }
+                })
+                .map_err(|e| e.to_string())?;
+        }
+        {
+            let (mm, key, id, stop, door) = (mm.clone(), key.clone(), id.clone(), stop.clone(), door.clone());
+            thread::Builder::new()
+                .name("matchmaker-offers".into())
+                .spawn(move || {
+                    let mut backoff = Duration::from_secs(1);
+                    while !stop.load(Ordering::Relaxed) {
+                        let at = id.lock().expect("id").clone();
+                        match mm.offers(&key, &at) {
+                            Ok(o) => {
+                                backoff = Duration::from_secs(1);
+                                for offer in o.offers {
+                                    let reply = serde_json::from_value::<SdpOffer>(offer.offer)
+                                        .map_err(|e| format!("bad offer: {e}"))
+                                        .and_then(|o| door.accept(o, NOWHERE))
+                                        .and_then(|a| serde_json::to_value(a).map_err(|e| e.to_string()));
+                                    let answer = match reply {
+                                        Ok(a) => mm::Answer { join_id: offer.join_id, answer: Some(a), refused: None },
+                                        Err(e) => mm::Answer { join_id: offer.join_id, answer: None, refused: Some(e) },
+                                    };
+                                    if let Err((_, e)) = mm.answer(&key, &at, &answer) {
+                                        eprintln!("sc-net: matchmaker answer: {e}");
+                                    }
+                                }
+                            }
+                            Err((_, e)) => {
+                                if !stop.load(Ordering::Relaxed) {
+                                    eprintln!("sc-net: matchmaker offers: {e}");
+                                }
+                                thread::sleep(backoff);
+                                backoff = (backoff * 2).min(Duration::from_secs(30));
+                            }
+                        }
+                    }
+                })
+                .map_err(|e| e.to_string())?;
+        }
+        Ok(Listed { code, beat, stop, mm, key, id })
     }
 
     /// A server in this process on the local link (browser-single-player design 2): no socket, no thread.
@@ -390,97 +596,22 @@ impl ServerNet {
     }
 }
 
-#[allow(clippy::too_many_arguments)]
-fn serve(
-    mut s: TcpStream,
-    tx: &Sender<NetEvent>,
-    peers: &Arc<Mutex<Vec<PeerSlot>>>,
-    status: &Arc<Mutex<String>>,
-    host_ip: IpAddr,
-    impair: Impair,
-    seed: u64,
-    next_id: &mut PeerId,
-) -> Result<(), String> {
-    let (method, path, body) = read_http(&mut s)?;
+fn serve(mut s: TcpStream, door: &Acceptor, status: &Arc<Mutex<String>>) -> Result<(), String> {
+    let req = read_request(&mut s)?;
     let peer_addr = s.peer_addr().map_err(|e| e.to_string())?;
-    match (method.as_str(), path.as_str()) {
+    match (req.method.as_str(), req.path.as_str()) {
         ("GET", "/status") => {
             let json = status.lock().expect("status").clone();
             respond(&mut s, "200 OK", "application/json", json.as_bytes())
         }
         ("POST", "/rtc") => {
-            let offer: SdpOffer = serde_json::from_slice(&body).map_err(|e| format!("bad offer: {e}"))?;
-            let socket = UdpSocket::bind(SocketAddr::new(host_ip, 0)).map_err(|e| e.to_string())?;
-            let local = socket.local_addr().map_err(|e| e.to_string())?;
-            let mut rtc = RtcConfig::new().build(Instant::now());
-            let cand = Candidate::host(local, "udp").map_err(|e| e.to_string())?;
-            rtc.add_local_candidate(cand);
-            let answer = rtc.sdp_api().accept_offer(offer).map_err(|e| e.to_string())?;
-            let id = *next_id;
-            *next_id += 1;
-            let (otx, orx) = mpsc::channel();
-            let stats = Arc::new(PeerStats::default());
-            peers.lock().expect("peers").push(PeerSlot { id, addr: peer_addr, outbox: otx, stats: stats.clone() });
-            let tx = tx.clone();
-            thread::Builder::new()
-                .name(format!("peer-{id}"))
-                .spawn(move || run_peer(rtc, socket, id, tx, orx, stats, impair, seed))
-                .map_err(|e| e.to_string())?;
+            let offer: SdpOffer = serde_json::from_slice(&req.body).map_err(|e| format!("bad offer: {e}"))?;
+            let answer = door.accept(offer, peer_addr)?;
             let body = serde_json::to_vec(&answer).map_err(|e| e.to_string())?;
             respond(&mut s, "200 OK", "application/json", &body)
         }
         _ => respond(&mut s, "404 Not Found", "text/plain", b"not found"),
     }
-}
-
-fn read_http(s: &mut TcpStream) -> Result<(String, String, Vec<u8>), String> {
-    let mut data = Vec::new();
-    let mut buf = [0u8; 4096];
-    let head_end = loop {
-        let n = s.read(&mut buf).map_err(|e| e.to_string())?;
-        if n == 0 {
-            return Err("connection closed before the headers ended".into());
-        }
-        data.extend_from_slice(&buf[..n]);
-        if let Some(p) = data.windows(4).position(|w| w == b"\r\n\r\n") {
-            break p + 4;
-        }
-        if data.len() > 64 * 1024 {
-            return Err("headers too long".into());
-        }
-    };
-    let head = String::from_utf8_lossy(&data[..head_end]).to_string();
-    let mut lines = head.lines();
-    let first = lines.next().unwrap_or_default();
-    let mut parts = first.split_whitespace();
-    let method = parts.next().unwrap_or_default().to_owned();
-    let path = parts.next().unwrap_or_default().to_owned();
-    let len: usize = lines
-        .filter_map(|l| l.split_once(':'))
-        .find(|(k, _)| k.trim().eq_ignore_ascii_case("content-length"))
-        .and_then(|(_, v)| v.trim().parse().ok())
-        .unwrap_or(0);
-    if len > 256 * 1024 {
-        return Err("body too long".into());
-    }
-    let mut body = data[head_end..].to_vec();
-    while body.len() < len {
-        let n = s.read(&mut buf).map_err(|e| e.to_string())?;
-        if n == 0 {
-            return Err("connection closed inside the body".into());
-        }
-        body.extend_from_slice(&buf[..n]);
-    }
-    body.truncate(len);
-    Ok((method, path, body))
-}
-
-fn respond(s: &mut TcpStream, status: &str, kind: &str, body: &[u8]) -> Result<(), String> {
-    let head = format!(
-        "HTTP/1.1 {status}\r\nContent-Type: {kind}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
-        body.len()
-    );
-    s.write_all(head.as_bytes()).and_then(|_| s.write_all(body)).map_err(|e| e.to_string())
 }
 
 /// A client's end: one connection to a server.
@@ -500,6 +631,7 @@ impl ClientNet {
     pub fn dial(dial: &Dial, impair: Impair, seed: u64) -> Result<Self, String> {
         match dial {
             Dial::Addr(a) => Self::connect(*a, impair, seed),
+            Dial::Join(m, code) => Self::join(m, code, impair, seed),
             Dial::Local(door) => {
                 let c = LocalClient::connect(door)?;
                 Ok(Self { stats: c.stats.clone(), link: ClientLink::Local(c) })
@@ -510,12 +642,32 @@ impl ClientNet {
     /// Connect to a server's signalling address (`host:7700`). Returns once the answer is in; the channels open a
     /// moment later ([`NetEvent::Open`]).
     pub fn connect(server: SocketAddr, impair: Impair, seed: u64) -> Result<Self, String> {
-        install_crypto();
         let ip = local_ip_toward(server.ip()).map_err(|e| format!("no route to {server}: {e}"))?;
+        let (rtc, socket, offer, pending) = Self::offer(ip, &[])?;
+        let body = serde_json::to_vec(&offer).map_err(|e| e.to_string())?;
+        let answer_bytes = post(server, "/rtc", &body)?;
+        let answer: SdpAnswer = serde_json::from_slice(&answer_bytes).map_err(|e| format!("bad answer: {e}"))?;
+        Self::finish(rtc, socket, pending, answer, impair, seed)
+    }
+
+    /// Join the session holding `code` through `matchmaker` (matchmaker design 10.4): the same offer as
+    /// [`ClientNet::connect`], relayed. A refusal (no such code, another protocol, a full or silent server) is the error.
+    pub fn join(matchmaker: &Matchmaker, code: &str, impair: Impair, seed: u64) -> Result<Self, String> {
+        let (rtc, socket, offer, pending) = Self::offer(lan_ip(), &matchmaker.stun)?;
+        let offer = serde_json::to_value(&offer).map_err(|e| e.to_string())?;
+        let answer = matchmaker.join(code, &mm::Join { protocol: crate::msg::PROTOCOL, offer })?;
+        let answer: SdpAnswer = serde_json::from_value(answer).map_err(|e| format!("bad answer: {e}"))?;
+        Self::finish(rtc, socket, pending, answer, impair, seed)
+    }
+
+    /// A connection's offer with the three channels, from a socket on `ip`, its public address asked of `stun`.
+    fn offer(ip: IpAddr, stun: &[String]) -> Result<(Rtc, UdpSocket, SdpOffer, SdpPendingOffer), String> {
+        install_crypto();
         let socket = UdpSocket::bind(SocketAddr::new(ip, 0)).map_err(|e| e.to_string())?;
         let local = socket.local_addr().map_err(|e| e.to_string())?;
         let mut rtc = RtcConfig::new().build(Instant::now());
         rtc.add_local_candidate(Candidate::host(local, "udp").map_err(|e| e.to_string())?);
+        add_reflexive(&mut rtc, &socket, stun);
         let mut api = rtc.sdp_api();
         for (i, label) in LABELS.iter().enumerate() {
             let unreliable = i != Chan::Command as usize;
@@ -532,9 +684,18 @@ impl ClientNet {
             });
         }
         let (offer, pending) = api.apply().ok_or("no offer to make")?;
-        let body = serde_json::to_vec(&offer).map_err(|e| e.to_string())?;
-        let answer_bytes = post(server, "/rtc", &body)?;
-        let answer: SdpAnswer = serde_json::from_slice(&answer_bytes).map_err(|e| format!("bad answer: {e}"))?;
+        Ok((rtc, socket, offer, pending))
+    }
+
+    /// Take the server's answer and start the connection's thread.
+    fn finish(
+        mut rtc: Rtc,
+        socket: UdpSocket,
+        pending: SdpPendingOffer,
+        answer: SdpAnswer,
+        impair: Impair,
+        seed: u64,
+    ) -> Result<Self, String> {
         rtc.sdp_api().accept_answer(pending, answer).map_err(|e| e.to_string())?;
         let (tx, rx) = mpsc::channel();
         let (otx, orx) = mpsc::channel();
@@ -586,31 +747,18 @@ impl ClientNet {
 
 /// An HTTP POST on the LAN signalling endpoint; the response's body.
 pub fn post(server: SocketAddr, path: &str, body: &[u8]) -> Result<Vec<u8>, String> {
-    let mut s = TcpStream::connect_timeout(&server, Duration::from_secs(5))
-        .map_err(|e| format!("cannot reach {server}: {e}"))?;
-    let _ = s.set_read_timeout(Some(Duration::from_secs(10)));
-    let head = format!("POST {path} HTTP/1.1\r\nHost: {server}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n", body.len());
-    s.write_all(head.as_bytes()).and_then(|_| s.write_all(body)).map_err(|e| e.to_string())?;
-    let mut resp = Vec::new();
-    s.read_to_end(&mut resp).map_err(|e| e.to_string())?;
-    let end = resp.windows(4).position(|w| w == b"\r\n\r\n").ok_or("no response headers")? + 4;
-    let status = String::from_utf8_lossy(&resp[..end]);
-    if !status.starts_with("HTTP/1.1 200") {
-        return Err(format!("signalling refused: {}", status.lines().next().unwrap_or_default()));
+    let url = crate::http::Url { host: server.ip().to_string(), port: server.port() };
+    let r = crate::http::call(&url, "POST", path, &[], body, Duration::from_secs(10))?;
+    if r.status != 200 {
+        return Err(format!("signalling refused: HTTP {}", r.status));
     }
-    Ok(resp[end..].to_vec())
+    Ok(r.body)
 }
 
 /// An HTTP GET; the response's body (the status page).
 pub fn get(server: SocketAddr, path: &str) -> Result<Vec<u8>, String> {
-    let mut s = TcpStream::connect_timeout(&server, Duration::from_secs(5)).map_err(|e| e.to_string())?;
-    let _ = s.set_read_timeout(Some(Duration::from_secs(5)));
-    s.write_all(format!("GET {path} HTTP/1.1\r\nHost: {server}\r\nConnection: close\r\n\r\n").as_bytes())
-        .map_err(|e| e.to_string())?;
-    let mut resp = Vec::new();
-    s.read_to_end(&mut resp).map_err(|e| e.to_string())?;
-    let end = resp.windows(4).position(|w| w == b"\r\n\r\n").ok_or("no response headers")? + 4;
-    Ok(resp[end..].to_vec())
+    let url = crate::http::Url { host: server.ip().to_string(), port: server.port() };
+    Ok(crate::http::call(&url, "GET", path, &[], &[], Duration::from_secs(5))?.body)
 }
 
 #[cfg(test)]

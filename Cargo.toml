@@ -11,6 +11,7 @@ members = [
     "crates/sc-tools",
     "crates/sc-probe",
     "crates/sc-repairs",
+    "crates/sc-matchmaker",
 ]
 
 [workspace.package]

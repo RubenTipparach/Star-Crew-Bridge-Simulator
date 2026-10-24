@@ -1506,8 +1506,44 @@ fn main() -> ExitCode {
             stationshots::StationShotsApp::new(dir).map(|c| Box::new(c) as Box<dyn App>)
         });
     }
-    // The co-op drill (openspec/changes/coop-drill design 5): its own mode, joined by address.
-    if let Some(server) = args.iter().position(|a| a == "--connect").and_then(|i| args.get(i + 1)).cloned() {
+    // The server browser from the command line (matchmaker design 10): `--browse` prints the matchmaker's list,
+    // `--join CODE` joins a session by its code; the matchmaker is `--matchmaker URL`, else data/matchmaker/client.json.
+    let mm_arg = args.iter().position(|a| a == "--matchmaker").and_then(|i| args.get(i + 1)).cloned();
+    let mm = || sc_net::matchmaker::Matchmaker::configured(std::path::Path::new("."), mm_arg.as_deref());
+    if args.iter().any(|a| a == "--browse") {
+        let list = mm().and_then(|m| m.list());
+        return match list {
+            Ok(l) if l.servers.is_empty() => {
+                println!("sc-client: no crews listed");
+                ExitCode::SUCCESS
+            }
+            Ok(l) => {
+                for s in l.servers {
+                    let ours = if s.protocol == sc_net::msg::PROTOCOL { "" } else { "  (another version)" };
+                    println!(
+                        "{}  {:<32}  {:<14}  {:<8}  {}/{}{ours}",
+                        s.code, s.name, s.mission, s.phase, s.crew, s.seats
+                    );
+                }
+                ExitCode::SUCCESS
+            }
+            Err(e) => {
+                eprintln!("sc-client: {e}");
+                ExitCode::FAILURE
+            }
+        };
+    }
+    let join = args.iter().position(|a| a == "--join").and_then(|i| args.get(i + 1)).cloned();
+    let join = match join.map(|code| mm().map(|m| format!("join:{code}@{}", m.url))) {
+        Some(Err(e)) => {
+            eprintln!("sc-client: {e}");
+            return ExitCode::from(2);
+        }
+        Some(Ok(j)) => Some(j),
+        None => None,
+    };
+    // The co-op drill (openspec/changes/coop-drill design 5): its own mode, joined by address (or by code, above).
+    if let Some(server) = args.iter().position(|a| a == "--connect").and_then(|i| args.get(i + 1)).cloned().or(join) {
         // `--watch`: join with no station and watch the bridge (coop-drill design 9's overview).
         let watch = args.iter().any(|a| a == "--watch");
         let station = args.iter().position(|a| a == "--station").and_then(|i| args.get(i + 1));

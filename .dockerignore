@@ -1,0 +1,15 @@
+# Only the workspace's manifests, crates and the matchmaker's data go into the matchmaker's image (Dockerfile).
+target
+build
+compiled
+captures
+assets
+docs
+web
+tools
+third_party
+openspec
+settings
+.git
+.github
+.claude

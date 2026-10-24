@@ -6,8 +6,11 @@
 //! never the other way.
 
 pub mod bot;
+pub mod http;
 pub mod link;
 pub mod local;
+pub mod matchmaker;
 pub mod msg;
 pub mod session;
+pub mod stun;
 pub mod transport;

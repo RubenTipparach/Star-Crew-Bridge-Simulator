@@ -1,0 +1,18 @@
+[package]
+name = "sc-matchmaker"
+description = "The server browser's matchmaker (openspec/changes/matchmaker design 10): the list of running sessions and the offer and answer relay. No game state."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+sc-net.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+# Join codes and listing ids from the operating system's secure random source (design section 3).
+getrandom = "0.2"
+
+[lints]
+workspace = true
