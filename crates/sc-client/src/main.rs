@@ -685,6 +685,7 @@ impl Client {
                     playtest: false,
                     script: None,
                     record: false,
+                    record_fps: 30.0,
                     film: false,
                     film_orbit: false,
                     all_hands: false,
@@ -1551,6 +1552,7 @@ fn main() -> ExitCode {
             playtest: false,
             script: None,
             record: false,
+            record_fps: 30.0,
             film: false,
             film_orbit: false,
             all_hands: false,
@@ -1601,6 +1603,10 @@ fn main() -> ExitCode {
                 None
             },
             record: args.iter().any(|a| a == "--record"),
+            record_fps: value("--record-fps")
+                .and_then(|v| v.to_str()?.parse::<f64>().ok())
+                .filter(|v| v.is_finite() && *v >= 1.0)
+                .unwrap_or(30.0),
             film: args.iter().any(|a| a == "--film" || a == "--film-orbit"),
             film_orbit: args.iter().any(|a| a == "--film-orbit"),
             all_hands: args.iter().any(|a| a == "--all-hands"),

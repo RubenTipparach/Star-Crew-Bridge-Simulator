@@ -74,6 +74,9 @@ pub struct DrillArgs {
     /// With `--shots`: write every frame at 30 a second with the script's beat as its caption (`--record`), a real-time
     /// video of any scripted run (`tools/video/film.sh`).
     pub record: bool,
+    /// With `record`: frames written per second of the game (`--record-fps`, 30 unless given); fewer frames make a long
+    /// run quicker to film.
+    pub record_fps: f64,
     /// Single player with `--shots`: write every frame of a scripted run through the viewscreen's cameras, FWD,
     /// TARGET, CHASE round the ship and the bridge's main viewscreen, for a video (`--film`, chase-camera 3).
     pub film: bool,
@@ -1736,7 +1739,7 @@ impl DrillApp {
         if self.args.record {
             // The run's own trace every 5 s of the round (a measurement for playtest-seats-and-retreat design 3a).
             if let [tern, hostile, ..] = snap.ships.as_slice() {
-                if (t / 5.0).floor() != ((t - 1.0 / 30.0) / 5.0).floor() {
+                if (t / 5.0).floor() != ((t - 1.0 / self.args.record_fps) / 5.0).floor() {
                     let h = tern.rot * glam::DVec3::Z;
                     println!(
                         "sc-client: record: t {t:5.1} s range {:6.0} m tern {:4.0} m/s set {:4.0} mode {:?} bow-to-hostile {:4.0} deg hull {:4.0} MJ",
@@ -2167,7 +2170,8 @@ impl App for DrillApp {
         // steps by the frame, as a player's game does.
         let filming = ((self.args.film || self.args.record) && self.args.shots.is_some())
             || self.tour.as_ref().is_some_and(|t| t.args.video);
-        let dt = if filming { 1.0 / 30.0 } else { f.elapsed_s.clamp(0.0, 0.1) };
+        let fps = if self.args.record { self.args.record_fps } else { 30.0 };
+        let dt = if filming { 1.0 / fps } else { f.elapsed_s.clamp(0.0, 0.1) };
         self.time_s += dt;
         if let Some(h) = self.solo.as_mut() {
             h.step(dt, &self.data);
