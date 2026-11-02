@@ -151,6 +151,9 @@ Per CLAUDE.md section 13 these take the recommendation; none has anything to loo
 | MM1 | Where TURN comes from | A managed TURN service / coturn on a virtual server / coturn on Fly | A managed service, credentials minted per join; coturn on a virtual server if its terms do not suit | Recommendation taken (ask only with screenshots) |
 | MM2 | Codes only, or also a public list of sessions | Codes only / a public list | Codes only: a game among friends | **Owner's answer, 2026-10-23: a public list** ("I want a server browser, we can host server stuff on fly io"). Section 10 |
 | MM3 | Code length | 4 / 6 / 8 characters | 6 (section 3) | Recommendation taken (ask only with screenshots) |
+| MM4 | The Multiplayer page as a server browser (`ui-art-direction.html` state `browser`) | Approve as drawn / change it | Approve | Asked in survey 2, "Server browser", with its screenshot (2026-10-24) |
+| MM5 | The Esc menu's crew name and join code (state `crewname`) | Approve as drawn / change it | Approve | Asked in survey 2, with its screenshot (2026-10-24) |
+| MM6 | The first-start name and Options > Profile (state `profile`) | Approve as drawn / change it | Approve | Asked in survey 2, with its screenshot (2026-10-24) |
 
 ## 10. The server browser (owner, 2026-10-23)
 
@@ -246,3 +249,40 @@ any other. That deployment is task 4.3.
 A listing is under 300 bytes; the list of a hundred sessions is about 30 kB. A heartbeat is under
 200 bytes every 10 s; a long poll is one idle connection per server. The matchmaker keeps
 everything in memory: a thousand listings are well under 1 MB.
+
+### 10.7 The browser joins (owner, 2026-10-24)
+
+The owner, on the itch.io build failing with "no route to 172.29.1.0:7700: Host is unreachable (os error 23)":
+"shouldnt it connect too fly io?", then "do it". The browser build dialled an address with the desktop's transport,
+which opens UDP sockets a page cannot open, so every multiplayer join from the browser failed whatever was typed.
+
+**The browser's own WebRTC.** In the web build `ClientNet` has a third link beside the native one and the local
+link: a small JavaScript library (`web/rtc.js`, linked with `--js-library`) that drives the browser's
+`RTCPeerConnection`. It makes the same three channels as the native client (`command` reliable and ordered,
+`input` and `snapshot` unordered with no retransmits), gathers its candidates (no trickle, as section 10.4), and
+POSTs `{protocol, offer}` to the matchmaker's `/v1/join/{code}`; the answer it gets back is the server's, which it
+applies. Nothing on the server or the matchmaker changes: the offer and answer are the same
+`{"type": "offer", "sdp": ...}` JSON the native client sends (str0m's form is the browser's).
+
+| Step | Native client | Browser |
+| --- | --- | --- |
+| Offer | str0m, a UDP socket, host and STUN candidates | `RTCPeerConnection` with the STUN servers of `data/matchmaker/client.json` |
+| Candidates offered | Host (LAN) and server-reflexive | Server-reflexive and any plain-address host candidate; Chrome's `.local` names are dropped, since the server's parser reads IP addresses only |
+| Signalling | Plain HTTP to the matchmaker (task 2.4 for TLS) | `fetch` over HTTPS to the same host (the page is HTTPS, so plain HTTP would be blocked) |
+| Waiting | Blocks until the answer, then a thread runs the peer | Returns at once; the link reports open, data or closed as the page's event loop delivers them |
+| A failure | `dial` returns the reason | The link closes and keeps the reason (a refused code, a failed connection), which the loading screen shows |
+
+**Cross-origin.** The page is served by itch.io and the matchmaker by Fly.io, so every request is cross-origin.
+The browser sends its JSON as `text/plain`, a request that needs no preflight, and the matchmaker's replies also
+carry `Access-Control-Allow-Methods` and `Access-Control-Allow-Headers` (`content-type` and the host key's header)
+so a preflighted request passes too.
+
+**What the player types, until the server browser page is approved.** The Multiplayer page's server field takes a
+join code: a bare six-character code, or `join:CODE`, goes through the matchmaker of `data/matchmaker/client.json`;
+`join:CODE@URL` names another matchmaker. In the browser an address cannot be dialled, so it is refused with a
+plain reason ("In the browser, join a crew by its code") instead of the socket error. The list of crews is the
+`browser` mockup state (task 3.6), built once the owner approves it.
+
+**Proven by** a headless-Chromium run of the real web build against a local matchmaker and a listed local server:
+the browser joins by code, its channels open, the server welcomes it and it walks aboard (task 2.3's browser half).
+

@@ -622,14 +622,30 @@ pub struct ClientNet {
 }
 
 enum ClientLink {
-    Rtc { events: Receiver<NetEvent>, outbox: Sender<Outgoing>, open: Arc<AtomicBool> },
+    Rtc {
+        events: Receiver<NetEvent>,
+        outbox: Sender<Outgoing>,
+        open: Arc<AtomicBool>,
+    },
     Local(LocalClient),
+    /// The browser's own WebRTC, in the web build (matchmaker design 10.7).
+    Web(crate::web::WebLink),
 }
+
+/// Why an address cannot be dialled from a page (matchmaker design 10.7).
+pub const BROWSER_NEEDS_CODE: &str = "In the browser, join a crew by its code";
 
 impl ClientNet {
     /// Connect to `dial`: over WebRTC to an address ([`ClientNet::connect`]), or over the local link.
     pub fn dial(dial: &Dial, impair: Impair, seed: u64) -> Result<Self, String> {
+        let web = cfg!(target_os = "emscripten");
         match dial {
+            // A page cannot open UDP sockets: it joins through the matchmaker or not at all.
+            Dial::Addr(_) if web => Err(BROWSER_NEEDS_CODE.into()),
+            Dial::Join(m, code) if web => Ok(Self {
+                link: ClientLink::Web(crate::web::WebLink::join(m, code)?),
+                stats: Arc::new(PeerStats::default()),
+            }),
             Dial::Addr(a) => Self::connect(*a, impair, seed),
             Dial::Join(m, code) => Self::join(m, code, impair, seed),
             Dial::Local(door) => {
@@ -723,6 +739,15 @@ impl ClientNet {
                 ev
             }
             ClientLink::Local(l) => l.poll(),
+            ClientLink::Web(w) => w.poll(),
+        }
+    }
+
+    /// Why the connection closed, when the link knows (the browser's: a refused code, no path to the crew).
+    pub fn reason(&self) -> Option<String> {
+        match &self.link {
+            ClientLink::Web(w) => w.reason().map(str::to_owned),
+            ClientLink::Rtc { .. } | ClientLink::Local(_) => None,
         }
     }
 
@@ -731,6 +756,7 @@ impl ClientNet {
         match &self.link {
             ClientLink::Rtc { open, .. } => open.load(Ordering::Relaxed),
             ClientLink::Local(l) => l.is_open(),
+            ClientLink::Web(w) => w.is_open(),
         }
     }
 
@@ -741,6 +767,7 @@ impl ClientNet {
                 let _ = outbox.send(Outgoing { chan, data });
             }
             ClientLink::Local(l) => l.send(chan, data),
+            ClientLink::Web(w) => w.send(chan, &data),
         }
     }
 }

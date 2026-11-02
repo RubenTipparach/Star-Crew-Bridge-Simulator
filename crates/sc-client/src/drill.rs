@@ -425,13 +425,13 @@ impl DrillApp {
         // Single player joins its own server over the local link; a multiplayer game dials the server's address.
         let addr = match solo.as_ref() {
             Some(h) => Some(h.dial()),
-            // `join:CODE@URL`: a session found by its code through a matchmaker (the server browser, matchmaker 10).
-            None if args.server.starts_with("join:") => {
-                let rest = &args.server["join:".len()..];
-                let (code, url) = rest.split_once('@').unwrap_or((rest, ""));
-                sc_net::matchmaker::Matchmaker::configured(std::path::Path::new("."), Some(url))
+            // A join code (`CODE`, `join:CODE`, or `join:CODE@URL` for another matchmaker): a session found through a
+            // matchmaker (the server browser, matchmaker 10; 10.7 in the browser, where it is the only way in).
+            None if join_code(&args.server).is_some() => {
+                let (code, url) = join_code(&args.server).unwrap_or_default();
+                sc_net::matchmaker::Matchmaker::configured(std::path::Path::new("."), url.as_deref())
                     .ok()
-                    .map(|m| Dial::Join(m, code.to_owned()))
+                    .map(|m| Dial::Join(m, code))
             }
             None => {
                 let host =
@@ -604,6 +604,7 @@ impl DrillApp {
     fn try_connect(&mut self) {
         let Some(addr) = self.addr.clone() else {
             self.error = Some(format!("Cannot find {}", self.args.server));
+            println!("sc-client: cannot find {:?}", self.args.server);
             return;
         };
         match Session::connect(
@@ -620,6 +621,7 @@ impl DrillApp {
                 self.error = None;
             }
             Err(e) => {
+                println!("sc-client: cannot connect to {addr} (typed {:?}): {e}", self.args.server);
                 self.error = Some(e);
                 self.retry_at = self.time_s + 3.0;
             }
@@ -2209,9 +2211,19 @@ impl App for DrillApp {
                 }
             }
             if s.stage == Stage::Closed {
-                self.error = Some("Connection lost; reconnecting".into());
+                // The browser's link says why (a refused code, no path to the crew): shown, and asked again slowly, so a
+                // wrong code does not spend the matchmaker's ten tries a minute (matchmaker design 3).
+                match s.close_reason().filter(|r| !r.is_empty()) {
+                    Some(r) => {
+                        self.error = Some(r);
+                        self.retry_at = self.time_s + 10.0;
+                    }
+                    None => {
+                        self.error = Some("Connection lost; reconnecting".into());
+                        self.retry_at = self.time_s + 2.0;
+                    }
+                }
                 self.session = None;
-                self.retry_at = self.time_s + 2.0;
             }
         }
         if let (Some(b), Some(s)) = (self.bot.as_mut(), self.session.as_mut()) {
@@ -3352,9 +3364,40 @@ fn debrief(ctx: &egui::Context, v: &UiView, snap: &Snapshot) {
     );
 }
 
+/// The join code in what was typed in the server field, and the matchmaker it names when it names one: `K7M2QX`,
+/// `join:K7M2QX` or `join:K7M2QX@http://host:port` (matchmaker design 10.7). An address (with a dot or a colon) or a
+/// name of another length is not a code.
+fn join_code(typed: &str) -> Option<(String, Option<String>)> {
+    let t = typed.trim();
+    let (code, url) = match t.strip_prefix("join:") {
+        Some(rest) => match rest.split_once('@') {
+            Some((c, u)) => (c, Some(u.to_owned())),
+            None => (rest, None),
+        },
+        None if !t.contains(['.', ':']) => (t, None),
+        None => return None,
+    };
+    let code = sc_net::matchmaker::normal_code(code);
+    (code.len() == sc_net::matchmaker::CODE_LEN).then_some((code, url))
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{bridge_overlay, briefing, seat_prompt, BridgeUi, UiView};
+
+    #[test]
+    fn a_typed_code_joins_through_the_matchmaker_and_an_address_does_not() {
+        // matchmaker design 10.7: the server field takes a code bare or as join:CODE, with @URL for another matchmaker.
+        assert_eq!(join_code("k7m2qx"), Some(("K7M2QX".into(), None)));
+        assert_eq!(join_code(" join:K7M2QX "), Some(("K7M2QX".into(), None)));
+        assert_eq!(
+            join_code("join:K7M2QX@http://127.0.0.1:7800"),
+            Some(("K7M2QX".into(), Some("http://127.0.0.1:7800".into())))
+        );
+        assert_eq!(join_code("172.29.1.0"), None, "an address is dialled, not looked up");
+        assert_eq!(join_code("10.0.0.5:7700"), None);
+        assert_eq!(join_code("raspberrypi"), None, "a host name is not six code characters");
+    }
+    use super::{bridge_overlay, briefing, join_code, seat_prompt, BridgeUi, UiView};
     use crate::release::{check, texts_drawn};
     use egui::{Pos2, Rect};
     use sc_core::combat::bodies::Posture;

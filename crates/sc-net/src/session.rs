@@ -216,6 +216,11 @@ impl Session {
         })
     }
 
+    /// Why the connection closed, when its link says (the browser's link does: matchmaker design 10.7).
+    pub fn close_reason(&self) -> Option<String> {
+        self.net.reason()
+    }
+
     /// Seconds since the session began, the client's clock.
     pub fn now_s(&self) -> f64 {
         self.epoch.elapsed().as_secs_f64()
