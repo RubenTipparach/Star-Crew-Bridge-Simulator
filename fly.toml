@@ -1,5 +1,6 @@
-# The matchmaker (openspec/changes/matchmaker design 5): one small Machine, always running, so a listed
-# server's long poll is never cut by an idle stop. HTTP on port 80 stays open as well as HTTPS, because
+# The matchmaker (openspec/changes/matchmaker design 5): one small Machine that runs only while someone uses it.
+# Fly's proxy stops it after a few idle minutes and starts it again on the next request; a listed server's open
+# connection counts as use, so it is never stopped under a server that is listed. HTTP on port 80 stays open as well as HTTPS, because
 # the native client does not speak TLS yet (matchmaker task 2.4).
 app = "star-crew-bridge-simulator"
 primary_region = "ord"
@@ -10,9 +11,9 @@ primary_region = "ord"
 [http_service]
   internal_port = 8080
   force_https = false
-  auto_stop_machines = "off"
+  auto_stop_machines = "stop"
   auto_start_machines = true
-  min_machines_running = 1
+  min_machines_running = 0
 
   [http_service.concurrency]
     type = "connections"

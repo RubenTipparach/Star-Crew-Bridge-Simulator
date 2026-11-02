@@ -600,7 +600,9 @@ Before claiming anything is done, run what applies:
 |---|---|
 | `openspec-*` and `/opsx:*` | The OpenSpec workflow (section 3). Tool-owned: `openspec update` rewrites them. |
 | `owner-survey` | Questions for the owner (section 13). |
+| `html-survey` | A survey as an HTML artifact whose database holds the answers (Fleet Command's). Survey 2 stays a Claude Doc under `owner-survey` until the owner moves the survey to HTML; see its "In Star Crew" note. |
 | `threejs-mockups` | Building, inlining, screenshotting and publishing a mockup (section 11). |
+| `game-ui-frontend` | Fleet Command's copy of OpenAI's game UI skill: visual direction, hierarchy, readable overlays, motion. Its "In Star Crew" note wins: section 10 and the Concord skin (`concord-skin`) over its defaults. |
 | `light-baking` | Placing lamps, baking and judging static light, the three lighting states (section 9). |
 | `material-maker` | Making, recolouring and judging surface materials: Material Maker graphs to 128 px texture layers, texel density, the contact sheet (section 9). |
 | `material-maker-headless` | Running Material Maker with no GPU and no screen (a cloud session): setup, render, the two exporter patches, proving a render. Shared by the owner's repositories (section 9). |
