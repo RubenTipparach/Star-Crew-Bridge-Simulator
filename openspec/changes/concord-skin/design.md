@@ -1,7 +1,7 @@
 # Design: the Concord skin
 
-Status: **proposed** (2026-11-02). The mockup is `docs/mockups/concord-ui.html`; the engine waits for the owner's
-approval of it (CLAUDE.md section 10).
+Status: **mockup approved** (owner, 2026-11-02: "ui implementation looks good"). The mockups are
+`docs/mockups/concord-ui.html` and `docs/mockups/consoles-concord.html`; the engine work (tasks 3) is next.
 
 Source: Fleet Command at `a45a1bb`, `openspec/changes/console-skins/design.md` ("Concord: LCARS's principles,
 Starfleet's palette", "The kit") and the `concord` skin in `docs/mockups/console-skins.html`. Fleet Command's own
@@ -154,6 +154,6 @@ Asked in survey 2 with the mockup's screenshots (CLAUDE.md section 13).
 
 | # | Question | Options | Recommendation | Status |
 | --- | --- | --- | --- | --- |
-| CS1 | The Concord skin on every screen, as the mockup draws it | Approve / change it (say what) | Approve | Asked in survey 2, with shots |
+| CS1 | The Concord skin on every screen, as the mockup draws it | Approve / change it (say what) | Approve | **Approved** (owner, 2026-11-02: "ui implementation looks good") |
 | CS2 | The stations' role colours: only the title band's cap and the icon's tint, red and green kept for state | As drawn / keep the role colours wider | As drawn: colour means state everywhere | Asked, with shots |
 | CS3 | Antonio's floor at the itch.io embed: 20 px (8.5 px on screen) | Keep 20 / raise to 24 at that size | Keep 20 unless the 985 x 455 shots do not read | Recommendation taken (ask only with screenshots); the shots go with CS1 |

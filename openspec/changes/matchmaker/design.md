@@ -88,8 +88,12 @@ carrier-grade NAT, a strict firewall).
 ## 5. Hosting on Fly.io
 
 - **One app, one Machine**: the smallest shared-CPU size with 256 MB, in the region nearest the
-  owner, kept running (`min_machines_running = 1`, auto-stop off: a server's WebSocket must not be
-  cut by an idle stop). One Machine holds thousands of WebSockets; a second region is a later
+  owner, **running only while it is used** (owner, 2026-11-02, on the bill: "when is this using the server, the cost
+  seems high"). It was kept running all the time (`min_machines_running = 1`, auto-stop off), so it billed every
+  hour whether anyone played or not, about 2 US dollars a month, and double while the deploy left two Machines.
+  Now `auto_stop_machines = "stop"` and `min_machines_running = 0`: Fly's proxy stops it after a few minutes with
+  no connection and starts it on the next request, which waits a second or two. A listed server's open long poll is
+  a connection, so the Machine is never stopped under a listed server; a stop loses only an empty room list. One Machine holds thousands of WebSockets; a second region is a later
   measurement, not a plan.
 - **HTTPS and WebSockets only**, on Fly's shared IPv4 and IPv6, with TLS ended at Fly's proxy. No
   UDP on Fly, so no dedicated IPv4 is needed.
@@ -98,7 +102,8 @@ carrier-grade NAT, a strict firewall).
   unknown to the other: its long poll for offers, landing on the other half the time, was told "no such listing", it
   registered again there under a new code, and its code changed every half minute or so (J9PB1T, YRCDFF, MBA3PA,
   9E4NNW, RK6VK2 in one test). A join landed on the wrong Machine about half the time ("no crew holds the code"). The
-  deploy now passes `--ha=false`, scales the app to one Machine, and fails unless exactly one is running.
+  deploy now passes `--ha=false`, scales the app to one Machine, and fails unless exactly one exists (stopped or
+  running).
 - **In memory only.** Sessions are live sockets. If the Machine restarts, servers reconnect with
   backoff (1, 2, 4 ... up to 30 s) and re-register with their codes; players already in a mission
   notice nothing, since their data channels never touched the matchmaker.

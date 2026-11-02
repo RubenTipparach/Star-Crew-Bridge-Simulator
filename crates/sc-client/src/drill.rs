@@ -35,6 +35,14 @@ use crate::seat::{Input, PointerEv, Seat, SeatAsk};
 use crate::ships3d;
 use crate::ui::Ui;
 
+/// How long the first-time hint stays up before it leaves on its own, seconds (ui-art-direction design 11).
+const FIRST_STEPS_S: f64 = 15.0;
+/// The hint's fade as it leaves, seconds (a prompt's out time, ui-art-direction design 8).
+const FIRST_STEPS_FADE_S: f64 = 0.2;
+
+/// The first-time hint as drawn: the station's name, its marker on screen and distance (points, metres), opacity.
+type Hint = (String, Option<(Pos2, f32)>, f32);
+
 /// The viewscreen's feed, pixels: twice its 614 x 194 layout points, so it stays sharp up to 1440p.
 const FEED: (u32, u32) = (1228, 388);
 
@@ -293,6 +301,8 @@ pub struct DrillApp {
     playtest_press: Option<crate::playtest::Control>,
     /// When the body last sat down at a console, local seconds: the console rises from the desk from then.
     seated_at: Option<f64>,
+    /// How long the first-time hint has been on screen, seconds: it leaves at `FIRST_STEPS_S`.
+    hint_up_s: f64,
     /// The eye the player last saw the ship from on their feet (where, facing, tilt), and the one the sit started from:
     /// the camera sits down with the body from there.
     last_view: Option<([f64; 3], f32, f32)>,
@@ -505,6 +515,7 @@ impl DrillApp {
             playtest_stand: false,
             playtest_press: None,
             seated_at: None,
+            hint_up_s: 0.0,
             last_view: None,
             rise_from: None,
             seen_phase: None,
@@ -2533,6 +2544,19 @@ impl App for DrillApp {
                     });
                     (my_station.name().to_owned(), at)
                 });
+                // The hint leaves on its own after `FIRST_STEPS_S` (owner, 2026-11-02: "time it, and make it go away
+                // after 15 seconds"), fading over its last `FIRST_STEPS_FADE_S`, and stays gone like a sit does.
+                let hint = hint.map(|(name, at)| {
+                    self.hint_up_s += dt;
+                    let left = FIRST_STEPS_S - self.hint_up_s;
+                    (name, at, (left / FIRST_STEPS_FADE_S).clamp(0.0, 1.0) as f32)
+                });
+                if self.hint_up_s >= FIRST_STEPS_S && !self.options.first_steps_done && self.args.shots.is_none() {
+                    self.options.first_steps_done = true;
+                    if self.bot.is_none() && self.tour.is_none() {
+                        self.options.keep();
+                    }
+                }
                 bridge_ui = (!rising).then_some(BridgeUi {
                     labels,
                     plate: self.plate.clone(),
@@ -3001,8 +3025,8 @@ struct BridgeUi {
     red_alert: bool,
     /// The extinguisher in hand, its agent left.
     agent: Option<f32>,
-    /// The first-time hint: the player's station, and its marker on screen and distance.
-    hint: Option<(String, Option<(Pos2, f32)>)>,
+    /// The first-time hint: the player's station, its marker on screen and distance, and its opacity (0 to 1).
+    hint: Option<Hint>,
     /// The ship map, when it is open: its deck's name and the names over its markers.
     map: Option<(String, Vec<crate::shipmap::MapLabel>)>,
 }
@@ -3195,8 +3219,10 @@ fn bridge_overlay(ctx: &egui::Context, b: &BridgeUi) {
     if let Some(a) = b.agent {
         crate::hud::carried_bar(&painter, screen, a);
     }
-    if let Some((station, marker)) = &b.hint {
-        crate::hud::first_steps(&painter, screen, station, &[crate::look::KeyTok::Key("E".into())], *marker);
+    if let Some((station, marker, alpha)) = &b.hint {
+        let mut p = painter.clone();
+        p.multiply_opacity(*alpha);
+        crate::hud::first_steps(&p, screen, station, &[crate::look::KeyTok::Key("E".into())], *marker);
     }
     if let Some((p, a)) = &b.plate {
         crate::hud::prompt_plate(&painter, screen, p, *a, b.touch);
@@ -3550,7 +3576,7 @@ mod tests {
             objective: Some("Report to the helm".into()),
             red_alert: false,
             agent: None,
-            hint: Some(("Helm".into(), None)),
+            hint: Some(("Helm".into(), None, 1.0)),
             map: None,
         };
         let bad = check("walking HUD", |ctx| bridge_overlay(ctx, &b));

@@ -32,10 +32,10 @@ jobs:
           flyctl scale count 1 --yes
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-      - name: Exactly one Machine runs
+      - name: Exactly one Machine exists
         run: |
-          n=$(flyctl machines list --json | jq '[.[] | select(.state == "started")] | length')
-          echo "running Machines: $n"
+          n=$(flyctl machines list --json | jq '[.[] | select(.state != "destroyed")] | length')
+          echo "Machines: $n"
           test "$n" -eq 1
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
