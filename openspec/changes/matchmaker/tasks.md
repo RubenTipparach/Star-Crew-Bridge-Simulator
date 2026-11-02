@@ -39,6 +39,7 @@ server browser is design section 10. Deploying needs the owner's Fly.io account.
 ## 4. Deploy and measure
 
 - [x] 4.1 A Dockerfile and `fly.toml` (one Machine, kept running, HTTPS only); `fly deploy` from a script; secrets as Fly secrets.
+- [ ] 4.4 The deploy holds the matchmaker to one Machine (`--ha=false`, `scale count 1`, a check that exactly one runs), design 5; proven when a listed server keeps one code for ten minutes on Fly.
 - [ ] 4.3 A dedicated `sc-server` on Fly.io (dedicated IPv4, the UDP range declared, bound to `fly-global-services`), listed by the matchmaker.
 - [ ] 4.2 With the owner: a crew of a Pi 5 client, a desktop and a browser join a home Pi 5 server by code with no port forwarded; record which connections went direct and which through TURN, and the join time from code to data channels open, in `docs/benchmarks/`.
 

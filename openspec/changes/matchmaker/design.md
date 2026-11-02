@@ -93,6 +93,12 @@ carrier-grade NAT, a strict firewall).
   measurement, not a plan.
 - **HTTPS and WebSockets only**, on Fly's shared IPv4 and IPv6, with TLS ended at Fly's proxy. No
   UDP on Fly, so no dedicated IPv4 is needed.
+- **Exactly one Machine, held by the deploy** (found 2026-11-02). Fly's `deploy` gives an app two Machines by default
+  for availability, and the deployed matchmaker had two. Each keeps its own memory, so a server registered on one was
+  unknown to the other: its long poll for offers, landing on the other half the time, was told "no such listing", it
+  registered again there under a new code, and its code changed every half minute or so (J9PB1T, YRCDFF, MBA3PA,
+  9E4NNW, RK6VK2 in one test). A join landed on the wrong Machine about half the time ("no crew holds the code"). The
+  deploy now passes `--ha=false`, scales the app to one Machine, and fails unless exactly one is running.
 - **In memory only.** Sessions are live sockets. If the Machine restarts, servers reconnect with
   backoff (1, 2, 4 ... up to 30 s) and re-register with their codes; players already in a mission
   notice nothing, since their data channels never touched the matchmaker.
