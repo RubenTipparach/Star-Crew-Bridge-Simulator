@@ -7,6 +7,7 @@ Where each skill in this directory came from, so a later copy from the source ca
 | --- | --- | --- | --- | --- |
 | `openspec-*`, `../commands/opsx/*` | OpenSpec CLI 1.14.0 (`openspec init --tools claude`, profile with `verify` added) | 1.14.0 | 2026-10-04 | None. Tool-owned: `openspec update` rewrites them. |
 | `owner-survey` | Pale-Blue-Dot `.claude/skills/owner-survey`, with Undercity's (`fps-game-demo`) "never in chat" | Pale-Blue-Dot `5fcf83a`, fps-game-demo `f6cd25c` | 2026-10-04 | Rewritten for Star Crew: survey link location, question id prefixes, the owner's "ask only with screenshots" rule. |
+| `html-survey` (with `template.html`) | Fleet Command `.claude/skills/html-survey` (from Crab Breeze `69ce196`, from rubens-solitare-collection `0ef4ade`) | `a45a1bb` | 2026-11-02 | An "In Star Crew" note after the front matter; the rest verbatim. |
 | `obs-record` | Pale-Blue-Dot `.claude/skills/obs-record` (with `scripts/obs_record.py`) | `5fcf83a` | 2026-10-04 | An "In Star Crew" note after the front matter; the rest verbatim. |
 | `blender-csg-levels` | fps-game-demo `.claude/skills/blender-csg-levels` (with `kit.json`, `references/`, `scripts/`, `templates/`) | `f6cd25c` | 2026-10-04 | An "In Star Crew" note after the front matter; the rest verbatim. |
 | `blender-humanoid-characters` | fps-game-demo `.claude/skills/blender-humanoid-characters` (with `kit.json`, `references/`, `scripts/`, `templates/`) | `f6cd25c` | 2026-10-04 | An "In Star Crew" note after the front matter; the rest verbatim. |
